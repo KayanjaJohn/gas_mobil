@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: gas-mobil-mysql
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: gas_mobil
+      MYSQL_USER: gas_mobil_user
+      MYSQL_PASSWORD: 
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./apps/api/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - gas-mobil-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: gas-mobil-api
+    ports:
+      - '5000:5000'
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: gas_mobil_user
+      DB_PASSWORD: 
+      DB_DATABASE: gas_mobil
+      JWT_SECRET: your_jwt_secret_key_here
+      STRIPE_SECRET_KEY: sk_test_your_stripe_secret_key
+    volumes:
+      - ./apps/api/src:/app/src
+    networks:
+      - gas-mobil-network
+    command: npm run dev
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: gas-mobil-redis
+    ports:
+      - '6379:6379'
+    networks:
+      - gas-mobil-network
+
+volumes:
+  mysql_data:
+
+networks:
+  gas-mobil-network:
+    driver: bridge

@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>admin auth</title>
+	</head>
+	<style>
+		:root {
+			--accent: #1484ff;
+			--accent-2: #3da5ff;
+			--accent-glow: rgba(20, 132, 255, 0.45);
+			--muted: #8a93a6;
+			--muted-2: #c4c4cda3;
+			--text: #e6eaf2;
+			--danger: #ff4d4d;
+			--success: #22c55e;
+			--warn: #f59e0b;
+			--bg: #070b14;
+			--card: #10172391;
+			--card-2: #0e1521;
+			--border: #1f2a3d;
+			--grad-card: linear-gradient(150deg, #101827, #0a1120);
+			--grad-blue: linear-gradient(180deg, #1f8bff, #0f6fe6);
+		}
+
+		/* AUTH */
+		.auth {
+			padding: 24px 22px;
+		}
+		.auth .hero {
+			text-align: center;
+			padding: 30px 0 24px;
+		}
+		.auth .hero .flame-art {
+			margin: 0 auto;
+		}
+		.auth .hero h1 {
+			font-size: 26px;
+			margin: 6px 0;
+			letter-spacing: -0.4px;
+		}
+		.auth .hero p {
+			color: var(--muted);
+			font-size: 13px;
+		}
+		.tab-toggle {
+			display: flex;
+			background: #0e1521;
+			border: 1px solid var(--border);
+			border-radius: 999px;
+			padding: 4px;
+			margin: 18px 0 24px;
+		}
+		.tab-toggle button {
+			flex: 1;
+			background: transparent;
+			border: none;
+			color: var(--muted);
+			padding: 10px;
+			border-radius: 999px;
+			font-weight: 600;
+			font-size: 13px;
+			cursor: pointer;
+		}
+		.tab-toggle button.active {
+			background: var(--grad-blue);
+			color: #fff;
+			box-shadow: 0 6px 14px var(--accent-glow);
+		}
+		.field {
+			margin-bottom: 14px;
+		}
+		.field label {
+			display: block;
+			font-size: 11px;
+			color: var(--muted);
+			margin-bottom: 6px;
+			letter-spacing: 0.5px;
+		}
+		.field .input {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			background: #0e1521;
+			border: 1px solid var(--border);
+			border-radius: 14px;
+			padding: 12px 14px;
+		}
+		.field .input i {
+			color: var(--muted);
+		}
+		.field input {
+			background: transparent;
+			border: none;
+			outline: none;
+			color: #fff;
+			font-size: 14px;
+			width: 100%;
+			font-family: inherit;
+		}
+		.divider {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin: 18px 0;
+			color: var(--muted);
+			font-size: 11px;
+		}
+		.divider::before,
+		.divider::after {
+			content: "";
+			flex: 1;
+			height: 1px;
+			background: var(--border);
+		}
+		.social {
+			display: flex;
+			gap: 10px;
+		}
+		.social button {
+			flex: 1;
+			background: #0e1521;
+			border: 1px solid var(--border);
+			color: #fff;
+			border-radius: 14px;
+			padding: 12px;
+			font-size: 13px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 8px;
+		}
+
+		.btn-primary.full {
+			width: 100%;
+			justify-content: center;
+			padding: 14px;
+			font-size: 14px;
+			background: var(--grad-blue);
+			color: #fff;
+			box-shadow: 0 6px 14px var(--accent-glow);
+			border-radius: 999px;
+			padding: 14px;
+			margin: 18px 0 24px;
+			border: none;
+			color: #fff;
+			font-weight: 700;
+			cursor: pointer;
+		}
+		a {
+			color: inherit;
+			text-decoration: none;
+		}
+	</style>
+	<body>
+		<!-- ============== AUTH ============== -->
+		<div class="screen" id="auth">
+			<div class="auth">
+				<div class="hero">
+					<div class="flame-art">🔥</div>
+					<h1>Gasmobil <span style="color: var(--accent)">Uganda</span></h1>
+					<p>Smart Gas Cylinder delivery, in 2 hours.</p>
+				</div>
+				<div class="tab-toggle">
+					<button class="active" onclick="authTab(this, 'in')">Sign In</button>
+					<button onclick="authTab(this, 'up')">Sign Up</button>
+				</div>
+				<div id="signupOnly" style="display: none">
+					<div class="field">
+						<label>Full Name</label>
+						<div class="input">
+							<i class="fi fi-rr-user"></i><input placeholder="John Doe" />
+						</div>
+					</div>
+				</div>
+				<div class="field">
+					<label>Phone Number</label>
+					<div class="input">
+						<i class="fi fi-rr-phone-call"></i><input placeholder="+256 7XX XXX XXX" />
+					</div>
+				</div>
+				<div class="field">
+					<label>Password</label>
+					<div class="input">
+						<i class="fi fi-rr-lock"></i
+						><input type="password" placeholder="••••••••" />
+					</div>
+				</div>
+				<button class="btn-primary full">
+					<a href="/admin-dashboard.html">Continue</a>
+					<i class="fi fi-rr-arrow-right"></i>
+				</button>
+				<div class="divider">or continue with</div>
+				<div class="social">
+					<button><i class="fi fi-rr-globe"></i> Google</button>
+					<button><i class="fi fi-rr-apple"></i> Apple</button>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

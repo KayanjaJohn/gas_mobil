@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#070b14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gasmobil">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Smart Gas Cylinder delivery in Uganda — order, track and refill your gas cylinder in 2 hours.">
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%23070b14'/><text x='50%' y='58%' font-size='110' text-anchor='middle' dominant-baseline='middle'>🔥</text></svg>">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23070b14'/><text x='50%' y='58%' font-size='42' text-anchor='middle' dominant-baseline='middle'>🔥</text></svg>">
+<title>Gasmobil Uganda — Smart Gas Cylinder Delivery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+<link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
+<style>
+:root{
+  --accent:#1484FF; --accent-2:#3DA5FF; --accent-glow:rgba(20,132,255,.45);
+  --muted:#8A93A6; --muted-2:#C4C4CDA3; --text:#E6EAF2;
+  --danger:#ff4d4d; --success:#22c55e; --warn:#f59e0b;
+  --bg:#070b14; --card:#10172391; --card-2:#0e1521; --border:#1F2A3D;
+  --grad-card:linear-gradient(150deg,#101827,#0a1120);
+  --grad-blue:linear-gradient(180deg,#1f8bff,#0f6fe6);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Inter','Segoe UI',system-ui,sans-serif;
+  background: radial-gradient(1200px 600px at 50% -100px,#0f1a2e 0%, #04070d 60%) fixed;
+  color:var(--text); min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,h4,h5,h6{margin:0;color:#fff;font-weight:600;}
+p,small{margin:0;}
+a{text-decoration:none;color:var(--accent);}
+button{font-family:inherit;}
+
+/* RESPONSIVE PHONE FRAME */
+.app{
+  width:100%; max-width:480px; margin:0 auto;
+  min-height:100vh; position:relative;
+  padding-bottom:96px;
+}
+@media (min-width:780px){
+  body{padding:24px 0;background:radial-gradient(1200px 800px at 50% 0%,#0f1a2e,#02050a 70%);}
+  .app{
+    max-width:420px; min-height:860px; height:calc(100vh - 48px);
+    border-radius:38px; overflow:hidden auto;
+    border:1px solid #1a2538;
+    box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.02);
+    background:radial-gradient(800px 400px at 50% -80px,#0f1a2e,#04070d 60%);
+  }
+  .app::-webkit-scrollbar{width:0;}
+}
+
+/* SCREENS */
+.screen{display:none;animation:fade .35s ease;}
+.screen.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/*BUTTONS*/
+.btn{display:inline-flex;align-items:center;gap:8px;
+background:var(--grad-blue);color:#fff;font-weight:600;
+  border:none;border-radius:999px;padding:11px 20px;font-size:13px;cursor:pointer;
+}
+
+.btn:hover{background:var(--grad-blue)}
+.btn.block{display:flex;width:100%;justify-content:center;padding:14px;border-radius:14px}
+.btn.ghost{background:#162039;color:var(--text)}
+.btn.danger-outline{background:transparent;border:1px solid #6b1a1a;color:#ff6b6b;width:100%;justify-content:center;padding:14px;border-radius:14px;
+  box-shadow:0 0 1px var(--danger);transition:transform .15s;
+}
+
+/* TOP BAR */
+.top-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:18px 18px 8px; position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(14px);
+  background:linear-gradient(180deg,rgba(7,11,20,.9),rgba(7,11,20,0));
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.flame-logo{
+  width:38px;height:38px;border-radius:12px;
+  background:linear-gradient(160deg,#0d2647,#0a1830);
+  border:1px solid #16223a;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 6px 18px rgba(20,132,255,.25);
+}
+.brand-text .loc{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.brand-text h3{font-size:17px;line-height:1.1;margin-top:2px;letter-spacing:-.2px;}
+.brand-text h3 .accent{color:var(--accent);}
+.bell{
+  position:relative;width:42px;height:42px;border-radius:50%;
+  background:#121a28;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;cursor:pointer;
+}
+.bell .dot{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:1px solid #121a28;}
+
+/* CARD */
+.card{
+  margin:14px 16px; padding:18px; border-radius:18px;
+  background:var(--grad-card); border:1px solid var(--border);
+}
+
+/* HERO ORDER */
+.order{
+  position:relative;display:flex;align-items:center;justify-content:space-between;
+  padding:22px;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(20,132,255,0.22), transparent 55%),
+    linear-gradient(150deg,#0e1828,#0a1220);
+  border:1px solid #16223a; overflow:hidden;
+}
+.order::before{
+  content:"";position:absolute;inset:-1px;border-radius:18px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(20,132,255,.4),transparent 40%);
+  -webkit-mask:linear-gradient(#000,#000) content-box,linear-gradient(#000,#000);
+  -webkit-mask-composite:xor;mask-composite:exclude;padding:1px;opacity:.5;
+}
+.order-text{max-width:62%;position:relative;z-index:1;}
+.order-text .tag{color:var(--accent);font-size:11px;letter-spacing:1.4px;font-weight:700;}
+.order-text h2{font-size:18px;line-height:1.3;margin:8px 0 14px;}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--grad-blue);color:#fff;font-weight:600;
+  border:none;border-radius:999px;padding:11px 20px;font-size:13px;cursor:pointer;
+  box-shadow:0 8px 22px var(--accent-glow);transition:transform .15s;
+}
+.btn-primary:active{transform:scale(.96);}
+.btn-primary.full{width:100%;justify-content:center;padding:14px;font-size:14px;}
+.btn-ghost{
+  background:transparent;border:1px solid var(--border);color:#fff;
+  border-radius:999px;padding:11px 18px;font-size:13px;cursor:pointer;font-weight:500;
+}
+.flame-art{
+  width:120px;height:120px;display:flex;align-items:center;justify-content:center;
+  font-size:84px;filter:drop-shadow(0 8px 25px var(--accent-glow));
+  animation:flicker 2.4s ease-in-out infinite;
+}
+@keyframes flicker{0%,100%{transform:scale(1) rotate(-2deg);}50%{transform:scale(1.06) rotate(2deg);}}
+
+/* SECTION LABEL */
+.section-label{display:flex;justify-content:space-between;align-items:center;padding:18px 22px 8px;}
+.section-label h5{font-size:11px;letter-spacing:1.5px;color:var(--muted);font-weight:600;}
+.section-label .view-all{font-size:12px;color:var(--accent);font-weight:600;cursor:pointer;}
+
+/* CYLINDER */
+.cylinder{
+  display:flex;align-items:center;gap:18px;
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(255,60,60,0.18), transparent 55%),
+    linear-gradient(150deg,#1a0e12,#120a10);
+  border:1px solid #3a1a22;
+}
+.progress{
+  width:96px;height:96px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;flex-shrink:0;
+  background:conic-gradient(var(--danger) 54deg,#1d2230 0deg);
+  transition:background .4s linear;
+}
+.progress::after{content:"";position:absolute;inset:8px;border-radius:50%;background:#120a10;}
+.progress .label{position:relative;z-index:1;text-align:center;}
+.progress .label .pct{font-size:20px;font-weight:700;color:#fff;line-height:1;}
+.progress .label .full{font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-top:4px;}
+.cyl-info h4{font-size:15px;display:flex;align-items:center;gap:6px;}
+.cyl-info .flame-i{color:var(--accent);}
+.cyl-info .warn{color:var(--danger);font-size:12px;margin:6px 0;display:flex;align-items:center;gap:6px;}
+.cyl-info .insp{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.cyl-info .insp .dot{width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block;}
+
+/* QUICK ACTIONS */
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 16px;}
+.action{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:14px 6px;border-radius:16px;
+  background:var(--grad-card);border:1px solid var(--border);
+  cursor:pointer;transition:.25s;
+}
+.action:active{transform:scale(.96);}
+.action .ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.action.blue .ico{background:rgba(20,132,255,.15);color:#3DA5FF;}
+.action.red .ico{background:rgba(255,77,77,.15);color:#ff6b6b;}
+.action.green .ico{background:rgba(34,197,94,.15);color:#3ddc84;}
+.action.amber .ico{background:rgba(245,158,11,.15);color:#f5b042;}
+.action small{font-size:11px;color:#cfd3dc;text-align:center;}
+
+/* DELIVERY */
+.delivery{display:flex;align-items:center;gap:14px;}
+.delivery .ico-wrap{
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(20,132,255,.15);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.delivery .txt{flex:1;}
+.delivery .txt strong{color:#fff;font-size:14px;}
+.delivery .txt small{display:block;color:var(--muted);font-size:11px;margin-top:3px;}
+.delivery .bolt{color:var(--accent);font-size:18px;}
+
+/* Station list */
+.station{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
+.station .ico-wrap{
+  width:46px;height:46px;border-radius:14px;
+  background:rgba(34,197,94,.15);color:#3ddc84;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.station .txt{flex:1;}
+.station .txt strong{color:#fff;font-size:14px;}
+.station .txt small{display:block;color:var(--muted);font-size:11px;margin-top:3px;}
+.station .meta{text-align:right;}
+.station .meta .km{color:var(--accent);font-weight:700;font-size:14px;}
+.station .meta .open{font-size:10px;color:var(--success);margin-top:2px;}
+
+.avatar{width:42px;height:42px;border-radius:50%;background:rgba(59,130,246,.18);color:var(--grad-blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+
+.station b{font-size:14px;display:block}
+.station small{color:var(--muted);font-size:12px}
+.pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(34,197,94,.15);color:#34d399;text-transform:uppercase;letter-spacing:.08em}
+.pill.send{margin-left:auto;background:rgba(59,130,246,.12);color:var(--grad-blue);width:32px;height:32px;display:flex;align-items:center;justify-content:center;padding:0;border-radius:50%}
+
+
+/* CONTACT */
+.contact{margin:18px 16px 24px;padding:20px;border-radius:18px;background:var(--grad-card);border:1px solid var(--border);}
+.contact .head{display:flex;align-items:center;gap:12px;}
+.contact .head .flame-logo{width:46px;height:46px;font-size:22px;border-radius:14px;}
+.contact .head h4{font-size:15px;}
+.contact .head .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.contact .head .sub .accent{color:var(--accent);}
+.contact hr{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.contact .info{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;}
+.contact .info li{display:flex;align-items:center;gap:12px;font-size:12.5px;color:#cfd3dc;}
+.contact .info li i{width:24px;text-align:center;color:var(--accent);font-size:14px;}
+.contact .copy{font-size:10.5px;color:var(--muted);text-align:center;line-height:1.6;}
+.contact .copy .accent{color:var(--accent);}
+
+/* BOTTOM NAV */
+.nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;z-index:60;
+  display:flex;justify-content:space-around;padding:10px 6px 18px;
+  background:rgba(8,12,22,0.92);backdrop-filter:blur(14px);
+  border-top:1px solid var(--border);
+}
+@media (min-width:780px){
+  .nav{max-width:420px;border-radius:0 0 38px 38px;bottom:24px;}
+}
+.nav .item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  font-size:10.5px;color:var(--muted);cursor:pointer;
+  padding:4px 8px;border-radius:10px;flex:1;
+}
+.nav .item i{font-size:18px;}
+.nav .item.active{color:var(--accent);}
+.nav .item.active i{background:rgba(20,132,255,.15);padding:7px;border-radius:12px;}
+
+/* PAGE HEADER (sub-screens) */
+.subhead{display:flex;align-items:center;gap:14px;padding:4px 0 14px}
+.back{width:38px;height:38px;border-radius:50%;background:#1a2236;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.subhead h1{font-size:18px;margin:0;font-weight:700}
+.subhead .right{margin-left:auto;display:flex;gap:8px}
+
+/* Stepper */
+.stepper{display:flex;gap:6px;margin:0 0 16px}
+.stepper span{flex:1;height:3px;border-radius:2px;background:#1E2A44}
+.stepper span.on{background:var(--grad-blue)}
+
+/* AUTH */
+.auth{padding:24px 22px;}
+.auth .hero{text-align:center;padding:30px 0 24px;}
+.auth .hero .flame-art{margin:0 auto;}
+.auth .hero h1{font-size:26px;margin:6px 0;letter-spacing:-.4px;}
+.auth .hero p{color:var(--muted);font-size:13px;}
+.tab-toggle{
+  display:flex;background:#0e1521;border:1px solid var(--border);
+  border-radius:999px;padding:4px;margin:18px 0 24px;
+}
+.tab-toggle button{
+  flex:1;background:transparent;border:none;color:var(--muted);
+  padding:10px;border-radius:999px;font-weight:600;font-size:13px;cursor:pointer;
+}
+.tab-toggle button.active{background:var(--grad-blue);color:#fff;box-shadow:0 6px 14px var(--accent-glow);}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.5px;}
+.field .input{
+  display:flex;align-items:center;gap:10px;
+  background:#0e1521;border:1px solid var(--border);
+  border-radius:14px;padding:12px 14px;
+}
+.field .input i{color:var(--muted);}
+.field input{
+  background:transparent;border:none;outline:none;color:#fff;
+  font-size:14px;width:100%;font-family:inherit;
+}
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--muted);font-size:11px;}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border);}
+.social{display:flex;gap:10px;}
+.social button{flex:1;background:#0e1521;border:1px solid var(--border);color:#fff;border-radius:14px;padding:12px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+
+/* ORDER FLOW */
+
+/* Order toggle */
+.choose{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.choose .opt{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:6px}
+.choose .opt.active{border-color:var(--grad-blue);background:rgba(59, 130, 246, 0.08)}
+.choose .opt i{font-size:18px;color:var(--grad-blue)}
+.choose .opt b{font-size:14px}
+.choose .opt small{color:var(--muted);font-size:11px}
+.label{font-size:13px;color:var(--text-dim);margin:18px 4px 10px}
+
+/* Size options */
+.sizes{display:flex;flex-direction:column;gap:10px}
+.size{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center}
+.size.active{border-color:var(--grad-blue);background:rgba(59,130,246,.08)}
+.size b{font-size:18px;display:block}
+.size small{color:var(--muted);font-size:12px}
+.size .price{color:var(--grad-blue);font-weight:700;font-size:14px}
+.size .pop{position:absolute;top:-8px;right:14px;background:var(--grad-blue);color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.1em}
+
+/* Map mock */
+.map{height:200px;border-radius:14px;background:linear-gradient(135deg,#0a1530,#0e1c3a);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.map::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.08) 1px,transparent 1px);background-size:24px 24px}
+.map .pin{position:relative;z-index:1;width:46px;height:46px;border-radius:50% 50% 50% 0;background:var(--grad-blue);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 0 0 8px rgba(59,130,246,.18)}
+.map .pin i{transform:rotate(45deg);font-size:20px}
+.map .hint{position:absolute;bottom:10px;color:var(--muted);font-size:11px}
+
+/* Textarea */
+.ta{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;color:var(--text);font-family:inherit;font-size:14px;resize:none;min-height:84px}
+.ta:focus{outline:none;border-color:var(--grad-blue)}
+
+/* Two button row */
+.row2{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:16px}
+.row2 .btn.ghost{border:1px solid var(--border)}
+
+/* Order summary */
+.summary{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.summary h3{margin:0 0 12px;font-size:14px}
+.sline{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;color:var(--text-dim)}
+.sline b{color:var(--text)}
+.sline.total{border-top:1px solid var(--border);margin-top:8px;padding-top:14px;font-size:15px}
+.sline.total b{color:var(--grad-blue)}
+.green{color:#34d399 !important}
+
+/* Acc add card */
+.add-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center;margin-top:14px}
+.add-card .ico{width:42px;height:42px;border-radius:12px;background:rgba(245,158,11,.12);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:18px}
+.add-card b{font-size:13px;display:block}
+.add-card small{color:var(--muted);font-size:11px}
+
+.add{
+  border: none;
+    box-shadow:0 8px 22px var(--accent-glow);transition:transform .15s;
+}
+
+/* Pay options */
+.pay{display:flex;flex-direction:column;gap:10px}
+.pay .opt{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px}
+.pay .opt i:first-child{font-size:18px;color:var(--text);width:22px}
+.pay .opt b{font-size:14px;display:block}
+.pay .opt small{color:var(--muted);font-size:11px}
+.pay .opt .chev{margin-left:auto;color:var(--muted)}
+.pay .opt.active{border-color:var(--grad-blue)}
+
+/* Accessories grid */
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{padding:8px 16px;border-radius:999px;background:var(--card);border:none;font-size:12px;font-weight:600;color:var(--text-dim);white-space:nowrap}
+.tabs button.active{background:var(--grad-blue);color:#fff;border-color:var(--grad-blue);
+  box-shadow:0 8px 22px var(--accent-glow);transition:transform .15s;
+}
+
+.acc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.acc .thumb{width:64px;height:64px;border-radius:10px;background:#1a2438;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--grad-blue-glow);flex-shrink:0}
+.acc .meta{flex:1;min-width:0}
+.acc b{font-size:14px;display:block;margin-bottom:2px}
+.acc small{color:var(--muted);font-size:11px;display:block;line-height:1.4}
+.acc .price{color:var(--grad-blue);font-weight:700;font-size:13px;margin-top:6px;display:block}
+.acc .stock{color:#34d399;font-size:11px;margin-top:4px;display:flex;align-items:center;gap:4px}
+.acc .stock::before{content:"";width:6px;height:6px;border-radius:50%;background:#34d399}
+.acc .add{align-self:flex-start;background:var(--grad-blue);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px}
+
+/* Network summary */
+.netsum{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.netsum .lbl{font-size:11px;color:var(--grad-blue);letter-spacing:.15em;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:12px}
+.netsum .nums{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.netsum b{font-size:24px;display:block}
+.netsum small{color:var(--muted);font-size:11px}
+
+/* Search */
+.search{position:relative;margin-bottom:12px}
+.search i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px 12px 40px;color:var(--text);font-family:inherit;font-size:13px}
+.search input:focus{outline:none;border-color:var(--grad-blue)}
+
+/* Profile */
+.profile-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center}
+.profile-card .avatar{width:50px;height:50px;font-size:16px}
+.profile-card b{font-size:14px;display:block}
+.profile-card small{color:var(--grad-blue);font-size:12px;display:flex;align-items:center;gap:5px;margin-top:3px}
+.profile-card small::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--grad-blue)}
+
+.wallet{margin:14px 0;background:linear-gradient(135deg,#0e1d3f,#0a1530);border:1px solid #1c2c4a;border-radius:18px;padding:20px}
+.wallet .lbl{font-size:11px;color:var(--grad-blue);letter-spacing:.15em;font-weight:700}
+.wallet b{font-size:32px;display:block;margin:6px 0 14px}
+
+.menu{margin-top:6px}
+.menu .item{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid #131d33}
+.menu .item:last-child{border-bottom:none}
+.menu .item i:first-child{width:24px;text-align:center;color:var(--text-dim);font-size:18px}
+.menu .item b{font-size:14px;display:block}
+.menu .item small{color:var(--muted);font-size:11px}
+.menu .item .chev{margin-left:auto;color:var(--muted)}
+
+/* TRACKING */
+.track-map{height:240px;border-radius:14px;background:linear-gradient(135deg,#0a1530,#0e1c3a);border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:14px}
+.track-map::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.08) 1px,transparent 1px);background-size:24px 24px}
+.path{position:absolute;left:20%;top:30%;width:60%;height:40%;border:2px dashed rgba(59,130,246,.5);border-radius:50%;border-right:none;border-bottom:none}
+.track-map .dot{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--grad-blue);box-shadow:0 0 0 6px rgba(59,130,246,.25);animation:pulse 2s infinite}
+.dot.start{left:18%;top:60%}
+.dot.end{right:18%;top:25%;background:#34d399;box-shadow:0 0 0 6px rgba(52,211,153,.25)}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl{display:flex;gap:14px;padding:12px 0;position:relative}
+.tl .icn{width:32px;height:32px;border-radius:50%;background:#1a2236;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1}
+.tl.done .icn{background:var(--grad-blue);color:#fff}
+.tl::before{content:"";position:absolute;left:15px;top:32px;bottom:0;width:2px;background:#1a2236}
+.tl:last-child::before{display:none}
+.tl b{font-size:13px;display:block}
+.tl small{color:var(--muted);font-size:11px}
+
+
+/* GREEN */
+.eco-stat{
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(34,197,94,0.18), transparent 55%),
+    linear-gradient(150deg,#0e1a14,#0a1410);
+  border:1px solid #1a3a26;
+  text-align:center;padding:24px;
+}
+.eco-stat .big{font-size:38px;font-weight:800;color:#3ddc84;letter-spacing:-1px;}
+.eco-stat .lbl{color:var(--muted);font-size:12px;margin-top:4px;letter-spacing:.5px;}
+.eco-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px;}
+.eco-mini{background:var(--grad-card);border:1px solid var(--border);border-radius:16px;padding:16px;}
+.eco-mini .ico{font-size:22px;color:#3ddc84;margin-bottom:6px;}
+.eco-mini strong{color:#fff;font-size:18px;display:block;}
+.eco-mini small{color:var(--muted);font-size:11px;}
+
+
+/* TOAST */
+.toast{
+  position:fixed;left:50%;bottom:110px;transform:translateX(-50%) translateY(20px);
+  background:#0e1521;border:1px solid var(--accent);color:#fff;
+  padding:12px 18px;border-radius:999px;font-size:13px;
+  box-shadow:0 10px 30px var(--accent-glow);
+  opacity:0;pointer-events:none;transition:.3s;z-index:100;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* CART */
+.cart-row{
+  display:flex;align-items:center;gap:12px;
+  background:var(--grad-card);border:1px solid var(--border);
+  border-radius:14px;padding:12px;margin-bottom:8px;
+}
+.cart-row .img{
+  width:50px;height:50px;border-radius:10px;
+  background:radial-gradient(circle,rgba(20,132,255,.2),transparent 70%),#0a1120;
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+}
+.cart-row .info{flex:1;}
+.cart-row .info strong{color:#fff;font-size:13px;display:block;}
+.cart-row .info small{color:var(--accent);font-size:12px;}
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty .ico{font-size:50px;margin-bottom:10px;opacity:.4;}
+
+/* SPLASH / LOADING */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:radial-gradient(800px 500px at 50% 30%,#0f1a2e,#04070d 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  transition:opacity .5s ease, visibility .5s ease;
+}
+#splash.hide{opacity:0;visibility:hidden;}
+#splash .logo{font-size:84px;filter:drop-shadow(0 8px 30px var(--accent-glow));animation:flicker 2.4s ease-in-out infinite;}
+#splash h1{font-size:24px;color:#fff;letter-spacing:-.4px;}
+#splash h1 .accent{color:var(--accent);}
+#splash p{color:var(--muted);font-size:12px;}
+#splash .bar{width:140px;height:3px;border-radius:3px;background:#1d2230;overflow:hidden;margin-top:10px;}
+#splash .bar::after{content:"";display:block;width:40%;height:100%;background:var(--grad-blue);animation:load 1.2s ease-in-out infinite;}
+@keyframes load{0%{transform:translateX(-100%);}100%{transform:translateX(350%);}}
+
+/* INSTALL BANNER */
+#installBanner{
+  position:fixed;left:50%;bottom:96px;transform:translateX(-50%);
+  width:calc(100% - 32px);max-width:420px;z-index:80;
+  display:none;align-items:center;gap:12px;padding:12px 14px;
+  background:linear-gradient(150deg,#101827,#0a1120);
+  border:1px solid var(--accent);border-radius:16px;
+  box-shadow:0 14px 40px rgba(0,0,0,.5);
+}
+#installBanner.show{display:flex;animation:fade .35s ease;}
+#installBanner .ico{width:38px;height:38px;border-radius:10px;background:rgba(20,132,255,.15);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;}
+#installBanner .txt{flex:1;}
+#installBanner .txt strong{color:#fff;font-size:13px;display:block;}
+#installBanner .txt small{color:var(--muted);font-size:11px;}
+#installBanner button{background:var(--grad-blue);color:#fff;border:none;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;}
+#installBanner .close{background:transparent;color:var(--muted);font-size:18px;padding:4px 8px;}
+
+/* OFFLINE BADGE */
+#offlineBadge{
+  position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;
+  background:#1a0e12;border:1px solid var(--danger);color:#ff6b6b;
+  padding:6px 14px;border-radius:999px;font-size:11px;display:none;
+}
+#offlineBadge.show{display:block;}
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <div class="logo">🔥</div>
+  <h1>Gasmobil <span class="accent">Uganda</span></h1>
+  <p>Smart Gas Cylinder delivery, in 2 hours.</p>
+  <div class="bar"></div>
+</div>
+
+<!-- OFFLINE INDICATOR -->
+<div id="offlineBadge">● Offline mode</div>
+
+<!-- INSTALL BANNER -->
+<div id="installBanner">
+  <div class="ico">📲</div>
+  <div class="txt"><strong>Install Gasmobil</strong><small id="installHint">Add to home screen for offline use</small></div>
+  <button id="installBtn">Install</button>
+  <button class="close" onclick="document.getElementById('installBanner').classList.remove('show')">×</button>
+</div>
+
+<div class="app">
+
+<!-- ============== AUTH ============== -->
+<div class="screen" id="auth">
+  <div class="auth">
+    <div class="hero">
+      <div class="flame-art">🔥</div>
+      <h1>Gasmobil <span style="color:var(--accent);">Uganda</span></h1>
+      <p>Smart Gas Cylinder delivery, in 2 hours.</p>
+    </div>
+    <div class="tab-toggle">
+      <button class="active" onclick="authTab(this,'in')">Sign In</button>
+      <button onclick="authTab(this,'up')">Sign Up</button>
+    </div>
+    <div id="signupOnly" style="display:none;">
+      <div class="field"><label>Full Name</label><div class="input"><i class="fi fi-rr-user"></i><input placeholder="John Doe"></div></div>
+    </div>
+    <div class="field"><label>Phone Number</label><div class="input"><i class="fi fi-rr-phone-call"></i><input placeholder="+256 7XX XXX XXX"></div></div>
+    <div class="field"><label>Password</label><div class="input"><i class="fi fi-rr-lock"></i><input type="password" placeholder="••••••••"></div></div>
+    <button class="btn-primary full"><a href="admin-dashboard.html" style="color: white; font-weight: 700;">Continue </a><i class="fi fi-rr-arrow-right"></i></button>
+    <div class="divider">or continue with</div>
+    <div class="social">
+      <button><i class="fi fi-rr-globe"></i> Google</button>
+      <button><i class="fi fi-rr-apple"></i> Apple</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== HOME ============== -->
+<div class="screen active" id="home">
+  <div class="top-bar">
+    <div class="brand">
+      <div class="flame-logo">🔥</div>
+      <div class="brand-text">
+        <div class="loc"><i class="fi fi-rr-marker"></i> Kampala, Uganda</div>
+        <h3>Gasmobil <span class="accent">Uganda</span></h3>
+      </div>
+    </div>
+    <div class="bell" onclick="toast('No new notifications')"><i class="fi fi-rr-bell"></i><span class="dot"></span></div>
+  </div>
+
+  <div class="card order">
+    <div class="order-text">
+      <div class="tag">DEPOSIT-FREE</div>
+      <h2>Swap your empty cylinder for a full one</h2>
+      <button class="btn-primary full" onclick="go('order')">Order Now <i class="fi fi-rr-angle-right"></i></button>
+    </div>
+    <div class="flame-art">🔥</div>
+  </div>
+
+  <div class="section-label"><h5>YOUR CYLINDER</h5></div>
+  <div class="card cylinder">
+    <div class="progress" id="progress">
+      <div class="label">
+        <div class="pct" id="percent">15%</div>
+        <div class="full">FULL</div>
+      </div>
+    </div>
+    <div class="cyl-info">
+      <h4><i class="fi fi-sr-flame flame-i"></i> 6kg Cylinder</h4>
+      <div class="warn"><i class="fi fi-rr-triangle-warning"></i> ~3 days left — Refill soon!</div>
+      <div class="insp"><span class="dot"></span> Inspected <span id="inspectDateText"></span></div>
+    </div>
+  </div>
+
+  <div class="section-label"><h5>QUICK ACTIONS</h5></div>
+  <div class="actions">
+    <div class="action blue" onclick="go('order')"><div class="ico"><i class="fi fi-rr-refresh"></i></div><small>Swap Refill</small></div>
+    <div class="action red" onclick="go('order')"><div class="ico"><i class="fi fi-rr-shopping-bag"></i></div><small>Buy New</small></div>
+    <div class="action green" onclick="go('agents')"><div class="ico"><i class="fi fi-rr-map"></i></div><small>Find Agent</small></div>
+    <div class="action amber" onclick="go('accessories')"><div class="ico"><i class="fi fi-rr-settings"></i></div><small>Accessories</small></div>
+  </div>
+
+  <div class="card delivery">
+    <div class="ico-wrap"><i class="fi fi-rr-truck-side"></i></div>
+    <div class="txt">
+      <strong>2-Hour Delivery Guarantee</strong>
+      <small>Or get 10% off your next refill</small>
+    </div>
+    <div class="bolt"><i class="fi fi-sr-bolt"></i></div>
+  </div>
+
+  <div class="section-label">
+    <h5>NEAREST STATION</h5>
+    <span class="view-all" onclick="go('agents')">View All</span>
+  </div>
+  <div class="card station" onclick="go('agents')">
+    <div class="ico-wrap">KA</div>
+<div class="txt"><b>Shell Kampala Road</b><small>Kampala · Open until 10:00 PM</small></div>
+    <div class="meta">
+      <div class="km">1.2 km</div>
+      <div class="open">● Open</div>
+    </div>
+  </div>
+
+  <div class="contact">
+    <div class="head">
+      <div class="flame-logo">🔥</div>
+      <div>
+        <h4>Gasmobil Uganda</h4>
+        <div class="sub">A member of <span class="accent">Lambula Creative Agency</span></div>
+      </div>
+    </div>
+    <hr>
+    <ul class="info">
+      <li><i class="fi fi-rr-phone-call"></i> +256 785 796 333 &nbsp; · &nbsp; 0776 800 386</li>
+      <li><i class="fi fi-rr-envelope"></i> info@gasmobil.ug</li>
+      <li><i class="fi fi-rr-marker"></i> Plot 12, Kampala Road, Kampala, Uganda</li>
+      <li><i class="fi fi-rr-globe"></i> www.gasmobil.ug</li>
+    </ul>
+    <hr>
+    <div class="copy">© <span id="year"></span> Gasmobil Uganda. All rights reserved. Powered by<br><span class="accent">Lambula Creative Agency.</span></div>
+  </div>
+</div>
+
+<!-- ============= ORDER (step 1: type+size) ============= -->
+<section class="screen" id="order">
+  <div class="subhead"><button class="back" onclick="go('home')"><i class="fi fi-rr-angle-left"></i></button><h1>Order Gas</h1></div>
+  <div class="stepper"><span class="on"></span><span></span><span></span></div>
+
+  <div class="label">What do you need?</div>
+  <div class="choose">
+    <div class="opt active" id="optSwap" onclick="setOrderType('swap')"><i class="lc lc-refresh-cw"></i><b>Swap Refill</b><small>Exchange empty for full</small></div>
+    <div class="opt" id="optBuy" onclick="setOrderType('buy')"><i class="lc lc-shopping-bag"></i><b>Buy Full Kit</b><small>First-time purchase</small></div>
+  </div>
+
+  <div class="label">Select size</div>
+  <div class="sizes" id="sizes"></div>
+
+  <button class="btn-primary full" style="margin-top:18px" onclick="go('orderLoc')">Continue <i class="fi fi-rr-angle-right"></i></button>
+</section>
+
+<!-- ============= ORDER (step 2: location) ============= -->
+<section class="screen" id="orderLoc">
+  <div class="subhead"><button class="back" onclick="go('order')"><i class="fi fi-rr-angle-left"></i></button><h1>Order Gas</h1></div>
+  <div class="stepper"><span class="on"></span><span class="on"></span><span></span></div>
+
+  <div class="label" style="margin-top:0"><b style="color:var(--text);font-size:15px">Delivery location</b><div style="color:var(--muted);font-size:12px;margin-top:4px">Drop a pin to mark your delivery spot</div></div>
+  <div class="map"><div class="pin"><i class="lc lc-map-pin"></i></div><div class="hint">Drag pin on map</div></div>
+
+  <div class="label" style="margin-top:18px"><b style="color:var(--text);font-size:15px">Delivery address</b><div style="color:var(--muted);font-size:12px;margin-top:4px">Add building, street, landmark or instructions</div></div>
+  <textarea class="ta" placeholder="Kampala"></textarea>
+
+  <div class="row2">
+    <button class="btn ghost" onclick="go('order')">Back</button>
+    <button class="btn" style="justify-content:center" onclick="go('orderSummary')">Continue</button>
+  </div>
+</section>
+
+<!-- ============= ORDER (step 3: summary+pay) ============= -->
+<section class="screen" id="orderSummary">
+  <div class="subhead"><button class="back" onclick="go('orderLoc')"><i class="fi fi-rr-angle-left"></i></button><h1>Order Gas</h1></div>
+  <div class="stepper"><span class="on"></span><span class="on"></span><span class="on"></span></div>
+
+  <div class="summary">
+    <h3>Order Summary</h3>
+    <div class="sline">Type <b id="sumType">Swap Refill</b></div>
+    <div class="sline">Size <b id="sumSize">12kg</b></div>
+    <div class="sline">Delivery <b class="green">Within 2 hours</b></div>
+    <div class="sline">Cylinder (12kg) <b id="sumPrice">UGX 100,000</b></div>
+    <div class="sline total">Total <b id="sumTotal">UGX 100,000</b></div>
+  </div>
+
+  <div class="add-card">
+    <div class="ico"><i class="lc lc-flame"></i></div>
+    <div style="flex:1">
+      <b>Need a burner, regulator or hosepipe?</b>
+      <small>Browse accessories to add to this order</small>
+    </div>
+  </div>
+  <div style="text-align:right;margin:6px 4px"><a class="link" onclick="go('accessories')">+ Add more</a></div>
+
+  <div class="label">Pay with</div>
+  <div class="pay">
+    <div class="opt active"><i class="lc lc-wallet"></i><div><b>Gasmobil Wallet</b><small>Balance: UGX 0</small></div><i class="lc lc-chevron-right chev"></i></div>
+    <div class="opt"><i class="lc lc-smartphone"></i><div><b>Mobile Money</b><small>M-Pesa / Airtel</small></div><i class="lc lc-chevron-right chev"></i></div>
+    <div class="opt"><i class="lc lc-clock"></i><div><b>Pay Later</b><small>For verified businesses</small></div><i class="lc lc-chevron-right chev"></i></div>
+  </div>
+
+  <div class="row2">
+    <button class="btn ghost" onclick="go('orderLoc')">Back</button>
+    <button class="btn" style="justify-content:center" onclick="placeOrder()">Place Order</button>
+  </div>
+</section>
+
+
+<!-- ============== ACCESSORIES ============== -->
+<section class="screen" id="accessories">
+  <div class="subhead">
+    <button class="back" onclick="go('home')"><i class="fi fi-rr-angle-left"></i></button>
+    <h1>Accessories</h1>
+    <div class="right"><div class="bell" style="position:relative"><i class="lc lc-shopping-cart"></i></div></div>
+  </div>
+  <p style="color:var(--muted);font-size:12px;margin:0 0 12px">Everything you need for your gas setup — delivered with your cylinder or separately.</p>
+
+  <div class="tabs" id="accTabs">
+    <button class="active" onclick="filterAcc(this,'all')">All</button>
+    <button onclick="filterAcc(this,'burner')">Burners</button>
+    <button onclick="filterAcc(this,'grill')">Grills</button>
+    <button onclick="filterAcc(this,'hose')">Hosepipes</button>
+    <button onclick="filterAcc(this,'reg')">Regulators</button>
+  </div>
+
+  <div id="accList"></div>
+</section>
+
+<!-- ============== AGENTS ============== -->
+<section class="screen" id="agents">
+  <div class="subhead"><button class="back" onclick="go('home')"><i class="fi fi-rr-angle-left"></i></button><h1>Partner Stations</h1></div>
+
+  <div class="netsum">
+    <div class="lbl"><i class="lc lc-flame"></i> NETWORK SUMMARY</div>
+    <div class="nums">
+      <div><b>62</b><small>Partner Stations</small></div>
+      <div><b>5,215</b><small>Cylinders Sold (30d)</small></div>
+    </div>
+  </div>
+
+  <div class="search"><i class="lc lc-search"></i><input placeholder="Search station or city…"></div>
+
+  <div class="tabs">
+    <button class="active">All</button>
+    <button>Central</button>
+    <button>Western</button>
+    <button>Eastern</button>
+    <button>Northern</button>
+  </div>
+
+  <p style="color:var(--muted);font-size:12px;margin:0 0 10px">Showing 24 of 62 stations</p>
+
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div class="station">
+      <div class="avatar">KA</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px"><b>Shell Kampala Road</b><span class="pill">OPEN</span></div>
+        <small>Kampala • Central Region</small>
+        <div style="color:var(--grad-blue);font-size:11px;margin-top:3px">109 sold (30d)</div>
+      </div>
+      <button class="pill send"><i class="lc lc-send"></i></button>
+    </div>
+    <div class="station">
+      <div class="avatar">KA</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px"><b>Shell Entebbe Road</b><span class="pill">OPEN</span></div>
+        <small>Kampala • Central Region</small>
+        <div style="color:var(--grad-blue);font-size:11px;margin-top:3px">78 sold (30d)</div>
+      </div>
+      <button class="pill send"><i class="lc lc-send"></i></button>
+    </div>
+    <div class="station">
+      <div class="avatar">JI</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px"><b>Total Jinja Main</b><span class="pill">OPEN</span></div>
+        <small>Jinja • Eastern Region</small>
+        <div style="color:var(--grad-blue);font-size:11px;margin-top:3px">64 sold (30d)</div>
+      </div>
+      <button class="pill send"><i class="lc lc-send"></i></button>
+    </div>
+    <div class="station">
+      <div class="avatar">MB</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px"><b>Shell Mbarara</b><span class="pill" style="background:rgba(239,68,68,.15);color:#ff6b6b">CLOSED</span></div>
+        <small>Mbarara • Western Region</small>
+        <div style="color:var(--grad-blue);font-size:11px;margin-top:3px">52 sold (30d)</div>
+      </div>
+      <button class="pill send"><i class="lc lc-send"></i></button>
+    </div>
+  </div>
+</section>
+
+<!-- ============== CART ============== -->
+<section class="screen" id="cart">
+  <div class="subhead"><button class="back" onclick="go('home')"><i class="fi fi-rr-angle-left"></i></button><h1>Your Cart</h1></div>
+  <div id="cartList"></div>
+  <div id="cartEmpty" style="text-align:center;padding:60px 20px;color:var(--muted)">
+    <i class="lc lc-shopping-cart" style="font-size:48px;color:#1e2a44"></i>
+    <p>Your cart is empty</p>
+    <button class="btn" onclick="go('accessories')">Browse Accessories</button>
+  </div>
+</section>
+
+<!-- ============== TRACKING ============== -->
+<section class="screen" id="tracking">
+  <div class="subhead"><button class="back" onclick="go('home')"><i class="fi fi-rr-angle-left"></i></button><h1>Live Tracking</h1></div>
+  <div class="track-map">
+    <div class="path"></div>
+    <div class="dot start"></div>
+    <div class="dot end"></div>
+  </div>
+  <div class="card">
+    <b style="font-size:14px">Order #GM-20260507</b>
+    <div style="color:var(--muted);font-size:12px;margin:4px 0 14px">Driver: Moses K. · Toyota Hiace · UAX 234B</div>
+    <div class="timeline">
+      <div class="tl done"><div class="icn"><i class="lc lc-check"></i></div><div><b>Order confirmed</b><small>2 mins ago</small></div></div>
+      <div class="tl done"><div class="icn"><i class="lc lc-package"></i></div><div><b>Picked up from station</b><small>Just now</small></div></div>
+      <div class="tl"><div class="icn"><i class="lc lc-truck"></i></div><div><b>On the way</b><small>ETA 18 min</small></div></div>
+      <div class="tl"><div class="icn"><i class="lc lc-home"></i></div><div><b>Delivered</b><small>—</small></div></div>
+    </div>
+  </div>
+</section>
+<!-- ============== GREEN ============== -->
+<div class="screen" id="green">
+  <div class="page-head">
+    <div class="back" onclick="go('home')"><i class="fi fi-rr-angle-left"></i></div>
+    <h2>Green Impact</h2>
+  </div>
+  <div class="card eco-stat">
+    <div style="font-size:42px;">🌱</div>
+    <div class="big">128 kg</div>
+    <div class="lbl">CO₂ SAVED THIS YEAR</div>
+  </div>
+  <div class="eco-grid">
+    <div class="eco-mini"><div class="ico"><i class="fi fi-sr-leaf"></i></div><strong>14</strong><small>Trees equivalent</small></div>
+    <div class="eco-mini"><div class="ico"><i class="fi fi-sr-recycle"></i></div><strong>8</strong><small>Cylinders recycled</small></div>
+    <div class="eco-mini"><div class="ico"><i class="fi fi-sr-bolt"></i></div><strong>320</strong><small>kWh clean energy</small></div>
+    <div class="eco-mini"><div class="ico"><i class="fi fi-sr-water"></i></div><strong>1,200L</strong><small>Water saved</small></div>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <h4 style="font-size:14px;margin-bottom:10px;">🏆 Eco Champion</h4>
+    <small style="color:var(--muted);font-size:12px;">You're in the top 5% of greenest customers in Kampala. Keep refilling instead of buying new!</small>
+  </div>
+</div>
+
+<!-- ============= PROFILE ============= -->
+<section class="screen" id="profile">
+  <div class="subhead"><button class="back" onclick="go('home')"><i class="lc lc-arrow-left"></i></button><h1>Profile</h1></div>
+
+  <div class="profile-card">
+    <div class="avatar">KA</div>
+    <div><b>kayanjajohn@gasmobil.ug</b><small>Consumer Mode</small></div>
+  </div>
+
+  <div class="wallet">
+    <div class="lbl">GASMOBIL WALLET</div>
+    <b>UGX 0</b>
+    <button class="btn" onclick="toast('Top-up coming soon')">Top Up</button>
+  </div>
+
+  <div class="menu">
+    <div class="item"><i class="lc lc-qr-code"></i><div style="flex:1"><b>My Cylinders</b><small>Scan & register</small></div><i class="lc lc-chevron-right chev"></i></div>
+    <div class="item"><i class="lc lc-credit-card"></i><div style="flex:1"><b>Payment Methods</b><small>Gasmobil Wallet, M-Pesa</small></div><i class="lc lc-chevron-right chev"></i></div>
+    <div class="item"><i class="lc lc-bell"></i><div style="flex:1"><b>Notifications</b><small>Enabled</small></div><i class="lc lc-chevron-right chev"></i></div>
+    <div class="item"><i class="lc lc-shield"></i><div style="flex:1"><b>Auto-Refill</b><small>Configure</small></div><i class="lc lc-chevron-right chev"></i></div>
+    <div class="item"><i class="lc lc-circle-help"></i><div style="flex:1"><b>Help & Support</b><small>FAQs, Contact</small></div><i class="lc lc-chevron-right chev"></i></div>
+    <div class="item"><i class="lc lc-settings"></i><div style="flex:1"><b>Settings</b><small>Language, Location</small></div><i class="lc lc-chevron-right chev"></i></div>
+  </div>
+
+  <button class="btn danger-outline" style="margin-top:18px" onclick="go('auth');toast('Signed out')"><i class="lc lc-log-out"></i> Sign Out</button>
+</section>
+
+</div>
+
+</div><!-- /app -->
+
+<!-- BOTTOM NAV -->
+<div class="nav" id="nav">
+  <div class="item active" data-target="home" onclick="go('home')"><i class="fi fi-sr-home"></i>Home</div>
+  <div class="item" data-target="cart" onclick="go('cart')"><i class="fi fi-rr-shopping-cart"></i>Cart</div>
+  <div class="item" data-target="tracking" onclick="go('tracking')"><i class="fi fi-rr-marker"></i>Track</div>
+  <div class="item" data-target="green" onclick="go('green')"><i class="fi fi-rr-leaf"></i>Green</div>
+  <div class="item" data-target="profile" onclick="go('profile')"><i class="fi fi-rr-user"></i>Profile</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* NAVIGATION */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById(id); if(el){el.classList.add('active');window.scrollTo({top:0,behavior:'smooth'});}
+  document.querySelectorAll('#nav .item').forEach(i=>i.classList.toggle('active', i.dataset.target===id));
+  if(id==='cart') renderCart();
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* AUTH */
+function authTab(btn,mode){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('signupOnly').style.display = mode==='up'?'block':'none';
+}
+
+/* CYLINDER ANIMATION */
+(function(){
+  const progress=document.getElementById("progress"),label=document.getElementById("percent");
+  const fullLabel=progress.querySelector(".full"),warnEl=document.querySelector("#home .cyl-info .warn");
+  let percent=100,drainPerSec=2,trackColor="#1d2230",last=performance.now();
+  const colorFor=p=>p<20?"#ff4d4d":p<50?"#f59e0b":"#22c55e";
+  const statusFor=p=>p<20?{t:"LOW",w:'<i class="fi fi-rr-triangle-warning"></i> ~1 day left — Refill soon!'}:p<50?{t:"HALF",w:'<i class="fi fi-rr-triangle-warning"></i> ~3 days left — Plan a refill'}:{t:"FULL",w:'<i class="fi fi-rr-triangle-warning"></i> Plenty of gas remaining'};
+  function render(){const p=Math.max(0,Math.min(100,percent)),c=colorFor(p);progress.style.background=`conic-gradient(${c} ${p*3.6}deg,${trackColor} 0deg)`;label.innerText=Math.round(p)+"%";label.style.color=c;const s=statusFor(p);fullLabel.innerText=s.t;if(warnEl){warnEl.innerHTML=s.w;warnEl.style.color=c;}}
+  function tick(now){const dt=(now-last)/1000;last=now;percent-=drainPerSec*dt;if(percent<=0)percent=100;render();requestAnimationFrame(tick);}
+  progress.style.transition="background .4s linear";label.style.transition="color .4s linear";render();requestAnimationFrame(tick);
+})();
+
+/* ORDER FLOW */
+const PRICES={
+  swap:{ '6kg':50000, '12kg':100000, '45kg':250000 },
+  buy: { '6kg':157000,'12kg':270000, '45kg':525000 }
+};
+let orderType='swap', orderSize='12kg';
+function setOrderType(t){orderType=t;document.getElementById('optSwap').classList.toggle('active',t==='swap');document.getElementById('optBuy').classList.toggle('active',t==='buy');renderSizes()}
+function renderSizes(){
+  const wrap=document.getElementById('sizes');
+  const subLabel=orderType==='swap'?'Refill':'Full Kit';
+  wrap.innerHTML=['6kg','12kg','45kg'].map(s=>`
+    <div class="size ${s===orderSize?'active':''}" onclick="pickSize('${s}')">
+      ${s==='6kg'?'<span class="pop">POPULAR</span>':''}
+      <div><b>${s}</b><small>${subLabel}</small></div>
+      <div class="price">UGX ${PRICES[orderType][s].toLocaleString()}</div>
+    </div>`).join('');
+}
+function pickSize(s){orderSize=s;renderSizes()}
+function placeOrder(){toast('Order placed! Tracking now…');setTimeout(()=>go('tracking'),700)}
+
+// Update summary when entering it
+const _origGo=go;
+window.go=function(id){
+  if(id==='orderSummary'){
+    document.getElementById('sumType').textContent=orderType==='swap'?'Swap Refill':'Buy Full Kit';
+    document.getElementById('sumSize').textContent=orderSize;
+    const p='UGX '+PRICES[orderType][orderSize].toLocaleString();
+    document.getElementById('sumPrice').textContent=p;
+    document.getElementById('sumTotal').textContent=p;
+    document.querySelector('#orderSummary .sline:nth-child(5) > span,#orderSummary')
+  }
+  _origGo(id);
+};
+
+/* ACCESSORIES */
+const ACC=[
+  {id:1,name:'Single Gas Burner',cat:'burner',desc:'Stainless steel single burner stove for everyday cooking',price:35000,icon:'flame'},
+  {id:2,name:'Double Gas Burner',cat:'burner',desc:'Heavy-duty double burner stove for large households',price:65000,icon:'flame'},
+  {id:3,name:'Commercial Gas Burner',cat:'burner',desc:'Industrial-grade burner for restaurants and hotels',price:180000,icon:'flame'},
+  {id:4,name:'Portable Gas Grill',cat:'grill',desc:'Compact outdoor gas grill for barbecue and grilling',price:120000,icon:'utensils'},
+  {id:5,name:'Tabletop Gas Grill',cat:'grill',desc:'Small tabletop grill perfect for balconies',price:85000,icon:'utensils'},
+  {id:6,name:'Standard Gas Regulator',cat:'reg',desc:'Brass pressure regulator for setups',price:25000,icon:'gauge'},
+  {id:7,name:'Low-Pressure Regulator',cat:'reg',desc:'Precision low-pressure regulator',price:35000,icon:'gauge'},
+  {id:8,name:'Commercial Regulator',cat:'reg',desc:'Heavy-duty regulator for 45kg cylinders',price:55000,icon:'gauge'},
+  {id:9,name:'Gas Hosepipe 1.5m',cat:'hose',desc:'High-quality Cylinder rubber hose 1.5m length',price:15000,icon:'cable'},
+  {id:10,name:'Gas Hosepipe 2m',cat:'hose',desc:'Premium Cylinder rubber hose 2m length with clamps',price:20000,icon:'cable'},
+];
+let cart=[];
+function renderAcc(filter='all'){
+  const list=document.getElementById('accList');
+  const items=filter==='all'?ACC:ACC.filter(a=>a.cat===filter);
+  list.innerHTML=items.map(a=>`
+    <div class="acc">
+      <div class="thumb"><i class="lc lc-${a.icon}"></i></div>
+      <div class="meta">
+        <b>${a.name}</b><small>${a.desc}</small>
+        <span class="price">UGX ${a.price.toLocaleString()}</span>
+        <span class="stock">In Stock</span>
+      </div>
+      <button class="add" onclick="addCart(${a.id})"><i class="lc lc-shopping-cart"></i> Add</button>
+    </div>`).join('');
+}
+function filterAcc(btn,cat){document.querySelectorAll('#accTabs button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAcc(cat)}
+function addCart(id){const a=ACC.find(x=>x.id===id);cart.push(a);toast(a.name+' added to cart');renderCart()}
+function renderCart(){
+  const list=document.getElementById('cartList'),empty=document.getElementById('cartEmpty');
+  if(!cart.length){list.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  const total=cart.reduce((s,a)=>s+a.price,0);
+  list.innerHTML=cart.map((a,i)=>`
+    <div class="acc">
+      <div class="thumb"><i class="lc lc-${a.icon}"></i></div>
+      <div class="meta"><b>${a.name}</b><span class="price">UGX ${a.price.toLocaleString()}</span></div>
+      <button class="add" style="background:#3a1620;color:#ff6b6b" onclick="cart.splice(${i},1);renderCart()"><i class="lc lc-trash-2"></i></button>
+    </div>`).join('') + `
+    <div class="summary" style="margin-top:14px"><div class="sline total">Total <b>UGX ${total.toLocaleString()}</b></div></div>
+    <button class="btn block" style="margin-top:14px" onclick="cart=[];renderCart();toast('Checkout coming soon')">Checkout</button>`;
+}
+
+// init
+renderSizes();renderAcc();renderCart();
+
+/* AGENTS */
+
+
+/* ===================== PWA BOOTSTRAP ===================== */
+(function(){
+  /* Splash */
+  window.addEventListener('load', ()=>{
+    setTimeout(()=>{ const s=document.getElementById('splash'); if(s) s.classList.add('hide'); setTimeout(()=>s&&s.remove(), 2000); }, 4000);
+  });
+
+  /* Auto date texts (footer year + inspection date) */
+  const yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+
+  const inspectEl = document.getElementById('inspectDateText');
+  if (inspectEl) {
+    const d = new Date();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    inspectEl.textContent = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  }
+
+  /* Manifest via blob (works for single-file HTML download) */
+  const iconSvg = "data:image/svg+xml;base64," + btoa(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>"+
+    "<rect width='512' height='512' rx='110' fill='#070b14'/>"+
+    "<text x='50%' y='58%' font-size='320' text-anchor='middle' dominant-baseline='middle'>🔥</text>"+
+    "</svg>"
+  );
+  const manifest = {
+    name:'Gasmobil Uganda', short_name:'Gasmobil',
+    description:'Smart Gas Cylinder delivery in Uganda — order, track and refill in 2 hours.',
+    start_url:'.', scope:'.', display:'standalone', orientation:'portrait',
+    background_color:'#070b14', theme_color:'#070b14',
+    icons:[
+      {src:iconSvg, sizes:'192x192', type:'image/svg+xml', purpose:'any maskable'},
+      {src:iconSvg, sizes:'512x512', type:'image/svg+xml', purpose:'any maskable'}
+    ]
+  };
+  const mUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'}));
+  const link = document.createElement('link'); link.rel='manifest'; link.href=mUrl; document.head.appendChild(link);
+
+  /* Service worker for offline (inline via blob) — only on http(s), not file:// */
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    const swCode = `
+      const CACHE='gasmobil-v1';
+      const ASSETS=[self.registration.scope, self.registration.scope+'index.html'];
+      self.addEventListener('install', e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS).catch(()=>{}))); self.skipWaiting(); });
+      self.addEventListener('activate', e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); self.clients.claim(); });
+      self.addEventListener('fetch', e=>{
+        const req=e.request; if(req.method!=='GET') return;
+        e.respondWith(
+          caches.match(req).then(hit=> hit || fetch(req).then(res=>{
+            const copy=res.clone(); caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{}); return res;
+          }).catch(()=> caches.match(self.registration.scope) ))
+        );
+      });
+    `;
+    const swUrl = URL.createObjectURL(new Blob([swCode], {type:'application/javascript'}));
+    navigator.serviceWorker.register(swUrl, {scope:'./'}).catch(()=>{});
+  }
+
+  /* Install prompt */
+  let deferred=null;
+  const banner=document.getElementById('installBanner');
+  const btn=document.getElementById('installBtn');
+  const hint=document.getElementById('installHint');
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferred=e; if(!standalone) banner.classList.add('show'); });
+  btn.addEventListener('click', async ()=>{
+    if(deferred){ deferred.prompt(); await deferred.userChoice; deferred=null; banner.classList.remove('show'); }
+    else { toast('Use your browser menu → Add to Home Screen'); }
+  });
+  /* iOS Safari fallback (no beforeinstallprompt) */
+  const isiOS = /Android|iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if(isiOS && !standalone){
+    setTimeout(()=>{ hint.textContent='Tap Share → Add to Home Screen'; btn.style.display='none'; banner.classList.add('show'); }, 1500);
+  }
+  window.addEventListener('appinstalled', ()=>{ banner.classList.remove('show'); toast('Installed! 🎉'); });
+
+  /* Offline badge */
+  const off=document.getElementById('offlineBadge');
+  const sync=()=>{ off.classList.toggle('show', !navigator.onLine); };
+  window.addEventListener('online', sync); window.addEventListener('offline', sync); sync();
+})();
+</script>
+</body>
+</html>
