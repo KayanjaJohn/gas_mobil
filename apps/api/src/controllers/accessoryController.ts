@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AppDataSource } from '../config/database';
+import AppDataSource from '../config/database';
 import { Accessory } from '../entities/Accessory';
 
 const accessoryRepository = AppDataSource.getRepository(Accessory);

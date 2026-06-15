@@ -6,9 +6,9 @@ import { Product } from '../entities/Product';
 import { Order } from '../entities/Order';
 import { OrderItem } from '../entities/OrderItem';
 import { Delivery } from '../entities/Delivery';
-import { Cylinder } from '../entities/Cylinder';
-import { Accessory } from '../entities/Accessory';
+import { Station } from '../entities/Station';
 import { Wallet } from '../entities/Wallet';
+import { Transaction } from '../entities/Transaction';
 
 async function ensureDatabaseExists() {
   const host = process.env.DB_HOST || '127.0.0.1';
@@ -28,21 +28,26 @@ async function ensureDatabaseExists() {
   }
 }
 
-export const AppDataSource = new DataSource({
+// Create the DataSource instance
+const AppDataSource = new DataSource({
   type: 'mysql',
   host: process.env.DB_HOST || '127.0.0.1',
   port: parseInt(process.env.DB_PORT || '3306'),
   username: process.env.DB_USERNAME || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_DATABASE || 'gas_mobil',
-  synchronize: process.env.NODE_ENV !== 'production',
+  synchronize: process.env.NODE_ENV === 'development', // ONLY in development!
   logging: process.env.NODE_ENV === 'development',
-  entities: [User, Product, Order, OrderItem, Delivery, Cylinder, Accessory, Wallet],
+  entities: [User, Product, Order, OrderItem, Delivery, Station, Wallet, Transaction],
+  migrations: ['src/migrations/*.ts'],
+  subscribers: [],
 });
 
-export async function initializeDatabase() {
+// Export ONLY the DataSource as default
+export default AppDataSource;
+
+// Export initializeDatabase as a named export
+export const initializeDatabase = async () => {
   await ensureDatabaseExists();
   return AppDataSource.initialize();
-}
-
-export default AppDataSource;
+};

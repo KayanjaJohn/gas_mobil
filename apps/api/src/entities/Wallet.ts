@@ -4,16 +4,13 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToOne,
+  OneToMany,
+  JoinColumn,
   Index,
 } from 'typeorm';
-
-export interface ITransaction {
-  id: string;
-  amount: number;
-  type: 'credit' | 'debit';
-  description: string;
-  date: Date;
-}
+import { User } from './User';
+import { Transaction } from './Transaction';
 
 @Entity('wallets')
 @Index(['userId'], { unique: true })
@@ -24,12 +21,25 @@ export class Wallet {
   @Column()
   userId: string;
 
+  @OneToOne(() => User, (user) => user.wallets)
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   balance: number;
 
-  @Column({ type: 'json', nullable: true })
-  transactions: ITransaction[];
-  
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  totalCredited: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  totalDebited: number;
+
+  @OneToMany(() => Transaction, (transaction) => transaction.wallet)
+  transactions: Transaction[];
+
+  @Column({ default: true })
+  isActive: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
