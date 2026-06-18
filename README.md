@@ -85,7 +85,7 @@ gas-mobil/
    ```
 
 4. **Update .env files with your credentials**
-   - MongoDB URI
+   - MySQL 
    - JWT Secret
    - Stripe keys
    - Email SMTP settings
@@ -163,7 +163,6 @@ npm start
 - ✅ CORS protection
 - ✅ Helmet security headers
 - ✅ Input validation with express-validator
-- ✅ MongoDB injection prevention
 - ✅ Secure environment variables
 
 ## 💳 Payment Integration
@@ -207,8 +206,7 @@ cd apps/mobile && npm test
 ### Backend
 - Node.js
 - Express 4.18
-- MongoDB 8.0
-- Mongoose ODM
+- MySQL(sequelizer)
 - JWT authentication
 - TypeScript
 - Stripe SDK
