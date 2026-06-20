@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Paper, Typography, Switch, Button, Dialog,
-  DialogTitle, DialogContent, DialogActions, TextField, Grid, Box,
-  Alert, Snackbar, CircularProgress
+  DialogTitle, DialogContent, DialogActions, TextField, Grid, Box
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -18,16 +17,12 @@ interface Product {
   stock: number;
   type: string;
   isAvailable: boolean;
-  imageUrl?: string;
 }
 
 export default function Products() {
   const { token } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [newProduct, setNewProduct] = useState({
     name: '', description: '', price: '', stock: '', type: 'cylinder'
   });
@@ -37,17 +32,13 @@ export default function Products() {
   }, []);
 
   const fetchProducts = async () => {
-    setLoading(true);
-    setError('');
     try {
       const res = await axios.get(`${API_URL}/products`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProducts(res.data.data || []);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch products');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Fetch products error:', error);
     }
   };
 
@@ -58,18 +49,13 @@ export default function Products() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setSnackbar({ open: true, message: 'Availability updated', severity: 'success' });
       fetchProducts();
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.error || 'Update failed', severity: 'error' });
+    } catch (error) {
+      alert('Failed to update availability');
     }
   };
 
   const createProduct = async () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.stock) {
-      setSnackbar({ open: true, message: 'Please fill all required fields', severity: 'error' });
-      return;
-    }
     try {
       await axios.post(`${API_URL}/products`, {
         ...newProduct,
@@ -80,15 +66,10 @@ export default function Products() {
       });
       setOpen(false);
       setNewProduct({ name: '', description: '', price: '', stock: '', type: 'cylinder' });
-      setSnackbar({ open: true, message: 'Product created successfully', severity: 'success' });
       fetchProducts();
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.error || 'Failed to create product', severity: 'error' });
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to create product');
     }
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
   };
 
   return (
@@ -100,55 +81,47 @@ export default function Products() {
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Price</TableCell>
-                <TableCell>Stock</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Available</TableCell>
+      <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Price</TableCell>
+              <TableCell>Stock</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Available</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {products.map((product) => (
+              <TableRow key={product.id} hover>
+                <TableCell>
+                  <Box>
+                    <Typography variant="body2" fontWeight="medium">{product.name}</Typography>
+                    <Typography variant="caption" color="textSecondary">{product.description}</Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>UGX {Number(product.price).toLocaleString()}</TableCell>
+                <TableCell>{product.stock}</TableCell>
+                <TableCell>{product.type}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={product.isAvailable}
+                    onChange={() => toggleAvailability(product.id, product.isAvailable)}
+                  />
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id} hover>
-                  <TableCell>
-                    <Box>
-                      <Typography variant="body2" fontWeight="medium">{product.name}</Typography>
-                      <Typography variant="caption" color="textSecondary">{product.description}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>UGX {Number(product.price).toLocaleString()}</TableCell>
-                  <TableCell>{product.stock}</TableCell>
-                  <TableCell sx={{ textTransform: 'capitalize' }}>{product.type}</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={product.isAvailable}
-                      onChange={() => toggleAvailability(product.id, product.isAvailable)}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {products.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                    <Typography color="textSecondary">No products found</Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+            ))}
+            {products.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                  <Typography color="textSecondary">No products found</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add New Product</DialogTitle>
@@ -160,7 +133,6 @@ export default function Products() {
                 label="Name"
                 value={newProduct.name}
                 onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                required
               />
             </Grid>
             <Grid item xs={12}>
@@ -180,7 +152,6 @@ export default function Products() {
                 type="number"
                 value={newProduct.price}
                 onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
-                required
               />
             </Grid>
             <Grid item xs={6}>
@@ -190,7 +161,6 @@ export default function Products() {
                 type="number"
                 value={newProduct.stock}
                 onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
-                required
               />
             </Grid>
           </Grid>
@@ -200,17 +170,6 @@ export default function Products() {
           <Button onClick={createProduct} variant="contained">Create</Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert severity={snackbar.severity} onClose={handleCloseSnackbar}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

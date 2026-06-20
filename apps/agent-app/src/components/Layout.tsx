@@ -1,23 +1,22 @@
-import { useState } from 'react';
-import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Drawer, AppBar, Toolbar, Typography, List, ListItem,
   ListItemIcon, ListItemText, IconButton, Avatar
 } from '@mui/material';
 import {
-  Dashboard, People, ShoppingCart, LocalShipping,
-  Inventory, Logout, Menu as MenuIcon
+  Dashboard, ShoppingCart, LocalShipping, Inventory,
+  Logout, Menu as MenuIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
 
 const drawerWidth = 240;
 
 const menuItems = [
   { path: '/', label: 'Dashboard', icon: <Dashboard /> },
   { path: '/orders', label: 'Orders', icon: <ShoppingCart /> },
-  { path: '/products', label: 'Products', icon: <Inventory /> },
   { path: '/drivers', label: 'Drivers', icon: <LocalShipping /> },
-  { path: '/customers', label: 'Customers', icon: <People /> },
+  { path: '/products', label: 'Products', icon: <Inventory /> },
 ];
 
 export default function Layout() {
@@ -27,7 +26,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <NavigateToLogin />;
   }
 
   const handleLogout = () => {
@@ -39,7 +38,7 @@ export default function Layout() {
     <Box>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
         <LocalShipping color="primary" />
-        <Typography variant="h6" color="primary">GasMobil</Typography>
+        <Typography variant="h6" color="primary">GasMobil Agent</Typography>
       </Box>
       <List>
         {menuItems.map((item) => (
@@ -80,7 +79,7 @@ export default function Layout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            GasMobil Admin
+            Station Agent Portal
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Avatar sx={{ width: 32, height: 32 }}>{user.name?.[0]}</Avatar>
@@ -119,4 +118,12 @@ export default function Layout() {
       </Box>
     </Box>
   );
+}
+
+function NavigateToLogin() {
+  const navigate = useNavigate();
+  useState(() => {
+    navigate('/login', { replace: true });
+  });
+  return null;
 }

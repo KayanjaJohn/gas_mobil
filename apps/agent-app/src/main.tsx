@@ -11,6 +11,7 @@ const theme = createTheme({
     secondary: { main: '#ff7782' },
     success: { main: '#41f1b6' },
     warning: { main: '#ffbb55' },
+    background: { default: '#f5f5f5' },
   },
 });
 

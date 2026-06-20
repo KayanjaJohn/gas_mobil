@@ -19,18 +19,18 @@ export default function Login() {
       await login(email, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || err.message || 'Login failed');
     }
   };
 
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" align="center" gutterBottom>
-          Gas<span style={{ color: '#ff7782' }}>Mobil</span> Admin
+      <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+        <Typography variant="h4" align="center" color="primary" gutterBottom>
+          GasMobil Agent
         </Typography>
-        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-          Administrator's Login
+        <Typography variant="body2" align="center" color="textSecondary" gutterBottom>
+          Station Agent Portal
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -38,7 +38,8 @@ export default function Login() {
         <Box component="form" onSubmit={handleSubmit}>
           <TextField
             fullWidth
-            label="Email or Phone"
+            label="Email"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             margin="normal"
@@ -58,14 +59,14 @@ export default function Login() {
             fullWidth
             variant="contained"
             size="large"
-            sx={{ mt: 3 }}
+            sx={{ mt: 2, py: 1.5 }}
           >
-            Login
+            Sign In
           </Button>
         </Box>
 
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block', textAlign: 'center' }}>
-          © 2024 GasMobil. All rights reserved.
+        <Typography variant="caption" color="textSecondary" align="center" sx={{ mt: 2, display: 'block' }}>
+          Demo: agent@gasmobil.com / Agent@123
         </Typography>
       </Paper>
     </Container>
