@@ -3,6 +3,33 @@
     "name": "Gas Mobil",
     "slug": "gas-mobil",
     "version": "1.0.0",
-    "scheme": "gasmobil"
+    "scheme": "gasmobil",
+    "plugins": [
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Gas Mobil to use your location for delivery tracking."
+        }
+      ]
+    ],
+    "ios": {
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Gas Mobil needs your location to show nearby gas stations and track deliveries.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Gas Mobil uses your location in the background to update delivery status."
+      }
+    },
+    "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
+    }
   }
 }

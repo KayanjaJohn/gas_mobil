@@ -5,8 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { OrderItem } from './OrderItem';
+import { Station } from './Station';
 
 @Entity('products')
 export class Product {
@@ -37,8 +40,15 @@ export class Product {
   @Column({ default: true })
   isAvailable: boolean;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'enum', enum: ['cylinder', 'accessory', 'service'] })
   type: string;
+
+  @Column()
+  stationId: string;
+
+  @ManyToOne(() => Station, (station) => station.products)
+  @JoinColumn({ name: 'stationId' })
+  station: Station;
 
   @OneToMany(() => OrderItem, (item) => item.product)
   orderItems: OrderItem[];
