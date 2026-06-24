@@ -13,6 +13,7 @@ import productRoutes from './routes/products';
 import orderRoutes from './routes/orders';
 import driverRoutes from './routes/drivers';
 import adminRoutes from './routes/admin';
+import agentRoutes from './routes/agent';
 import stationRoutes from './routes/stations';
 
 // Import middleware
@@ -24,7 +25,10 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: [
+    process.env.CLIENT_URL || 'http://localhost:3000',
+    'http://localhost:3001'
+  ],
   credentials: true
 }));
 app.use(express.json());
@@ -43,6 +47,7 @@ app.use('/api/products', authMiddleware, productRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);
 app.use('/api/drivers', authMiddleware, driverRoutes);
 app.use('/api/admin', authMiddleware, adminRoutes);
+app.use('/api/agent', authMiddleware, agentRoutes);
 app.use('/api/stations', authMiddleware, stationRoutes);
 
 // Error handling

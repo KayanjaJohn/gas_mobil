@@ -23,20 +23,16 @@ export default function Orders() {
   const fetchOrders = async () => {
     setLoading(true); setError('');
     try {
-      const res = await axios.get(`${API_URL}/admin/orders`, { headers: { Authorization: `Bearer ${token}` } });
-      // Filter to only show orders for this agent's station
-      const stationOrders = (res.data.data || []).filter((o: Order) => o.stationId === user?.stationId);
-      setOrders(stationOrders);
+      const res = await axios.get(`${API_URL}/agent/orders`, { headers: { Authorization: `Bearer ${token}` } });
+      setOrders(res.data.data || []);
     } catch (err: any) { setError(err.response?.data?.error || 'Failed to fetch orders'); }
     finally { setLoading(false); }
   };
 
   const fetchDrivers = async () => {
     try {
-      const res = await axios.get(`${API_URL}/admin/drivers`, { headers: { Authorization: `Bearer ${token}` } });
-      // Filter to only show drivers at this agent's station
-      const stationDrivers = (res.data.data || []).filter((d: Driver) => d.stationId === user?.stationId);
-      setDrivers(stationDrivers);
+      const res = await axios.get(`${API_URL}/agent/drivers`, { headers: { Authorization: `Bearer ${token}` } });
+      setDrivers(res.data.data || []);
     } catch (err) { console.error('Failed to fetch drivers:', err); }
   };
 

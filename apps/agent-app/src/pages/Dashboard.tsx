@@ -17,24 +17,15 @@ export default function Dashboard() {
   const fetchStats = async () => {
     setLoading(true); setError('');
     try {
-      // Fetch station-specific data
-      const [ordersRes, driversRes, productsRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/orders`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_URL}/admin/drivers`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_URL}/products?stationId=${user?.stationId}`, { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-
-      const stationOrders = (ordersRes.data.data || []).filter((o: any) => o.stationId === user?.stationId);
-      const stationDrivers = (driversRes.data.data || []).filter((d: any) => d.stationId === user?.stationId);
-
-      setStats({
-        totalOrders: stationOrders.length,
-        pendingOrders: stationOrders.filter((o: any) => o.status === 'pending').length,
-        totalDrivers: stationDrivers.length,
-        totalProducts: (productsRes.data.data || []).length
+      const res = await axios.get(`${API_URL}/agent/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (err: any) { setError(err.response?.data?.error || 'Failed to fetch stats'); }
-    finally { setLoading(false); }
+      setStats(res.data.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to fetch stats');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const cards = [

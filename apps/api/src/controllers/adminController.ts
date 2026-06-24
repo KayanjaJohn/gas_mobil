@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import bcryptjs from 'bcryptjs';
-import AppDataSource from '../config/database';  //
+import AppDataSource from '../config/database';
 import { Order } from '../entities/Order';
 import { User } from '../entities/User';
 import { Product } from '../entities/Product';
 import { Delivery } from '../entities/Delivery';
 import { Station } from '../entities/Station';
+import bcryptjs from 'bcryptjs';
 
 const orderRepository = AppDataSource.getRepository(Order);
 const userRepository = AppDataSource.getRepository(User);
@@ -62,7 +62,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
     }
 
     const orders = await orderRepository.find({
-      relations: ['items', 'items.product', 'user', 'station', 'deliveries', 'deliveries.driver'],
+      relations: ['items', 'items.product', 'user', 'station', 'deliveries'],
       order: { createdAt: 'DESC' }
     });
 
@@ -92,64 +92,6 @@ export const getAllDrivers = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
-
-// POST /api/admin/drivers - Admin creates a driver
-export const createDriver = async (req: Request, res: Response) => {
-  try {
-    const { user } = req as any;
-
-    if (user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Admin access only' });
-    }
-
-    const { name, email, phone, password, stationId, vehicleNumber, vehicleType } = req.body;
-
-    const existingUser = await userRepository.findOne({
-      where: [{ email }, { phone }]
-    });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        error: 'User with this email or phone already exists'
-      });
-    }
-
-    const hashedPassword = await bcryptjs.hash(password || 'Driver@123', 12);
-
-    const driver = userRepository.create({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
-      role: 'driver',
-      stationId,
-      vehicleNumber,
-      vehicleType,
-      driverStatus: 'offline',
-      isActive: true
-    });
-
-    await userRepository.save(driver);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        id: driver.id,
-        name: driver.name,
-        email: driver.email,
-        phone: driver.phone,
-        role: driver.role,
-        stationId: driver.stationId,
-        vehicleNumber: driver.vehicleNumber,
-        vehicleType: driver.vehicleType
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
 
 // POST /api/admin/orders/:id/assign - Admin assigns driver to order
 export const assignDriverToOrder = async (req: Request, res: Response) => {
@@ -196,7 +138,7 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
     delivery.driverName = driver.name;
     delivery.driverPhone = driver.phone;
     delivery.vehicleNumber = driver.vehicleNumber;
-    delivery.status = 'driver_assigned';
+    delivery.status = 'pending';
 
     await AppDataSource.getRepository(Delivery).save(delivery);
 
@@ -215,7 +157,7 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
   }
 };
 
-// POST /api/admin/stations - Create new station
+// POST /api/admin/stations - Create new station + auto-create agent
 export const createStation = async (req: Request, res: Response) => {
   try {
     const { user } = req as any;
@@ -224,8 +166,9 @@ export const createStation = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: 'Admin access only' });
     }
 
-    const { name, address, latitude, longitude, phone, email } = req.body;
+    const { name, address, latitude, longitude, phone, email, agentName, agentEmail, agentPhone, agentPassword } = req.body;
 
+    // Create station
     const station = stationRepository.create({
       name,
       address,
@@ -237,7 +180,44 @@ export const createStation = async (req: Request, res: Response) => {
     });
 
     await stationRepository.save(station);
-    res.status(201).json({ success: true, data: station });
+
+    // Auto-create agent for this station
+    const existingAgent = await userRepository.findOne({ where: { email: agentEmail } });
+    if (existingAgent) {
+      return res.status(400).json({
+        success: false,
+        error: 'Agent with this email already exists'
+      });
+    }
+
+    const hashedPassword = await bcryptjs.hash(agentPassword || 'Agent@123', 12);
+
+    const agent = userRepository.create({
+      name: agentName || `${name} Agent`,
+      email: agentEmail,
+      phone: agentPhone || phone,
+      password: hashedPassword,
+      role: 'agent',
+      stationId: station.id,
+      isActive: true
+    });
+
+    await userRepository.save(agent);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        station,
+        agent: {
+          id: agent.id,
+          name: agent.name,
+          email: agent.email,
+          phone: agent.phone,
+          role: agent.role
+        }
+      },
+      message: 'Station and agent created successfully'
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -264,6 +244,90 @@ export const assignUserToStation = async (req: Request, res: Response) => {
     await userRepository.save(targetUser);
 
     res.json({ success: true, data: targetUser });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// GET /api/admin/stations - Get all stations with their agents
+export const getAllStations = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
+    }
+
+    const stations = await stationRepository.find({
+      relations: ['agents'],
+      order: { createdAt: 'DESC' }
+    });
+
+    res.json({ success: true, data: stations });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// PUT /api/admin/stations/:id - Update station
+export const updateStation = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
+    }
+
+    const { id } = req.params;
+    const { name, address, latitude, longitude, phone, email, isActive } = req.body;
+
+    const station = await stationRepository.findOne({ where: { id } });
+    if (!station) {
+      return res.status(404).json({ success: false, error: 'Station not found' });
+    }
+
+    station.name = name || station.name;
+    station.address = address || station.address;
+    station.latitude = latitude !== undefined ? latitude : station.latitude;
+    station.longitude = longitude !== undefined ? longitude : station.longitude;
+    station.phone = phone !== undefined ? phone : station.phone;
+    station.email = email !== undefined ? email : station.email;
+    station.isActive = isActive !== undefined ? isActive : station.isActive;
+
+    await stationRepository.save(station);
+
+    res.json({ success: true, data: station });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// DELETE /api/admin/stations/:id - Soft delete (deactivate) station
+export const deleteStation = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
+    }
+
+    const { id } = req.params;
+
+    const station = await stationRepository.findOne({ where: { id } });
+    if (!station) {
+      return res.status(404).json({ success: false, error: 'Station not found' });
+    }
+
+    station.isActive = false;
+    await stationRepository.save(station);
+
+    // Also deactivate all agents at this station
+    await userRepository.update(
+      { stationId: id, role: 'agent' },
+      { isActive: false }
+    );
+
+    res.json({ success: true, message: 'Station and its agents deactivated' });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
