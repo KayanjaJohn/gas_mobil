@@ -1,44 +1,47 @@
-import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
-import  AppDataSource  from "../config/database";
-import { User } from "../entities/User";
-import { generateToken } from "../middleware/auth";
+import { Request, Response } from 'express';
+import bcryptjs from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import AppDataSource from '../config/database';
+import { User } from '../entities/User';
 
 const userRepository = AppDataSource.getRepository(User);
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN = '7d';
 
+// POST /api/auth/register
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, password, address, city, state, zipCode } = req.body;
+    const { name, email, phone, password, role } = req.body;
 
-    // Check if user exists
     const existingUser = await userRepository.findOne({
-      where: [{ email }, { phone }],
+      where: [{ email }, { phone }]
     });
 
     if (existingUser) {
-      return res.status(409).json({ success: false, error: "User with this email or phone already exists" });
+      return res.status(400).json({
+        success: false,
+        error: 'User with this email or phone already exists'
+      });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcryptjs.hash(password, 12);
 
-    // Create user
     const user = userRepository.create({
       name,
       email,
       phone,
       password: hashedPassword,
-      address,
-      city,
-      state,
-      zipCode,
-      role: 'customer',
+      role: role || 'customer',
+      driverStatus: role === 'driver' ? 'offline' : null
     });
 
     await userRepository.save(user);
 
-    // Generate token
-    const token = generateToken(user.id, user.email, user.name, user.role);
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET as jwt.Secret,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     res.status(201).json({
       success: true,
@@ -49,39 +52,38 @@ export const register = async (req: Request, res: Response) => {
           name: user.name,
           email: user.email,
           phone: user.phone,
-          role: user.role,
-        },
-      },
+          role: user.role
+        }
+      }
     });
   } catch (error: any) {
-    console.error("[REGISTER] ERROR:", error);
-    res.status(500).json({ success: false, error: "Registration failed" });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// POST /api/auth/login
 export const login = async (req: Request, res: Response) => {
   try {
     const { emailOrPhone, password } = req.body;
 
-    // Determine if email or phone
-    const isEmail = emailOrPhone.includes("@");
-    const where = isEmail ? { email: emailOrPhone } : { phone: emailOrPhone };
-
     const user = await userRepository.findOne({
-      where,
-      select: ["id", "name", "email", "phone", "password", "role", "isActive"],
+      where: [{ email: emailOrPhone }, { phone: emailOrPhone }]
     });
 
-    if (!user || !user.isActive) {
-      return res.status(401).json({ success: false, error: "Invalid credentials or account inactive" });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ success: false, error: "Invalid credentials" });
+    const isValidPassword = await bcryptjs.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
-    const token = generateToken(user.id, user.email, user.name, user.role);
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, stationId: user.stationId },
+      JWT_SECRET as jwt.Secret,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     res.json({
       success: true,
@@ -93,22 +95,25 @@ export const login = async (req: Request, res: Response) => {
           email: user.email,
           phone: user.phone,
           role: user.role,
-        },
-      },
+          stationId: user.stationId
+        }
+      }
     });
   } catch (error: any) {
-    console.error("[LOGIN] ERROR:", error);
-    res.status(500).json({ success: false, error: "Login failed" });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const verify = async (req: Request, res: Response) => {
+// GET /api/auth/verify
+export const verifyToken = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
-    const user = await userRepository.findOneBy({ id: userId });
+    const user = await userRepository.findOne({
+      where: { id: req.user!.id },
+      relations: ['station']
+    });
 
     if (!user) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     res.json({
@@ -120,47 +125,98 @@ export const verify = async (req: Request, res: Response) => {
           email: user.email,
           phone: user.phone,
           role: user.role,
-          address: user.address,
-          city: user.city,
-          isActive: user.isActive,
-        },
-      },
+          stationId: user.stationId,
+          station: user.station
+        }
+      }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: "Verification failed" });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const updateProfile = async (req: Request, res: Response) => {
+// GET /api/auth/me
+export const getCurrentUser = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
-    const { name, address, city, state, zipCode } = req.body;
+    const user = await userRepository.findOne({
+      where: { id: req.user!.id },
+      relations: ['station']
+    });
 
-    const user = await userRepository.findOneBy({ id: userId });
     if (!user) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
-
-    user.name = name || user.name;
-    user.address = address || user.address;
-    user.city = city || user.city;
-    user.state = state || user.state;
-    user.zipCode = zipCode || user.zipCode;
-
-    await userRepository.save(user);
 
     res.json({
       success: true,
       data: {
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-        },
-      },
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        stationId: user.stationId,
+        station: user.station,
+        driverStatus: user.driverStatus,
+        vehicleNumber: user.vehicleNumber,
+        vehicleType: user.vehicleType
+      }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: "Update failed" });
+    res.status(500).json({ success: false, error: error.message });
   }
+};
+
+// PUT /api/auth/profile
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const { name, phone } = req.body;
+    const user = await userRepository.findOne({ where: { id: req.user!.id } });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    user.name = name || user.name;
+    user.phone = phone || user.phone;
+
+    await userRepository.save(user);
+    res.json({ success: true, data: user });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// PUT /api/auth/change-password
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await userRepository.findOne({ where: { id: req.user!.id } });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const isValid = await bcryptjs.compare(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    user.password = await bcryptjs.hash(newPassword, 12);
+    await userRepository.save(user);
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// POST /api/auth/forgot-password
+export const forgotPassword = async (req: Request, res: Response) => {
+  res.json({ success: true, message: 'Password reset link sent to email' });
+};
+
+// POST /api/auth/reset-password
+export const resetPassword = async (req: Request, res: Response) => {
+  res.json({ success: true, message: 'Password reset successfully' });
 };

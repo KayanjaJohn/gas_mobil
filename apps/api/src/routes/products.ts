@@ -1,21 +1,13 @@
-import express from 'express';
-import {
-  getProducts,
-  getProductById,
-  createProduct,
-  updateProduct,
-  updateProductAvailability,
-  deleteProduct,
-} from '../controllers/productController';
-import { authMiddleware, requireRole } from '../middleware/auth';
+import { Router } from 'express';
+import { requireAuth, requireAgent } from '../middleware/requireRole';
+import * as productController from '../controllers/productController';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', getProducts);
-router.get('/:id', getProductById);
-router.post('/', authMiddleware, requireRole('admin', 'agent'), createProduct);
-router.put('/:id', authMiddleware, requireRole('admin', 'agent'), updateProduct);
-router.patch('/:id/availability', authMiddleware, requireRole('admin', 'agent'), updateProductAvailability);
-router.delete('/:id', authMiddleware, requireRole('admin'), deleteProduct);
+router.get('/', requireAuth, productController.getProducts);
+router.post('/', requireAgent, productController.createProduct);
+router.put('/:id', requireAgent, productController.updateProduct);
+router.patch('/:id/availability', requireAgent, productController.toggleAvailability);
+router.delete('/:id', requireAgent, productController.deleteProduct);
 
 export default router;

@@ -1,88 +1,69 @@
 import { Request, Response } from 'express';
-import AppDataSource from '../config/database';
-import { User } from '../entities/User';
+import bcryptjs from 'bcryptjs';
+import AppDataSource from '../config/database';  //
 import { Order } from '../entities/Order';
+import { User } from '../entities/User';
 import { Product } from '../entities/Product';
-import { Station } from '../entities/Station';
 import { Delivery } from '../entities/Delivery';
+import { Station } from '../entities/Station';
 
-const userRepository = AppDataSource.getRepository(User);
 const orderRepository = AppDataSource.getRepository(Order);
+const userRepository = AppDataSource.getRepository(User);
 const productRepository = AppDataSource.getRepository(Product);
 const stationRepository = AppDataSource.getRepository(Station);
-const deliveryRepository = AppDataSource.getRepository(Delivery);
 
+// GET /api/admin/dashboard - System-wide stats
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    const userRole = (req as any).userRole;
-    const stationId = (req as any).userStationId;
+    const { user } = req as any;
 
-    if (!['admin', 'agent'].includes(userRole)) {
-      return res.status(403).json({ success: false, error: 'Access denied' });
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
     }
 
-    const where: any = {};
-    if (userRole === 'agent' && stationId) {
-      where.stationId = stationId;
-    }
+    const totalOrders = await orderRepository.count();
+    const pendingOrders = await orderRepository.count({ where: { status: 'pending' } });
+    const totalDrivers = await userRepository.count({ where: { role: 'driver' } });
+    const totalProducts = await productRepository.count();
+    const totalStations = await stationRepository.count();
 
-    const [
-      totalOrders,
-      pendingOrders,
-      completedOrders,
-      totalProducts,
-      totalDrivers,
-      totalCustomers,
-    ] = await Promise.all([
-      orderRepository.count({ where }),
-      orderRepository.count({ where: { ...where, status: 'pending' } }),
-      orderRepository.count({ where: { ...where, status: 'completed' } }),
-      productRepository.count({ where: userRole === 'agent' ? { stationId } : {} }),
-      userRepository.count({ where: { role: 'driver', ...(stationId ? { stationId } : {}) } }),
-      userRepository.count({ where: { role: 'customer' } }),
-    ]);
-
-    // Revenue calculation
-    const revenueResult = await orderRepository
-      .createQueryBuilder('order')
-      .select('SUM(order.totalAmount)', 'total')
-      .where('order.paymentStatus = :status', { status: 'completed' })
-      .andWhere(userRole === 'agent' ? 'order.stationId = :stationId' : '1=1', { stationId })
-      .getRawOne();
+    // Today's revenue
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayOrders = await orderRepository.createQueryBuilder('order')
+      .where('order.createdAt >= :today', { today })
+      .andWhere('order.paymentStatus = :status', { status: 'paid' })
+      .getMany();
+    const todayRevenue = todayOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
 
     res.json({
       success: true,
       data: {
         totalOrders,
         pendingOrders,
-        completedOrders,
-        totalProducts,
         totalDrivers,
-        totalCustomers,
-        totalRevenue: revenueResult?.total || 0,
-      },
+        totalProducts,
+        totalStations,
+        todayRevenue
+      }
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const getPendingAssignments = async (req: Request, res: Response) => {
+// GET /api/admin/orders - All orders (admin only)
+export const getAllOrders = async (req: Request, res: Response) => {
   try {
-    const userRole = (req as any).userRole;
-    const stationId = (req as any).userStationId;
+    const { user } = req as any;
 
-    if (!['admin', 'agent'].includes(userRole)) {
-      return res.status(403).json({ success: false, error: 'Access denied' });
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
     }
 
-    const where: any = { status: 'pending_assignment' };
-    if (stationId) where.stationId = stationId;
-
     const orders = await orderRepository.find({
-      where,
-      relations: ['items', 'items.product', 'user'],
-      order: { createdAt: 'ASC' },
+      relations: ['items', 'items.product', 'user', 'station', 'deliveries', 'deliveries.driver'],
+      order: { createdAt: 'DESC' }
     });
 
     res.json({ success: true, data: orders });
@@ -91,109 +72,19 @@ export const getPendingAssignments = async (req: Request, res: Response) => {
   }
 };
 
-export const assignDriver = async (req: Request, res: Response) => {
-  const queryRunner = AppDataSource.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
-
+// GET /api/admin/drivers - All drivers (admin only)
+export const getAllDrivers = async (req: Request, res: Response) => {
   try {
-    const { orderId } = req.params;
-    const { driverId } = req.body;
-    const userRole = (req as any).userRole;
-    const stationId = (req as any).userStationId;
+    const { user } = req as any;
 
-    if (!['admin', 'agent'].includes(userRole)) {
-      return res.status(403).json({ success: false, error: 'Access denied' });
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
     }
-
-    const order = await queryRunner.manager.findOne(Order, {
-      where: { id: orderId },
-      relations: ['items', 'items.product'],
-    });
-
-    if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
-    }
-
-    if (stationId && order.stationId !== stationId) {
-      return res.status(403).json({ success: false, error: 'Order not in your station' });
-    }
-
-    const driver = await queryRunner.manager.findOne(User, {
-      where: { id: driverId, role: 'driver', isActive: true },
-    });
-
-    if (!driver) {
-      return res.status(404).json({ success: false, error: 'Driver not found' });
-    }
-
-    if (stationId && driver.stationId !== stationId) {
-      return res.status(400).json({ success: false, error: 'Driver not in your station' });
-    }
-
-    if (driver.driverStatus !== 'online') {
-      return res.status(400).json({ success: false, error: 'Driver is not available' });
-    }
-
-    order.status = 'driver_assigned';
-    order.driverId = driver.id;
-    await queryRunner.manager.save(order);
-
-    driver.driverStatus = 'busy';
-    driver.lastAssignedAt = new Date();
-    await queryRunner.manager.save(driver);
-
-    const deliveryData: any = {
-      orderId: order.id,
-      driverId: driver.id,
-      driverName: driver.name,
-      driverPhone: driver.phone,
-      vehicleNumber: driver.vehicleNumber,
-      estimatedArrival: new Date(Date.now() + 30 * 60 * 1000),
-      status: 'assigned',
-      route: [],
-    };
-
-    if (driver.currentLatitude && driver.currentLongitude) {
-      deliveryData.currentLocation = {
-        latitude: Number(driver.currentLatitude),
-        longitude: Number(driver.currentLongitude),
-      };
-    }
-
-    const delivery = queryRunner.manager.create(Delivery, deliveryData);
-    await queryRunner.manager.save(delivery);
-
-    await queryRunner.commitTransaction();
-
-    res.json({
-      success: true,
-      data: { order, delivery },
-      message: `Driver ${driver.name} assigned successfully`,
-    });
-  } catch (error: any) {
-    await queryRunner.rollbackTransaction();
-    res.status(500).json({ success: false, error: error.message });
-  } finally {
-    await queryRunner.release();
-  }
-};
-
-export const getDrivers = async (req: Request, res: Response) => {
-  try {
-    const userRole = (req as any).userRole;
-    const stationId = (req as any).userStationId;
-
-    if (!['admin', 'agent'].includes(userRole)) {
-      return res.status(403).json({ success: false, error: 'Access denied' });
-    }
-
-    const where: any = { role: 'driver', isActive: true };
-    if (stationId) where.stationId = stationId;
 
     const drivers = await userRepository.find({
-      where,
-      select: ['id', 'name', 'email', 'phone', 'driverStatus', 'currentLatitude', 'currentLongitude', 'lastLocationUpdate', 'vehicleNumber', 'vehicleType'],
+      where: { role: 'driver' },
+      relations: ['station'],
+      select: ['id', 'name', 'email', 'phone', 'driverStatus', 'currentLatitude', 'currentLongitude', 'lastLocationUpdate', 'vehicleNumber', 'vehicleType', 'stationId']
     });
 
     res.json({ success: true, data: drivers });
@@ -202,34 +93,177 @@ export const getDrivers = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllOrders = async (req: Request, res: Response) => {
+// POST /api/admin/drivers - Admin creates a driver
+export const createDriver = async (req: Request, res: Response) => {
   try {
-    const userRole = (req as any).userRole;
-    const stationId = (req as any).userStationId;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const skip = (page - 1) * limit;
+    const { user } = req as any;
 
-    if (!['admin', 'agent'].includes(userRole)) {
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
+    }
+
+    const { name, email, phone, password, stationId, vehicleNumber, vehicleType } = req.body;
+
+    const existingUser = await userRepository.findOne({
+      where: [{ email }, { phone }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: 'User with this email or phone already exists'
+      });
+    }
+
+    const hashedPassword = await bcryptjs.hash(password || 'Driver@123', 12);
+
+    const driver = userRepository.create({
+      name,
+      email,
+      phone,
+      password: hashedPassword,
+      role: 'driver',
+      stationId,
+      vehicleNumber,
+      vehicleType,
+      driverStatus: 'offline',
+      isActive: true
+    });
+
+    await userRepository.save(driver);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: driver.id,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+        role: driver.role,
+        stationId: driver.stationId,
+        vehicleNumber: driver.vehicleNumber,
+        vehicleType: driver.vehicleType
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
+// POST /api/admin/orders/:id/assign - Admin assigns driver to order
+export const assignDriverToOrder = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { driverId } = req.body;
+    const { user } = req as any;
+
+    if (user.role !== 'admin' && user.role !== 'agent') {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
-    const where: any = {};
-    if (stationId) where.stationId = stationId;
-
-    const [orders, total] = await orderRepository.findAndCount({
-      where,
-      relations: ['items', 'items.product', 'user', 'driver', 'station', 'deliveries'],
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
+    const order = await orderRepository.findOne({
+      where: { id },
+      relations: ['station']
     });
 
-    res.json({
-      success: true,
-      data: orders,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Agent can only assign drivers from their station
+    if (user.role === 'agent' && order.stationId !== user.stationId) {
+      return res.status(403).json({ success: false, error: 'Not your station order' });
+    }
+
+    const driver = await userRepository.findOne({ where: { id: driverId, role: 'driver' } });
+    if (!driver) {
+      return res.status(400).json({ success: false, error: 'Driver not found' });
+    }
+
+    if (driver.stationId !== order.stationId) {
+      return res.status(400).json({ success: false, error: 'Driver is not from this station' });
+    }
+
+    if (driver.driverStatus !== 'online') {
+      return res.status(400).json({ success: false, error: 'Driver is not online' });
+    }
+
+    // Create delivery record
+    const delivery = new Delivery();
+    delivery.orderId = order.id;
+    delivery.driverId = driver.id;
+    delivery.driverName = driver.name;
+    delivery.driverPhone = driver.phone;
+    delivery.vehicleNumber = driver.vehicleNumber;
+    delivery.status = 'driver_assigned';
+
+    await AppDataSource.getRepository(Delivery).save(delivery);
+
+    order.status = 'driver_assigned';
+    await orderRepository.save(order);
+
+    // Notify driver via Socket.IO
+    const io = (req as any).io;
+    if (io) {
+      io.to(`driver_${driver.id}`).emit('new_order_assigned', { orderId: order.id });
+    }
+
+    res.json({ success: true, data: order });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// POST /api/admin/stations - Create new station
+export const createStation = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
+    }
+
+    const { name, address, latitude, longitude, phone, email } = req.body;
+
+    const station = stationRepository.create({
+      name,
+      address,
+      latitude,
+      longitude,
+      phone,
+      email,
+      isActive: true
     });
+
+    await stationRepository.save(station);
+    res.status(201).json({ success: true, data: station });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// PUT /api/admin/users/:id/assign-station - Assign user to station
+export const assignUserToStation = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+
+    if (user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access only' });
+    }
+
+    const { id } = req.params;
+    const { stationId } = req.body;
+
+    const targetUser = await userRepository.findOne({ where: { id } });
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    targetUser.stationId = stationId;
+    await userRepository.save(targetUser);
+
+    res.json({ success: true, data: targetUser });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

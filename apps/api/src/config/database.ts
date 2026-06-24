@@ -1,53 +1,32 @@
-import 'reflect-metadata';
 import { DataSource } from 'typeorm';
-import mysql from 'mysql2/promise';
 import { User } from '../entities/User';
+import { Station } from '../entities/Station';
 import { Product } from '../entities/Product';
 import { Order } from '../entities/Order';
 import { OrderItem } from '../entities/OrderItem';
 import { Delivery } from '../entities/Delivery';
-import { Station } from '../entities/Station';
 import { Wallet } from '../entities/Wallet';
 import { Transaction } from '../entities/Transaction';
 
-async function ensureDatabaseExists() {
-  const host = process.env.DB_HOST || '127.0.0.1';
-  const port = parseInt(process.env.DB_PORT || '3306');
-  const user = process.env.DB_USERNAME || 'root';
-  const password = process.env.DB_PASSWORD || '';
-  const database = process.env.DB_DATABASE || 'gas_mobil';
-
-  try {
-    const connection = await mysql.createConnection({ host, port, user, password });
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-    console.log(`Database '${database}' ensured`);
-    await connection.end();
-  } catch (error) {
-    console.error('Failed to create database:', error);
-    throw error;
-  }
-}
-
-// Create the DataSource instance
 const AppDataSource = new DataSource({
   type: 'mysql',
-  host: process.env.DB_HOST || '127.0.0.1',
+  host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306'),
   username: process.env.DB_USERNAME || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_DATABASE || 'gas_mobil',
-  synchronize: process.env.NODE_ENV === 'development', // ONLY in development!
+  database: process.env.DB_NAME || 'gas_mobil',
+  synchronize: process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV === 'development',
-  entities: [User, Product, Order, OrderItem, Delivery, Station, Wallet, Transaction],
+  entities: [User, Station, Product, Order, OrderItem, Delivery, Wallet, Transaction],
   migrations: ['src/migrations/*.ts'],
   subscribers: [],
 });
 
-// Export ONLY the DataSource as default
-export default AppDataSource;
-
-// Export initializeDatabase as a named export
 export const initializeDatabase = async () => {
-  await ensureDatabaseExists();
-  return AppDataSource.initialize();
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+  }
+  return AppDataSource;
 };
+
+export default AppDataSource;

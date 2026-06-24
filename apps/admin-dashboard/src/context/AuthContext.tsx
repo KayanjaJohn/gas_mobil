@@ -5,7 +5,10 @@ interface User {
   id: string;
   name: string;
   email: string;
+  phone: string;
   role: string;
+  stationId?: string;
+  station?: { id: string; name: string };
 }
 
 interface AuthContextType {
@@ -22,7 +25,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -31,10 +34,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => {
-        setUser(res.data.data.user);
+        const userData = res.data.data.user;
+        if (userData.role !== 'admin') {
+          throw new Error('This portal is for administrators only');
+        }
+        setUser(userData);
       })
       .catch(() => {
-        localStorage.removeItem('token');
+        localStorage.removeItem('admin_token');
         setToken(null);
       })
       .finally(() => setIsLoading(false));
@@ -46,13 +53,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await axios.post(`${API_URL}/auth/login`, { emailOrPhone: email, password });
     const { token: newToken, user: newUser } = res.data.data;
-    localStorage.setItem('token', newToken);
+
+    if (newUser.role !== 'admin') {
+      throw new Error('This portal is for administrators only');
+    }
+
+    localStorage.setItem('admin_token', newToken);
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('admin_token');
     setToken(null);
     setUser(null);
   };

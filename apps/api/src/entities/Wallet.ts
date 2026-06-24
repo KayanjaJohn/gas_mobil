@@ -1,48 +1,28 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToOne,
-  OneToMany,
-  JoinColumn,
-  Index,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './User';
 import { Transaction } from './Transaction';
 
 @Entity('wallets')
-@Index(['userId'], { unique: true })
 export class Wallet {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column()
-  userId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare userId: string;
 
-  @OneToOne(() => User, (user) => user.wallets)
+  @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })
-  user: User;
+  declare user: User;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  balance: number;
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  declare balance: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  totalCredited: number;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  totalDebited: number;
-
-  @OneToMany(() => Transaction, (transaction) => transaction.wallet)
-  transactions: Transaction[];
-
-  @Column({ default: true })
-  isActive: boolean;
+  @OneToMany(() => Transaction, transaction => transaction.wallet)
+  declare transactions: Transaction[];
 
   @CreateDateColumn()
-  createdAt: Date;
+  declare createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  declare updatedAt: Date;
 }

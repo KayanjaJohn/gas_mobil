@@ -1,19 +1,17 @@
-import express from 'express';
-import {
-  getDashboardStats,
-  getPendingAssignments,
-  assignDriver,
-  getDrivers,
-  getAllOrders,
-} from '../controllers/adminController';
-import { authMiddleware, requireRole } from '../middleware/auth';
+import { Router } from 'express';
+import { requireAdmin, requireAgent } from '../middleware/requireRole';
+import * as adminController from '../controllers/adminController';
+import * as stationController from '../controllers/stationController';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/dashboard', authMiddleware, requireRole('admin', 'agent'), getDashboardStats);
-router.get('/orders/pending', authMiddleware, requireRole('admin', 'agent'), getPendingAssignments);
-router.get('/orders', authMiddleware, requireRole('admin', 'agent'), getAllOrders);
-router.post('/orders/:orderId/assign', authMiddleware, requireRole('admin', 'agent'), assignDriver);
-router.get('/drivers', authMiddleware, requireRole('admin', 'agent'), getDrivers);
+router.get('/dashboard', requireAdmin, adminController.getDashboardStats);
+router.get('/orders', requireAdmin, adminController.getAllOrders);
+router.get('/drivers', requireAdmin, adminController.getAllDrivers);
+router.post('/drivers', requireAdmin, adminController.createDriver);  // ADD THIS
+router.post('/orders/:id/assign', requireAgent, adminController.assignDriverToOrder);
+router.post('/stations', requireAdmin, adminController.createStation);
+router.put('/stations/:id', requireAdmin, stationController.updateStation);
+router.put('/users/:id/assign-station', requireAdmin, adminController.assignUserToStation);
 
 export default router;

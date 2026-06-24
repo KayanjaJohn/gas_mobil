@@ -1,14 +1,17 @@
-import express from 'express';
-import { register, login, verify, updateProfile } from '../controllers/authController';
+import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
-import { validate } from '../middleware/validate';
-import { registerSchema, loginSchema } from '../validators/authValidator';
+import * as authController from '../controllers/authController';
 
-const router = express.Router();
+const router = Router();
 
-router.post('/register', validate(registerSchema), register);
-router.post('/login', validate(loginSchema), login);
-router.get('/verify', authMiddleware, verify);
-router.put('/profile', authMiddleware, updateProfile);
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
+router.get('/verify', authMiddleware, authController.verifyToken);
+router.get('/me', authMiddleware, authController.getCurrentUser);
+router.put('/profile', authMiddleware, authController.updateProfile);
+router.put('/change-password', authMiddleware, authController.changePassword);
 
 export default router;

@@ -1,27 +1,34 @@
 import { Request, Response } from 'express';
-import AppDataSource from '../config/database';
-import { User } from '../entities/User';
+import AppDataSource  from '../config/database';
 import { Order } from '../entities/Order';
+import { User } from '../entities/User';
 import { Delivery } from '../entities/Delivery';
 
-const userRepository = AppDataSource.getRepository(User);
 const orderRepository = AppDataSource.getRepository(Order);
+const userRepository = AppDataSource.getRepository(User);
 const deliveryRepository = AppDataSource.getRepository(Delivery);
 
+// GET /api/driver/orders - Get orders assigned to this driver
 export const getDriverOrders = async (req: Request, res: Response) => {
   try {
-    const driverId = (req as any).userId;
-    const userRole = (req as any).userRole;
+    const { user } = req as any;
 
-    if (userRole !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Access denied' });
+    if (user.role !== 'driver') {
+      return res.status(403).json({ success: false, error: 'Driver access only' });
     }
 
-    const orders = await orderRepository.find({
-      where: { driverId, status: 'driver_assigned' },
-      relations: ['items', 'items.product', 'user', 'deliveries'],
-      order: { createdAt: 'DESC' },
-    });
+    const orders = await orderRepository.createQueryBuilder('order')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.station', 'station')
+      .leftJoinAndSelect('order.deliveries', 'deliveries')
+      .where('deliveries.driverId = :driverId', { driverId: user.id })
+      .andWhere('order.status IN (:...statuses)', {
+        statuses: ['driver_assigned', 'picked_up', 'in_transit', 'nearby']
+      })
+      .orderBy('order.createdAt', 'DESC')
+      .getMany();
 
     res.json({ success: true, data: orders });
   } catch (error: any) {
@@ -29,95 +36,83 @@ export const getDriverOrders = async (req: Request, res: Response) => {
   }
 };
 
+// POST /api/driver/orders/:id/accept - Driver accepts order
 export const acceptOrder = async (req: Request, res: Response) => {
   try {
-    const { orderId } = req.params;
-    const driverId = (req as any).userId;
-    const userRole = (req as any).userRole;
-
-    if (userRole !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Access denied' });
-    }
+    const { id } = req.params;
+    const { user } = req as any;
 
     const order = await orderRepository.findOne({
-      where: { id: orderId },
-      relations: ['deliveries'],
+      where: { id },
+      relations: ['deliveries']
     });
 
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    if (order.driverId !== driverId) {
-      return res.status(403).json({ success: false, error: 'Not assigned to you' });
+    // Verify this delivery belongs to this driver
+const delivery = order.deliveries?.find((d: Delivery) => d.driverId === user.id);    if (!delivery) {
+      return res.status(403).json({ success: false, error: 'Order not assigned to you' });
     }
 
-    order.status = 'driver_assigned';
+    order.status = 'picked_up';
+    delivery.status = 'picked_up';
     await orderRepository.save(order);
+    await deliveryRepository.save(delivery);
 
-    const delivery = order.deliveries?.[0];
-    if (delivery) {
-      delivery.status = 'accepted';
-      await deliveryRepository.save(delivery);
-    }
-
-    res.json({ success: true, data: order, message: 'Order accepted' });
+    res.json({ success: true, data: order });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// PUT /api/driver/status - Update driver online/offline/busy status + GPS
 export const updateDriverStatus = async (req: Request, res: Response) => {
   try {
-    const driverId = (req as any).userId;
-    const userRole = (req as any).userRole;
-    const { status, currentLatitude, currentLongitude } = req.body;
+    const { status, latitude, longitude } = req.body;
+    const { user } = req as any;
 
-    if (userRole !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Access denied' });
+    if (user.role !== 'driver') {
+      return res.status(403).json({ success: false, error: 'Driver access only' });
     }
 
-    const driver = await userRepository.findOneBy({ id: driverId });
+    const driver = await userRepository.findOne({ where: { id: user.id } });
     if (!driver) {
       return res.status(404).json({ success: false, error: 'Driver not found' });
     }
 
-    if (status) driver.driverStatus = status;
-    if (currentLatitude !== undefined) driver.currentLatitude = currentLatitude;
-    if (currentLongitude !== undefined) driver.currentLongitude = currentLongitude;
-    if (currentLatitude || currentLongitude) driver.lastLocationUpdate = new Date();
+    driver.driverStatus = status;
+    if (latitude !== undefined) driver.currentLatitude = latitude;
+    if (longitude !== undefined) driver.currentLongitude = longitude;
+    driver.lastLocationUpdate = new Date();
 
     await userRepository.save(driver);
 
-    res.json({
-      success: true,
-      data: {
-        id: driver.id,
-        name: driver.name,
-        status: driver.driverStatus,
-        location: driver.currentLatitude ? {
-          latitude: driver.currentLatitude,
-          longitude: driver.currentLongitude,
-        } : null,
-      },
-    });
+    // Broadcast status change via Socket.IO
+    const io = (req as any).io;
+    if (io) {
+      io.to(`driver_${driver.id}`).emit('driver_status_change', {
+        driverId: driver.id,
+        status,
+        location: { latitude, longitude }
+      });
+    }
+
+    res.json({ success: true, data: driver });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// GET /api/driver/profile - Get driver profile with station info
 export const getDriverProfile = async (req: Request, res: Response) => {
   try {
-    const driverId = (req as any).userId;
-    const userRole = (req as any).userRole;
-
-    if (userRole !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Access denied' });
-    }
+    const { user } = req as any;
 
     const driver = await userRepository.findOne({
-      where: { id: driverId },
-      relations: ['station'],
+      where: { id: user.id },
+      relations: ['station']
     });
 
     if (!driver) {
@@ -131,12 +126,55 @@ export const getDriverProfile = async (req: Request, res: Response) => {
         name: driver.name,
         email: driver.email,
         phone: driver.phone,
+        driverStatus: driver.driverStatus,
         vehicleNumber: driver.vehicleNumber,
         vehicleType: driver.vehicleType,
-        status: driver.driverStatus,
-        station: driver.station,
-      },
+        currentLatitude: driver.currentLatitude,
+        currentLongitude: driver.currentLongitude,
+        station: driver.station
+      }
     });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// PUT /api/delivery/:id/status - Update delivery status (picked_up, in_transit, delivered)
+export const updateDeliveryStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, deliveryPhoto, customerSignature } = req.body;
+    const { user } = req as any;
+
+    const delivery = await deliveryRepository.findOne({
+      where: { id },
+      relations: ['order']
+    });
+
+    if (!delivery) {
+      return res.status(404).json({ success: false, error: 'Delivery not found' });
+    }
+
+    if (delivery.driverId !== user.id) {
+      return res.status(403).json({ success: false, error: 'Not your delivery' });
+    }
+
+    delivery.status = status;
+    if (deliveryPhoto) delivery.deliveryPhoto = deliveryPhoto;
+    if (customerSignature) delivery.customerSignature = customerSignature;
+
+    await deliveryRepository.save(delivery);
+
+    // Update order status accordingly
+    const order = delivery.order;
+    if (status === 'delivered') {
+      order.status = 'delivered';
+    } else if (status === 'in_transit') {
+      order.status = 'in_transit';
+    }
+    await orderRepository.save(order);
+
+    res.json({ success: true, data: delivery });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

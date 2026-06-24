@@ -1,105 +1,71 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './User';
+import { Station } from './Station';
 import { OrderItem } from './OrderItem';
 import { Delivery } from './Delivery';
-import { Station } from './Station';
+
+export type OrderStatus = 'pending' | 'confirmed' | 'driver_assigned' | 'picked_up' | 'in_transit' | 'nearby' | 'delivered' | 'completed' | 'cancelled' | 'failed' | 'refunded';
+export type PaymentMethod = 'cash' | 'wallet' | 'momo' | 'airtel';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 @Entity('orders')
 export class Order {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column()
-  userId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare userId: string;
 
-  @ManyToOne(() => User, (user) => user.orders, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })
-  user: User;
+  declare user: User;
 
-  @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
-  items: OrderItem[];
+  @Column({ type: 'varchar', nullable: false })
+  declare stationId: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  totalAmount: number;
-
-  @Column({ default: 'pending', type: 'enum', enum: [
-    'pending', 'confirmed', 'pending_assignment', 'driver_assigned',
-    'picked_up', 'in_transit', 'nearby', 'delivered', 'completed',
-    'cancelled', 'failed', 'refunded'
-  ]})
-  status: string;
-
-  @Column()
-  deliveryAddress: string;
-
-  @Column({ nullable: true })
-  deliveryCity: string;
-
-  @Column({ nullable: true, type: 'decimal', precision: 10, scale: 6 })
-  deliveryLatitude: number;
-
-  @Column({ nullable: true, type: 'decimal', precision: 10, scale: 6 })
-  deliveryLongitude: number;
-
-  @Column({ nullable: true, type: 'enum', enum: ['mtn', 'airtel', 'visa', 'wallet', 'cash'] })
-  paymentMethod: string;
-
-  @Column({ default: 'pending', type: 'enum', enum: ['pending', 'completed', 'failed', 'refunded'] })
-  paymentStatus: string;
-
-  @Column({ nullable: true, type: 'enum', enum: ['quick', 'swap', 'buy_new', 'find_agent'] })
-  orderType: string;
-
-  @Column({ nullable: true })
-  trackingId: string;
-
-  @Column({ nullable: true })
-  notes: string;
-
-  @Column({ nullable: true })
-  stationId: string;
-
-  @ManyToOne(() => Station, { nullable: true })
+  @ManyToOne(() => Station)
   @JoinColumn({ name: 'stationId' })
-  station: Station;
+  declare station: Station;
 
-  @Column({ nullable: true })
-  driverId: string;
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  declare totalAmount: number;
 
-  @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'driverId' })
-  driver: User;
+  @Column({ type: 'text' })
+  declare deliveryAddress: string;
 
-  @OneToMany(() => Delivery, (delivery) => delivery.order)
-  deliveries: Delivery[];
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  declare deliveryCity: string | null;
 
-  @Column({ nullable: true })
-  estimatedDeliveryTime: Date;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  declare deliveryLatitude: number | null;
 
-  @Column({ nullable: true })
-  actualDeliveryTime: Date;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  declare deliveryLongitude: number | null;
 
-  @Column({ nullable: true })
-  cancellationReason: string;
+  @Column({ type: 'enum', enum: ['pending', 'confirmed', 'driver_assigned', 'picked_up', 'in_transit', 'nearby', 'delivered', 'completed', 'cancelled', 'failed', 'refunded'], default: 'pending' })
+  declare status: OrderStatus;
 
-  @Column({ nullable: true })
-  cancelledAt: Date;
+  @Column({ type: 'enum', enum: ['cash', 'wallet', 'momo', 'airtel'], default: 'cash' })
+  declare paymentMethod: PaymentMethod;
 
-  @Column({ nullable: true })
-  cancelledBy: string;
+  @Column({ type: 'enum', enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' })
+  declare paymentStatus: PaymentStatus;
+
+  @Column({ type: 'text', nullable: true })
+  declare notes: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  declare cancellationReason: string | null;
+
+  @OneToMany(() => OrderItem, item => item.order, { cascade: true })
+  declare items: OrderItem[];
+
+  @OneToMany(() => Delivery, delivery => delivery.order)
+  declare deliveries: Delivery[];
 
   @CreateDateColumn()
-  createdAt: Date;
+  declare createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  declare updatedAt: Date;
 }

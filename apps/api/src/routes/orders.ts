@@ -1,14 +1,13 @@
-import express from 'express';
-import { createOrder, getOrders, getOrderById, cancelOrder } from '../controllers/orderController';
-import { authMiddleware } from '../middleware/auth';
-import { validate } from '../middleware/validate';
-import { createOrderSchema, cancelOrderSchema } from '../validators/orderValidator';
+import { Router } from 'express';
+import { requireAuth, requireAgent, requireCustomer } from '../middleware/requireRole';
+import * as orderController from '../controllers/orderController';
 
-const router = express.Router();
+const router = Router();
 
-router.post('/', authMiddleware, validate(createOrderSchema), createOrder);
-router.get('/', authMiddleware, getOrders);
-router.get('/:id', authMiddleware, getOrderById);
-router.post('/:id/cancel', authMiddleware, validate(cancelOrderSchema), cancelOrder);
+router.post('/', requireCustomer, orderController.createOrder);
+router.get('/', requireAuth, orderController.getOrders);
+router.get('/:id', requireAuth, orderController.getOrderById);
+router.post('/:id/cancel', requireAuth, orderController.cancelOrder);
+router.put('/:id/status', requireAgent, orderController.updateOrderStatus);
 
 export default router;

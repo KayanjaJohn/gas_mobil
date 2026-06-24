@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
   Box, Drawer, AppBar, Toolbar, Typography, List, ListItem,
-  ListItemIcon, ListItemText, IconButton, Avatar
+  ListItemIcon, ListItemText, IconButton, Avatar, Badge
 } from '@mui/material';
 import {
   Dashboard, People, ShoppingCart, LocalShipping,
-  Inventory, Logout, Menu as MenuIcon
+  Inventory, LocationOn, Settings, Logout, Menu as MenuIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,6 +18,7 @@ const menuItems = [
   { path: '/products', label: 'Products', icon: <Inventory /> },
   { path: '/drivers', label: 'Drivers', icon: <LocalShipping /> },
   { path: '/customers', label: 'Customers', icon: <People /> },
+  { path: '/stations', label: 'Stations', icon: <LocationOn /> },
 ];
 
 export default function Layout() {

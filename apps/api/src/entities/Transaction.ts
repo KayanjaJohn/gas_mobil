@@ -1,52 +1,39 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  Index,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Wallet } from './Wallet';
 
+export type TransactionType = 'credit' | 'debit';
+export type TransactionStatus = 'pending' | 'completed' | 'failed';
+
 @Entity('transactions')
-@Index(['walletId'])
-@Index(['createdAt'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column()
-  walletId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare walletId: string;
 
-  @ManyToOne(() => Wallet, (wallet) => wallet.transactions)
+  @ManyToOne(() => Wallet, wallet => wallet.transactions)
   @JoinColumn({ name: 'walletId' })
-  wallet: Wallet;
+  declare wallet: Wallet;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  amount: number;
+  @Column({ type: 'varchar', nullable: true })
+  declare orderId: string | null;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  declare amount: number;
 
   @Column({ type: 'enum', enum: ['credit', 'debit'] })
-  type: string;
+  declare type: TransactionType;
 
-  @Column({ type: 'enum', enum: [
-    'top_up', 'order_payment', 'refund', 'withdrawal',
-    'bonus', 'adjustment'
-  ]})
-  purpose: string;
+  @Column({ type: 'enum', enum: ['pending', 'completed', 'failed'], default: 'pending' })
+  declare status: TransactionStatus;
 
-  @Column({ nullable: true })
-  orderId: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  declare externalReference: string | null;
 
-  @Column({ nullable: true })
-  description: string;
-
-  @Column({ default: 'completed', type: 'enum', enum: ['pending', 'completed', 'failed', 'reversed'] })
-  status: string;
-
-  @Column({ nullable: true })
-  externalReference: string; // For MTN/Airtel/Stripe transaction IDs
+  @Column({ type: 'text', nullable: true })
+  declare description: string | null;
 
   @CreateDateColumn()
-  createdAt: Date;
+  declare createdAt: Date;
 }
