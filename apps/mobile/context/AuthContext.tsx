@@ -1,103 +1,82 @@
-import { createContext, useContext, useMemo, useState, ReactNode } from "react";
-import { loginUser, registerUser, setAuthToken } from "../utils/apiClient";
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../services/api';
 
 interface User {
-	id: string;
-	name: string;
-	email: string;
-	phone: string;
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
 }
 
-interface AuthContextValue {
-	user: User | null;
-	token: string | null;
-	isAuthenticated: boolean;
-	login: (credentials: { emailOrPhone: string; password: string }) => Promise<void>;
-	register: (payload: {
-		name: string;
-		email: string;
-		phone: string;
-		password: string;
-	}) => Promise<void>;
-	logout: () => void;
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-	const [user, setUser] = useState<User | null>(null);
-	const [token, setToken] = useState<string | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-	const login = async ({
-		emailOrPhone,
-		password,
-	}: {
-		emailOrPhone: string;
-		password: string;
-	}) => {
-		console.log("[AUTH] Login called with:", emailOrPhone);
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
 
-		const payload = { emailOrPhone, password };
-		console.log("[AUTH] Sending payload:", JSON.stringify(payload));
+  const loadStoredAuth = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('customer_token');
+      if (storedToken) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        const res = await api.get('/auth/verify');
+        if (res.data.success) {
+          setUser(res.data.data.user);
+          setToken(storedToken);
+        }
+      }
+    } catch (error) {
+      console.error('Auth load error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-		const response = await loginUser(payload);
-		console.log("[AUTH] Login response:", JSON.stringify(response, null, 2));
+  const login = async (email: string, password: string) => {
+    const res = await api.post('/auth/login', { emailOrPhone: email, password });
+    const { token: newToken, user: newUser } = res.data.data;
 
-		// Handle both response formats
-		const tokenData = response.data?.token || response.token;
-		const userData = response.data?.user || response.user;
+    if (newUser.role !== 'customer') {
+      throw new Error('This app is for customers only');
+    }
 
-		console.log("[AUTH] Extracted token:", tokenData ? "yes" : "no");
-		console.log("[AUTH] Extracted user:", userData ? "yes" : "no");
+    await AsyncStorage.setItem('customer_token', newToken);
+    api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+    setToken(newToken);
+    setUser(newUser);
+  };
 
-		if (!tokenData) {
-			console.error("[AUTH] No token in response!");
-			throw new Error("Invalid response from server - no token received");
-		}
+  const logout = async () => {
+    await AsyncStorage.removeItem('customer_token');
+    delete api.defaults.headers.common['Authorization'];
+    setToken(null);
+    setUser(null);
+  };
 
-		setToken(tokenData);
-		setAuthToken(tokenData);
-		setUser(userData);
-		console.log("[AUTH] Login state updated successfully");
-	};
-
-	const register = async (payload: {
-		name: string;
-		email: string;
-		phone: string;
-		password: string;
-	}) => {
-		console.log("[AUTH] Register called with:", JSON.stringify(payload, null, 2));
-		const response = await registerUser(payload);
-		console.log("[AUTH] Register response:", JSON.stringify(response, null, 2));
-	};
-
-	const logout = () => {
-		console.log("[AUTH] Logout called");
-		setUser(null);
-		setToken(null);
-		setAuthToken(null);
-	};
-
-	const value = useMemo(
-		() => ({
-			user,
-			token,
-			isAuthenticated: Boolean(user && token),
-			login,
-			register,
-			logout,
-		}),
-		[user, token],
-	);
-
-	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export function useAuth() {
-	const context = useContext(AuthContext);
-	if (!context) {
-		throw new Error("useAuth must be used within AuthProvider");
-	}
-	return context;
-}
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
+};

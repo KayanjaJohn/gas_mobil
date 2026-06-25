@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { requireAdmin, requireAgent } from '../middleware/requireRole';
 import * as adminController from '../controllers/adminController';
-import * as stationController from '../controllers/stationController';
 
 const router = Router();
 
@@ -15,6 +14,10 @@ router.get('/stations', requireAdmin, adminController.getAllStations);
 router.post('/stations', requireAdmin, adminController.createStation);
 router.put('/stations/:id', requireAdmin, adminController.updateStation);
 router.delete('/stations/:id', requireAdmin, adminController.deleteStation);
+router.post('/stations/:id/agents', requireAdmin, adminController.addAgentToStation); // NEW
+
+// Agent routes
+router.put('/agents/:id', requireAdmin, adminController.updateAgent);
 
 router.put('/users/:id/assign-station', requireAdmin, adminController.assignUserToStation);
 

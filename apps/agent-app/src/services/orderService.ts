@@ -10,20 +10,20 @@ export interface OrderFilters {
 
 export const orderService = {
   getOrders: (filters?: OrderFilters) =>
-    api.get('/admin/orders', { params: filters }),
+    api.get('/agent/orders', { params: filters }),
 
   getOrderById: (id: string) =>
     api.get(`/orders/${id}`),
 
   assignDriver: (orderId: string, driverId: string) =>
-    api.post(`/admin/orders/${orderId}/assign`, { driverId }),
+    api.post(`/agent/orders/${orderId}/assign`, { driverId }),
 
   cancelOrder: (orderId: string, reason: string) =>
-    api.post(`/admin/orders/${orderId}/cancel`, { reason }),
+    api.post(`/agent/orders/${orderId}/cancel`, { reason }),
 
   updateOrderStatus: (orderId: string, status: string) =>
-    api.put(`/admin/orders/${orderId}/status`, { status }),
+    api.put(`/agent/orders/${orderId}/status`, { status }),
 
   getOrderStats: () =>
-    api.get('/admin/orders/stats'),
+    api.get('/agent/orders/stats'),
 };

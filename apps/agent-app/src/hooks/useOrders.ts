@@ -26,7 +26,7 @@ export function useOrders() {
     setError(null);
     try {
       const token = localStorage.getItem('agent_token');
-      const res = await axios.get(`${API_URL}/admin/orders`, {
+      const res = await axios.get(`${API_URL}/agent/orders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setOrders(res.data.data || []);
@@ -40,7 +40,7 @@ export function useOrders() {
   const assignDriver = useCallback(async (orderId: string, driverId: string) => {
     try {
       const token = localStorage.getItem('agent_token');
-      await axios.post(`${API_URL}/admin/orders/${orderId}/assign`, {
+      await axios.post(`${API_URL}/agent/orders/${orderId}/assign`, {
         driverId
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -54,7 +54,7 @@ export function useOrders() {
   const cancelOrder = useCallback(async (orderId: string, reason: string) => {
     try {
       const token = localStorage.getItem('agent_token');
-      await axios.post(`${API_URL}/admin/orders/${orderId}/cancel`, {
+      await axios.post(`${API_URL}/agent/orders/${orderId}/cancel`, {
         reason
       }, {
         headers: { Authorization: `Bearer ${token}` }
