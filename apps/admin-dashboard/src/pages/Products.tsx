@@ -14,6 +14,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 interface Product {
   id: string; name: string; description: string; price: number;
   stock: number; type: string; isAvailable: boolean; stationId?: string;
+  weight?: string; brand?: string;
   station?: { name: string };
 }
 

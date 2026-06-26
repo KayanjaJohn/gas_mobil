@@ -21,14 +21,17 @@ import { authMiddleware } from './middleware/auth';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001'
+];
 
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || 'http://localhost:3000',
-    'http://localhost:3001'
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());

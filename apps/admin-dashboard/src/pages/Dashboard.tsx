@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Grid, Paper, Typography, Box, Alert, CircularProgress } from '@mui/material';
-import { TrendingUp, ShoppingCart, People, LocalShipping, Store } from '@mui/icons-material';
+import { TrendingUp, ShoppingCart, LocalShipping, Store, Assessment } from '@mui/icons-material';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -18,6 +19,7 @@ interface Stats {
 
 export default function Dashboard() {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     totalOrders: 0, pendingOrders: 0, totalDrivers: 0,
     totalProducts: 0, totalStations: 0, todayRevenue: 0, recentOrders: []
@@ -59,6 +61,29 @@ export default function Dashboard() {
       <Typography variant="body2" color="textSecondary" gutterBottom>
         System-wide overview
       </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Paper
+          component="button"
+          onClick={() => navigate('/reports')}
+          sx={{
+            border: 0,
+            px: 2,
+            py: 1.25,
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            color: 'primary.contrastText',
+            bgcolor: 'primary.main',
+            cursor: 'pointer',
+            font: 'inherit',
+            '&:hover': { bgcolor: 'primary.dark' },
+          }}
+        >
+          <Assessment fontSize="small" />
+          <Typography variant="button">Reports</Typography>
+        </Paper>
+      </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

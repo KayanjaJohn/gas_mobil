@@ -6,6 +6,7 @@ import Products from './pages/Products';
 import Drivers from './pages/Drivers';
 import Customers from './pages/Customers';
 import Stations from './pages/Stations';
+import Reports from './pages/Reports';
 import Layout from './components/Layout';
 import { AuthProvider } from './context/AuthContext';
 
@@ -21,6 +22,7 @@ function App() {
           <Route path="drivers" element={<Drivers />} />
           <Route path="customers" element={<Customers />} />
           <Route path="stations" element={<Stations />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
