@@ -5,7 +5,7 @@ import {
   ListItemIcon, ListItemText, IconButton, Avatar, Chip
 } from '@mui/material';
 import {
-  Dashboard, ShoppingCart, LocalShipping, Inventory, Logout, Menu as MenuIcon
+  Dashboard, ShoppingCart, LocalShipping, Inventory, Assessment, Logout, Menu as MenuIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,6 +16,7 @@ const menuItems = [
   { path: '/orders', label: 'Orders', icon: <ShoppingCart /> },
   { path: '/products', label: 'Products', icon: <Inventory /> },
   { path: '/drivers', label: 'Drivers', icon: <LocalShipping /> },
+  { path: '/reports', label: 'Reports', icon: <Assessment /> },
 ];
 
 export default function Layout() {

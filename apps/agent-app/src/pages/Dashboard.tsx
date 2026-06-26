@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Grid, Paper, Typography, Box, Alert, CircularProgress, Chip } from '@mui/material';
-import { TrendingUp, ShoppingCart, LocalShipping, Inventory } from '@mui/icons-material';
+import { Grid, Paper, Typography, Box, Alert, CircularProgress, Chip, Button } from '@mui/material';
+import { TrendingUp, ShoppingCart, LocalShipping, Inventory, Assessment } from '@mui/icons-material';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function Dashboard() {
   const { token, user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalDrivers: 0, totalProducts: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,8 +40,11 @@ export default function Dashboard() {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>Dashboard</Typography>
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' } }}>
         <Chip label={`Station: ${user?.station?.name || 'N/A'}`} color="primary" />
+        <Button variant="contained" startIcon={<Assessment />} onClick={() => navigate('/reports')}>
+          Reports
+        </Button>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {loading ? (
