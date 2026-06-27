@@ -1,17 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 
-interface CustomError extends Error {
-  statusCode?: number;
-  status?: number;
-}
-
 export const errorHandler = (
-  err: CustomError,
+  err: any,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  console.error('Error:', err);
+  console.error('[Error]', err);
 
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
@@ -23,16 +18,26 @@ export const errorHandler = (
 
   // TypeORM errors
   if (err.name === 'QueryFailedError') {
+    return res.status(400).json({ success: false, error: 'Database query failed' });
+  }
+  if (err.name === 'EntityNotFoundError') {
+    return res.status(404).json({ success: false, error: 'Resource not found' });
+  }
+
+  // Validation errors
+  if (err.name === 'ValidationError') {
     return res.status(400).json({ success: false, error: err.message });
   }
 
-  // Default error
+  // Default
   const statusCode = err.statusCode || err.status || 500;
-  const message = err.message || 'Internal server error';
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
+    : err.message || 'Something went wrong';
 
-  return res.status(statusCode).json({
+  res.status(statusCode).json({
     success: false,
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
   });
 };

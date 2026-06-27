@@ -3,36 +3,41 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 // ── Environment ──────────────────────────────────────────────
-const API_URL = Constants.expoConfig?.extra?.apiUrl 
+const API_URL = Constants.expoConfig?.extra?.apiUrl
   || process.env.EXPO_PUBLIC_API_URL;
 
 if (!API_URL) {
-  throw new Error(
-    '[api.ts] EXPO_PUBLIC_API_URL is not set. ' +
-    'Add it to your .env file or app.config.js extra field.'
+  console.error(
+    '\n[api.ts] ❌ EXPO_PUBLIC_API_URL is not set.\n' +
+    'Add it to your .env file:\n' +
+    '  EXPO_PUBLIC_API_URL=http://192.168.1.100:5000/api\n' +
+    'Then restart with: npx expo start --clear\n'
   );
 }
 
-// ── Axios Instance ───────────────────────────────────────────
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 20000, // 20s for slow mobile networks (Uganda)
+  baseURL: API_URL || 'http://localhost:5000/api',
+  timeout: 20000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ── Request Interceptor: Attach Token ────────────────────────
+// ── Request interceptor: attach token ────────────────────────
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const token = await AsyncStorage.getItem('access_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {
+      // Silent fail — request proceeds without token
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// ── Response Interceptor: Handle 401 + Retry ─────────────────
+// ── Response interceptor: handle 401 + refresh ─────────────
 let isRefreshing = false;
 let refreshSubscribers: ((token: string) => void)[] = [];
 
@@ -49,13 +54,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
     if (!originalRequest) return Promise.reject(error);
 
     // 401 Unauthorized → try refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // Queue request until refresh completes
         return new Promise((resolve) => {
           addRefreshSubscriber((token: string) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -71,13 +74,11 @@ api.interceptors.response.use(
         const refreshToken = await AsyncStorage.getItem('refresh_token');
         if (!refreshToken) throw new Error('No refresh token');
 
-        const res = await axios.post(`${API_URL}/auth/refresh`, {
-          refreshToken,
-        });
-
+        const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
         const { accessToken, refreshToken: newRefreshToken } = res.data.data;
+
         await AsyncStorage.setItem('access_token', accessToken);
-        await AsyncStorage.setItem('refresh_token', newRefreshToken);
+        if (newRefreshToken) await AsyncStorage.setItem('refresh_token', newRefreshToken);
 
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         onRefreshed(accessToken);
@@ -87,7 +88,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         isRefreshing = false;
-        // Clear everything and force re-login
         await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
         return Promise.reject(refreshError);
       }
@@ -97,7 +97,7 @@ api.interceptors.response.use(
   }
 );
 
-// ── Retry Wrapper for Network Errors ─────────────────────────
+// ── Retry wrapper for network errors ─────────────────────────
 export async function apiRequest<T>(
   method: 'get' | 'post' | 'put' | 'delete',
   url: string,
@@ -110,12 +110,10 @@ export async function apiRequest<T>(
       return response.data;
     } catch (error) {
       const axiosError = error as AxiosError;
-      // Retry only on network errors (no response) or 5xx server errors
       const shouldRetry =
         i < retries &&
         (!axiosError.response || axiosError.response.status >= 500);
       if (!shouldRetry) throw error;
-      // Exponential backoff: 1s, 2s
       await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
   }

@@ -7,6 +7,7 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
+    scheme: "gasmobil",  // ← ADDED
     userInterfaceStyle: "dark",
     splash: {
       image: "./assets/splash.png",
@@ -29,7 +30,6 @@ export default {
       favicon: "./assets/favicon.png",
     },
     extra: {
-      // This makes env vars available via Constants.expoConfig.extra
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
     },
     plugins: ["expo-router"],

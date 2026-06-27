@@ -15,10 +15,11 @@ const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'gas_mobil',
-  synchronize: process.env.NODE_ENV !== 'production',
+  synchronize: false,
   logging: process.env.NODE_ENV === 'development',
   entities: [User, Station, Product, Order, OrderItem, Delivery, Wallet, Transaction],
   migrations: ['src/migrations/*.ts'],
+  migrationsRun: true,
   subscribers: [],
 });
 

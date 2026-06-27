@@ -1,22 +1,15 @@
 import { Stack } from "expo-router";
-import { AuthProvider } from "../context/AuthContext";
-import { CartProvider } from "../context/CartContext";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthProvider } from "../src/context/AuthContext";
 
-// DEBUG: Check if imports are defined
-console.log("Stack:", typeof Stack);
-console.log("AuthProvider:", typeof AuthProvider);
-console.log("CartProvider:", typeof CartProvider);
-
-export default function Layout() {
-  if (!Stack || !AuthProvider || !CartProvider) {
-    throw new Error(`Missing import: Stack=${!!Stack}, AuthProvider=${!!AuthProvider}, CartProvider=${!!CartProvider}`);
-  }
-  
+export default function RootLayout() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <Stack />
-      </CartProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false }} />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
