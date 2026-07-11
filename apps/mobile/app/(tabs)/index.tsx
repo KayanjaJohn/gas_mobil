@@ -4,8 +4,8 @@ import {
   RefreshControl, Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../src/context/AuthContext";
-import TopBar from "../../src/components/TopBar";
+import { useAuth } from "../../src/context/index";
+import { TopBar } from "../../src/components/index";
 import Card from "../../src/components/Card";
 import BottomNav from "../../src/components/BottomNav";
 import { COLORS, PRICES } from "../../src/utils/constants";
