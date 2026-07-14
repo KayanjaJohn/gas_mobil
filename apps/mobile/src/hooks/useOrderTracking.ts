@@ -31,27 +31,38 @@ export const useOrderTracking = (orderId: string | null) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId) {
+      console.log('[Tracking] No orderId provided, skipping setup');
+      return;
+    }
+
+    console.log('[Tracking] Setting up tracking for order:', orderId);
 
     const setupSocket = async () => {
       const socket = await initializeSocket();
       if (socket) {
+        console.log('[Tracking] Socket connected, joining room:', orderId);
         setIsConnected(true);
         joinOrderRoom(orderId);
 
         onDriverLocationUpdate((data) => {
+          console.log('[Tracking] Driver location update:', data);
           setDriverLocation(data.location);
         });
 
         onOrderStatusUpdate((data) => {
+          console.log('[Tracking] Order status update:', data);
           setOrderStatus(data);
         });
+      } else {
+        console.warn('[Tracking] Socket initialization returned null');
       }
     };
 
     setupSocket();
 
     return () => {
+      console.log('[Tracking] Cleaning up tracking for order:', orderId);
       if (orderId) {
         leaveOrderRoom(orderId);
       }

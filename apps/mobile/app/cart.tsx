@@ -49,7 +49,7 @@ export default function CartScreen() {
               <View style={[styles.sline, styles.totalLine]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>UGX {total.toLocaleString()}</Text></View>
             </View>
 
-            <TouchableOpacity style={styles.checkoutBtn} onPress={() => { clearCart(); router.push("/order-summary"); }} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.checkoutBtn} onPress={() => router.push("/order-summary")} activeOpacity={0.85}>
               <Text style={styles.checkoutText}>Proceed to Checkout</Text>
             </TouchableOpacity>
           </View>

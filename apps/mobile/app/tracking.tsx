@@ -50,6 +50,7 @@ export default function TrackingScreen() {
           </View>
         </Card>
       </ScrollView>
+      <View style={{ height: 100 }} />
       <BottomNav />
     </View>
   );

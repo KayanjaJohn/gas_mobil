@@ -25,9 +25,10 @@ export default function OrderSummaryScreen() {
   const total = cylinderPrice + cartTotal;
 
   const placeOrder = () => {
+    console.log('[Order] Placing order | type:', orderType, '| size:', size, '| total:', total, '| payment:', paymentMethod);
     Alert.alert("Order Placed!", "Your gas order has been placed successfully.", [
-      { text: "Track Now", onPress: () => { reset(); clearCart(); router.push("/tracking"); } },
-      { text: "OK", onPress: () => { reset(); clearCart(); router.push("/(tabs)"); } },
+      { text: "Track Now", onPress: () => { reset(); clearCart(); console.log('[Order] Navigating to tracking'); router.push("/tracking"); } },
+      { text: "OK", onPress: () => { reset(); clearCart(); console.log('[Order] Navigating home'); router.push("/(tabs)"); } },
     ]);
   };
 

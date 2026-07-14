@@ -52,16 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     const hydrate = async () => {
       try {
+        console.log('[Auth] Hydrating session from AsyncStorage...');
         const token = await AsyncStorage.getItem('access_token');
         const storedUser = await AsyncStorage.getItem('user');
+        console.log('[Auth] Token exists:', !!token, '| User exists:', !!storedUser);
         if (mounted && token && storedUser) {
           const parsedUser = JSON.parse(storedUser);
+          console.log('[Auth] Restored user:', parsedUser.email);
           setUser(parsedUser);
         }
       } catch (err) {
-        console.warn('[AuthContext] Hydration error:', err);
+        console.warn('[Auth] Hydration error:', err);
       } finally {
         if (mounted) {
+          console.log('[Auth] Hydration complete, isLoading=false');
           setIsLoading(false);
           setIsReady(true);
         }
@@ -76,46 +80,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isReady || isLoading) return;
 
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    console.log('[Auth] Route check | segments:', segments, '| authenticated:', isAuthenticated, '| inAuthGroup:', inAuthGroup);
 
     if (!isAuthenticated && !inAuthGroup) {
+      console.log('[Auth] → Redirecting to /login');
       router.replace('/login');
     } else if (isAuthenticated && inAuthGroup) {
+      console.log('[Auth] → Redirecting to /(tabs)');
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, isLoading, isReady, segments, router]);
 
   // ── Login ──────────────────────────────────────────────────
   const login = useCallback(async ({ emailOrPhone, password }: LoginCredentials) => {
-    const res = await apiRequest<{ success: boolean; data: { token: string; refreshToken?: string; user: User } }>(
-      'post', '/auth/login', { emailOrPhone, password }
-    );
+    console.log('[Auth] Login attempt for:', emailOrPhone);
+    try {
+      const res = await apiRequest<{ success: boolean; data: { token: string; refreshToken?: string; user: User } }>(
+        'post', '/auth/login', { emailOrPhone, password }
+      );
 
-    if (!res.success) throw new Error('Login failed');
+      if (!res.success) throw new Error('Login failed');
 
-    const { token, refreshToken, user: userData } = res.data;
-    await AsyncStorage.setItem('access_token', token);
-    if (refreshToken) await AsyncStorage.setItem('refresh_token', refreshToken);
-    await AsyncStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+      const { token, refreshToken, user: userData } = res.data;
+      console.log('[Auth] Login success | user:', userData.email, '| role:', userData.role);
+      await AsyncStorage.setItem('access_token', token);
+      if (refreshToken) await AsyncStorage.setItem('refresh_token', refreshToken);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+    } catch (error: any) {
+      console.error('[Auth] Login failed:', error?.response?.data?.error || error?.message);
+      throw error;
+    }
   }, []);
 
   // ── Register ───────────────────────────────────────────────
   const register = useCallback(async ({ name, email, phone, password }: RegisterCredentials) => {
-    const res = await apiRequest<{ success: boolean; data: { token: string; refreshToken?: string; user: User } }>(
-      'post', '/auth/register', { name, email, phone, password, role: 'customer' }
-    );
+    console.log('[Auth] Register attempt for:', email);
+    try {
+      const res = await apiRequest<{ success: boolean; data: { token: string; refreshToken?: string; user: User } }>(
+        'post', '/auth/register', { name, email, phone, password, role: 'customer' }
+      );
 
-    if (!res.success) throw new Error('Registration failed');
+      if (!res.success) throw new Error('Registration failed');
 
-    const { token, refreshToken, user: userData } = res.data;
-    await AsyncStorage.setItem('access_token', token);
-    if (refreshToken) await AsyncStorage.setItem('refresh_token', refreshToken);
-    await AsyncStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+      const { token, refreshToken, user: userData } = res.data;
+      console.log('[Auth] Register success | user:', userData.email);
+      await AsyncStorage.setItem('access_token', token);
+      if (refreshToken) await AsyncStorage.setItem('refresh_token', refreshToken);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+    } catch (error: any) {
+      console.error('[Auth] Register failed:', error?.response?.data?.error || error?.message);
+      throw error;
+    }
   }, []);
 
   // ── Logout ─────────────────────────────────────────────────
   const logout = useCallback(async () => {
+    console.log('[Auth] Logging out user');
     await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
     setUser(null);
     router.replace('/login');

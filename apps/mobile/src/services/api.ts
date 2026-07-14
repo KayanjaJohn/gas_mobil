@@ -10,7 +10,7 @@ if (!API_URL) {
   console.error(
     '\n[api.ts] ❌ EXPO_PUBLIC_API_URL is not set.\n' +
     'Add it to your .env file:\n' +
-    '  EXPO_PUBLIC_API_URL=http://192.168.1.100:5000/api\n' +
+    '  EXPO_PUBLIC_API_URL=process.env.EXPO_PUBLIC_API_URL\n' +
     'Then restart with: npx expo start --clear\n'
   );
 }
@@ -29,6 +29,7 @@ api.interceptors.request.use(
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      console.log('[API] Request:', config.method?.toUpperCase(), config.url);
     } catch {
       // Silent fail — request proceeds without token
     }
@@ -51,14 +52,23 @@ function addRefreshSubscriber(cb: (token: string) => void) {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('[API] Response:', response.config.method?.toUpperCase(), response.config.url, '| status:', response.status);
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    if (!originalRequest) return Promise.reject(error);
+    if (!originalRequest) {
+      console.error('[API] Request error (no config):', error.message);
+      return Promise.reject(error);
+    }
+
+    console.log('[API] Response error:', originalRequest.method?.toUpperCase(), originalRequest.url, '| status:', error.response?.status, '| message:', error.message);
 
     // 401 Unauthorized → try refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
+        console.log('[API] Already refreshing, queuing request');
         return new Promise((resolve) => {
           addRefreshSubscriber((token: string) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -74,8 +84,10 @@ api.interceptors.response.use(
         const refreshToken = await AsyncStorage.getItem('refresh_token');
         if (!refreshToken) throw new Error('No refresh token');
 
+        console.log('[API] Attempting token refresh...');
         const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
         const { accessToken, refreshToken: newRefreshToken } = res.data.data;
+        console.log('[API] Token refresh success');
 
         await AsyncStorage.setItem('access_token', accessToken);
         if (newRefreshToken) await AsyncStorage.setItem('refresh_token', newRefreshToken);
@@ -87,6 +99,7 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
+        console.error('[API] Token refresh failed, clearing session');
         isRefreshing = false;
         await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
         return Promise.reject(refreshError);

@@ -46,6 +46,7 @@ export default function GreenScreen() {
           </Text>
         </Card>
       </ScrollView>
+      <View style={{ height: 100 }} />
       <BottomNav />
     </View>
   );

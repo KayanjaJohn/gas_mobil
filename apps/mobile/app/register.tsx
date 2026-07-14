@@ -46,6 +46,7 @@ export default function RegisterScreen() {
       return;
     }
 
+    console.log('[Register] Submitting registration for:', email.trim());
     setIsSubmitting(true);
     try {
       await register({
@@ -54,9 +55,11 @@ export default function RegisterScreen() {
         phone: formatUgandaPhone(phone.trim()),
         password,
       });
+      console.log('[Register] Success, navigating to tabs');
       router.replace("/(tabs)");
     } catch (error: any) {
       const msg = error?.response?.data?.error || error?.message || "Please try again.";
+      console.error('[Register] Failed:', msg);
       Alert.alert("Registration failed", msg);
     } finally {
       setIsSubmitting(false);

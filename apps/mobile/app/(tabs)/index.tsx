@@ -6,8 +6,8 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/index";
 import { TopBar } from "../../src/components/index";
-import Card from "../../src/components/Card";
-import BottomNav from "../../src/components/BottomNav";
+import {Card} from "../../src/components/index";
+import {BottomNav} from "../../src/components/index";
 import { COLORS, PRICES } from "../../src/utils/constants";
 import { formatDate } from "../../src/utils/formatters";
 
@@ -17,6 +17,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [percent, setPercent] = useState(15);
   const [inspectionDate] = useState(formatDate(new Date()));
+
+  console.log('[Home] Screen rendered | user:', user?.email, '| authenticated:', !!user);
 
   // Animated cylinder gauge
   const gaugeAnim = useState(new Animated.Value(15))[0];

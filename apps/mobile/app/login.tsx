@@ -31,12 +31,15 @@ export default function LoginScreen() {
       return;
     }
 
+    console.log('[Login] Submitting login for:', val);
     setIsSubmitting(true);
     try {
       await login({ emailOrPhone: val, password });
+      console.log('[Login] Success, navigating to tabs');
       router.replace("/(tabs)");
     } catch (error: any) {
       const msg = error?.response?.data?.error || error?.message || "Please try again.";
+      console.error('[Login] Failed:', msg);
       Alert.alert("Login failed", msg);
     } finally {
       setIsSubmitting(false);

@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-const LOCAL_HOST_IP = "192.168.43.181";  // Updated to your actual IP
+const LOCAL_HOST_IP = process.env.EXPO_PUBLIC_API_URL;  // Updated to your actual IP
 let authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
