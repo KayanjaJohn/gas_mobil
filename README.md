@@ -106,14 +106,42 @@ gas-mobil/
 ## Getting Started
 
 ### Prerequisites
+- Node.js 18+
+- MongoDB 5.0+
+- npm or yarn
+- Expo CLI: `npm install -g expo-cli`
 
-- **Node.js** 20+ (use [nvm](https://github.com/nvm-sh/nvm))
-- **MySQL** 8.0+ running locally or via Docker
-- **npm** 9+ or **yarn**
-- **Expo CLI** (for mobile): `npm install -g @expo/cli`
+### Installation
 
-### 1. Clone & Install
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/gas-mobil.git
+   cd gas-mobil
+   ```
 
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Setup environment variables**
+   ```bash
+   # Backend API
+   cp apps/api/.env.example apps/api/.env
+   
+   # Mobile app
+   cp apps/mobile/.env.example apps/mobile/.env
+   ```
+
+4. **Update .env files with your credentials**
+   - MySQL 
+   - JWT Secret
+   - Stripe keys
+   - Email SMTP settings
+
+### Development
+
+**Start both frontend and backend:**
 ```bash
 git clone https://github.com/KayanjaJohn/gas_mobil.git
 cd gas_mobil
@@ -233,7 +261,12 @@ npx expo start           # Scan QR with Expo Go app
 
 ---
 
-## API Documentation
+- ✅ JWT authentication
+- ✅ Password hashing with bcryptjs
+- ✅ CORS protection
+- ✅ Helmet security headers
+- ✅ Input validation with express-validator
+- ✅ Secure environment variables
 
 ### Authentication
 
@@ -267,6 +300,12 @@ Error response:
 ## Environment Variables
 
 ### Backend
+- Node.js
+- Express 4.18
+- MySQL(sequelizer)
+- JWT authentication
+- TypeScript
+- Stripe SDK
 
 | Variable | Required | Description |
 |----------|----------|-------------|
