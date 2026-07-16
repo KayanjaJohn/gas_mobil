@@ -1,38 +1,28 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  Index,
-} from 'typeorm';
-
-export interface ITransaction {
-  id: string;
-  amount: number;
-  type: 'credit' | 'debit';
-  description: string;
-  date: Date;
-}
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { User } from './User';
+import { Transaction } from './Transaction';
 
 @Entity('wallets')
-@Index(['userId'], { unique: true })
 export class Wallet {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column()
-  userId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare userId: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  balance: number;
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  declare user: User;
 
-  @Column({ type: 'json', nullable: true })
-  transactions: ITransaction[];
-  
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  declare balance: number;
+
+  @OneToMany(() => Transaction, transaction => transaction.wallet)
+  declare transactions: Transaction[];
+
   @CreateDateColumn()
-  createdAt: Date;
+  declare createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  declare updatedAt: Date;
 }

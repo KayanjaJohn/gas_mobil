@@ -1,58 +1,47 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Order } from './Order';
 
-export interface ILocationPoint {
-  latitude: number;
-  longitude: number;
-}
+export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'in_transit' | 'nearby' | 'delivered' | 'failed';
 
 @Entity('deliveries')
 export class Delivery {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column({ unique: true })
-  orderId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare orderId: string;
 
-  @ManyToOne(() => Order, (order) => order.deliveries, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Order, order => order.deliveries)
   @JoinColumn({ name: 'orderId' })
-  order: Order;
+  declare order: Order;
 
-  @Column()
-  driverId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare driverId: string;
 
-  @Column({ nullable: true })
-  driverName: string;
+  @Column({ type: 'varchar', length: 255 })
+  declare driverName: string;
 
-  @Column({ nullable: true })
-  driverPhone: string;
+  @Column({ type: 'varchar', length: 20 })
+  declare driverPhone: string;
 
-  @Column({ nullable: true })
-  vehicleNumber: string;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  declare vehicleNumber: string | null;
 
-  @Column({ type: 'json', nullable: true })
-  currentLocation: ILocationPoint;
+  @Column({ type: 'enum', enum: ['pending', 'driver_assigned', 'picked_up', 'in_transit', 'nearby', 'delivered', 'failed'], default: 'pending' })
+  declare status: DeliveryStatus;
 
-  @Column({ nullable: true })
-  estimatedArrival: Date;
+  @Column({ type: 'simple-json', nullable: true })
+  declare currentLocation: { latitude: number; longitude: number } | null;
 
-  @Column({ type: 'enum', enum: ['assigned', 'picked_up', 'on_the_way', 'arrived', 'completed'], default: 'assigned' })
-  status: string;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  declare deliveryPhoto: string | null;
 
-  @Column({ type: 'json', nullable: true })
-  route: ILocationPoint[];
+  @Column({ type: 'text', nullable: true })
+  declare customerSignature: string | null;
+
+  @Column({ type: 'decimal', precision: 2, scale: 1, nullable: true })
+  declare rating: number | null;
 
   @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
+  declare createdAt: Date;
 }

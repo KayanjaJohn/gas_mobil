@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../src/context/AuthContext";
 
 export default function RegisterScreen() {
 	const router = useRouter();
@@ -10,6 +10,7 @@ export default function RegisterScreen() {
 	const [email, setEmail] = useState("");
 	const [phone, setPhone] = useState("");
 	const [password, setPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
 	const [loading, setLoading] = useState(false);
 
 	if (isAuthenticated) {
@@ -21,15 +22,26 @@ export default function RegisterScreen() {
 		console.log("[REGISTER SCREEN] handleRegister called");
 		console.log("[REGISTER SCREEN] Values:", { name, email, phone, password: "***" });
 
-		if (!name || !email || !phone || !password) {
+		if (!name || !email || !phone || !password || !confirmPassword) {
 			console.log("[REGISTER SCREEN] Validation failed - missing fields");
 			Alert.alert("Missing fields", "Please fill all fields to create your account.");
 			return;
 		}
 
-		if (password.length < 6) {
+		if (password !== confirmPassword) {
+			console.log("[REGISTER SCREEN] Passwords don't match");
+			Alert.alert("Password mismatch", "Passwords don't match. Please try again.");
+			return;
+		}
+
+		if (password.length < 8) {
 			console.log("[REGISTER SCREEN] Password too short");
-			Alert.alert("Weak password", "Password must be at least 6 characters.");
+			Alert.alert("Weak password", "Password must be at least 8 characters.");
+			return;
+		}
+
+		if (!/\d/.test(password)) {
+			Alert.alert("Weak password", "Password must contain at least one number.");
 			return;
 		}
 
@@ -38,8 +50,8 @@ export default function RegisterScreen() {
 			console.log("[REGISTER SCREEN] Calling register...");
 			await register({ name, email, phone, password });
 			console.log("[REGISTER SCREEN] Register succeeded!");
-			Alert.alert("Success", "Account created! Please login.");
-			router.replace("/login");
+			Alert.alert("Success", "Account created! You are now logged in.");
+			router.replace("/(tabs)");
 		} catch (error: any) {
 			console.error("[REGISTER SCREEN] Register failed:", error);
 			console.error("[REGISTER SCREEN] Error message:", error?.message);
@@ -85,6 +97,14 @@ export default function RegisterScreen() {
 				placeholderTextColor="#8492a6"
 				value={password}
 				onChangeText={setPassword}
+				secureTextEntry
+			/>
+			<TextInput
+				style={styles.input}
+				placeholder="Confirm Password"
+				placeholderTextColor="#8492a6"
+				value={confirmPassword}
+				onChangeText={setConfirmPassword}
 				secureTextEntry
 			/>
 			<TouchableOpacity

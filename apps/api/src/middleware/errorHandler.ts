@@ -1,40 +1,43 @@
-import { Response, Request, NextFunction } from 'express';
-import { sendError } from '../utils/response';
-import ApiError from '../utils/errors';
-import { QueryFailedError, EntityNotFoundError } from 'typeorm';
+import { Request, Response, NextFunction } from 'express';
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err);
+export const errorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  console.error('[Error]', err);
 
-  if (err instanceof ApiError) {
-    sendError(res, err);
-  }
-  // TypeORM query errors (e.g., duplicate key, foreign key violation)
-  else if (err instanceof QueryFailedError) {
-    const code = (err as any).code;
-    // MySQL error codes
-    if (code === 'ER_DUP_ENTRY') {
-      sendError(res, new ApiError(409, 'Duplicate entry - already exists', 'DUPLICATE_ENTRY'));
-    } else if (code === 'ER_NO_REFERENCED_ROW' || code === 'ER_ROW_IS_REFERENCED') {
-      sendError(res, new ApiError(400, 'Foreign key constraint violated', 'FK_CONSTRAINT'));
-    } else if (code === 'ER_BAD_FIELD_ERROR') {
-      sendError(res, new ApiError(400, 'Invalid field in query', 'INVALID_FIELD'));
-    } else {
-      sendError(res, new ApiError(400, err.message || 'Database query failed', 'QUERY_ERROR'));
-    }
-  }
-  // TypeORM entity not found
-  else if (err instanceof EntityNotFoundError) {
-    sendError(res, new ApiError(404, 'Resource not found', 'NOT_FOUND'));
-  }
   // JWT errors
-  else if (err.name === 'JsonWebTokenError') {
-    sendError(res, new ApiError(401, 'Invalid token', 'INVALID_TOKEN'));
-  } else if (err.name === 'TokenExpiredError') {
-    sendError(res, new ApiError(401, 'Token expired', 'TOKEN_EXPIRED'));
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({ success: false, error: 'Invalid token' });
   }
-  // Generic fallback
-  else {
-    sendError(res, new ApiError(500, err.message || 'Internal Server Error', 'INTERNAL_SERVER_ERROR'));
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({ success: false, error: 'Token expired' });
   }
+
+  // TypeORM errors
+  if (err.name === 'QueryFailedError') {
+    return res.status(400).json({ success: false, error: 'Database query failed' });
+  }
+  if (err.name === 'EntityNotFoundError') {
+    return res.status(404).json({ success: false, error: 'Resource not found' });
+  }
+
+  // Validation errors
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+
+  // Default
+  const statusCode = err.statusCode || err.status || 500;
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
+    : err.message || 'Something went wrong';
+
+  res.status(statusCode).json({
+    success: false,
+    error: message,
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
+  });
 };

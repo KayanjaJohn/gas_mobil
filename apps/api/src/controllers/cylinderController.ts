@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AppDataSource } from '../config/database';
+import AppDataSource from '../config/database';
 import { Cylinder } from '../entities/Cylinder';
 
 const cylinderRepository = AppDataSource.getRepository(Cylinder);

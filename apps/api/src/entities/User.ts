@@ -1,60 +1,60 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-  Index,
-} from 'typeorm';
-import { Order } from './Order';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Station } from './Station';
+
+export type UserRole = 'admin' | 'agent' | 'driver' | 'customer';
+export type DriverStatus = 'online' | 'offline' | 'busy' | 'on_break';
 
 @Entity('users')
-@Index(['email'], { unique: true })
-@Index(['phone'], { unique: true })
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column()
-  name: string;
+  @Column({ type: 'varchar', length: 255 })
+  declare name: string;
 
-  @Column()
-  email: string;
+  @Column({ type: 'varchar', length: 255, unique: true })
+  declare email: string;
 
-  @Column()
-  phone: string;
+  @Column({ type: 'varchar', length: 20 })
+  declare phone: string;
 
-  @Column({ select: false })
-  password: string;
+  @Column({ type: 'varchar', length: 255 })
+  declare password: string;
 
-  @Column({ nullable: true })
-  avatar: string;
+  @Column({ type: 'enum', enum: ['admin', 'agent', 'driver', 'customer'], default: 'customer' })
+  declare role: UserRole;
 
-  @Column({ nullable: true })
-  address: string;
+  @Column({ type: 'boolean', default: true })
+  declare isActive: boolean;
 
-  @Column({ nullable: true })
-  city: string;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  declare driverStatus: DriverStatus | null;
 
-  @Column({ nullable: true })
-  state: string;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  declare currentLatitude: number | null;
 
-  @Column({ nullable: true })
-  zipCode: string;
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  declare currentLongitude: number | null;
 
-  @Column({ default: 'customer' })
-  role: string;
+  @Column({ type: 'timestamp', nullable: true })
+  declare lastLocationUpdate: Date | null;
 
-  @Column({ default: true })
-  isActive: boolean;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  declare vehicleNumber: string | null;
 
-  @OneToMany(() => Order, (order) => order.user)
-  orders: Order[];
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  declare vehicleType: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  declare stationId: string | null;
+
+  @ManyToOne(() => Station, station => station.agents, { nullable: true })
+  @JoinColumn({ name: 'stationId' })
+  declare station: Station | null;
 
   @CreateDateColumn()
-  createdAt: Date;
+  declare createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  declare updatedAt: Date;
 }
