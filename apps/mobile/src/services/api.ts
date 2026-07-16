@@ -1,136 +1,163 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 
-// ── Environment ──────────────────────────────────────────────
-const API_URL = Constants.expoConfig?.extra?.apiUrl
-  || process.env.EXPO_PUBLIC_API_URL;
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 if (!API_URL) {
-  console.error(
-    '\n[api.ts] ❌ EXPO_PUBLIC_API_URL is not set.\n' +
-    'Add it to your .env file:\n' +
-    '  EXPO_PUBLIC_API_URL=process.env.EXPO_PUBLIC_API_URL\n' +
-    'Then restart with: npx expo start --clear\n'
+  throw new Error(
+    '[API] EXPO_PUBLIC_API_URL is not set. Please check your .env file.'
   );
 }
 
-const api = axios.create({
+console.log('[API] Initializing with URL:', API_URL);
+
+// Queue for refresh token requests
+interface PendingRequest {
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}
+
+let isRefreshing = false;
+const refreshSubscribers: PendingRequest[] = [];
+
+const subscribeTokenRefresh = (callback: (token: string) => void) => {
+  refreshSubscribers.push({ resolve: callback, reject: () => {} });
+};
+
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach((sub) => sub.resolve(token));
+  refreshSubscribers.length = 0;
+};
+
+const onRefreshFailed = (error: any) => {
+  refreshSubscribers.forEach((sub) => sub.reject(error));
+  refreshSubscribers.length = 0;
+};
+
+// Create axios instance
+const api: AxiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 20000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// ── Request interceptor: attach token ────────────────────────
+// Request interceptor: Add token to requests
 api.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    try {
-      const token = await AsyncStorage.getItem('access_token');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      console.log('[API] Request:', config.method?.toUpperCase(), config.url);
-    } catch {
-      // Silent fail — request proceeds without token
+  async (config) => {
+    const token = await AsyncStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// ── Response interceptor: handle 401 + refresh ─────────────
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-
-function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
-}
-
-function addRefreshSubscriber(cb: (token: string) => void) {
-  refreshSubscribers.push(cb);
-}
-
+// Response interceptor: Handle 401 and token refresh
 api.interceptors.response.use(
-  (response) => {
-    console.log('[API] Response:', response.config.method?.toUpperCase(), response.config.url, '| status:', response.status);
-    return response;
-  },
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    if (!originalRequest) {
-      console.error('[API] Request error (no config):', error.message);
-      return Promise.reject(error);
-    }
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
 
-    console.log('[API] Response error:', originalRequest.method?.toUpperCase(), originalRequest.url, '| status:', error.response?.status, '| message:', error.message);
-
-    // 401 Unauthorized → try refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        console.log('[API] Already refreshing, queuing request');
-        return new Promise((resolve) => {
-          addRefreshSubscriber((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
-          });
-        });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
-      try {
-        const refreshToken = await AsyncStorage.getItem('refresh_token');
-        if (!refreshToken) throw new Error('No refresh token');
+      if (!isRefreshing) {
+        isRefreshing = true;
 
-        console.log('[API] Attempting token refresh...');
-        const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
-        const { accessToken, refreshToken: newRefreshToken } = res.data.data;
-        console.log('[API] Token refresh success');
+        try {
+          const refreshToken = await AsyncStorage.getItem('refresh_token');
+          if (!refreshToken) {
+            throw new Error('No refresh token available');
+          }
 
-        await AsyncStorage.setItem('access_token', accessToken);
-        if (newRefreshToken) await AsyncStorage.setItem('refresh_token', newRefreshToken);
+          console.log('[API] Refreshing token...');
+          const response = await axios.post(`${API_URL}/auth/refresh`, {
+            refreshToken,
+          });
 
-        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        onRefreshed(accessToken);
-        isRefreshing = false;
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+          await AsyncStorage.setItem('access_token', accessToken);
+          if (newRefreshToken) {
+            await AsyncStorage.setItem('refresh_token', newRefreshToken);
+          }
 
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        console.error('[API] Token refresh failed, clearing session');
-        isRefreshing = false;
-        await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
-        return Promise.reject(refreshError);
+          api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+          onRefreshed(accessToken);
+          console.log('[API] Token refreshed successfully');
+        } catch (refreshError) {
+          console.error('[API] Token refresh failed:', refreshError);
+          onRefreshFailed(refreshError);
+          // Clear auth data and redirect to login
+          await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
       }
+
+      // Wait for token refresh to complete, then retry
+      return new Promise((resolve, reject) => {
+        subscribeTokenRefresh((token: string) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          resolve(api(originalRequest));
+        });
+      });
     }
 
     return Promise.reject(error);
   }
 );
 
-// ── Retry wrapper for network errors ─────────────────────────
-export async function apiRequest<T>(
-  method: 'get' | 'post' | 'put' | 'delete',
+// Type-safe API request function
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export const apiRequest = async <T = any>(
+  method: 'get' | 'post' | 'put' | 'patch' | 'delete',
   url: string,
-  data?: unknown,
-  retries = 2
-): Promise<T> {
-  for (let i = 0; i <= retries; i++) {
+  data?: any,
+  retries: number = 2
+): Promise<ApiResponse<T>> => {
+  let lastError: any;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const response = await api.request({ method, url, data });
+      console.log(`[API] ${method.toUpperCase()} ${url} (attempt ${attempt}/${retries})`);
+      const response = await api[method]<ApiResponse<T>>(url, data);
+      console.log(`[API] Response:`, response.data);
       return response.data;
-    } catch (error) {
-      const axiosError = error as AxiosError;
-      const shouldRetry =
-        i < retries &&
-        (!axiosError.response || axiosError.response.status >= 500);
-      if (!shouldRetry) throw error;
-      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    } catch (error: any) {
+      lastError = error;
+      const status = error.response?.status;
+      const message = error.response?.data?.error || error.message;
+
+      console.error(
+        `[API] Error on attempt ${attempt}/${retries}: ${status} - ${message}`
+      );
+
+      // Don't retry on client errors (4xx) except 401 and 429
+      if (status && status >= 400 && status < 500 && status !== 401 && status !== 429) {
+        throw error;
+      }
+
+      // Wait before retrying (exponential backoff)
+      if (attempt < retries) {
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        console.log(`[API] Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
   }
-  throw new Error('Unexpected error');
-}
+
+  throw lastError;
+};
 
 export default api;
