@@ -1,52 +1,42 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { User } from './User';
 import { Product } from './Product';
 
 @Entity('stations')
 export class Station {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column()
-  name: string;
+  @Column({ type: 'varchar', length: 255 })
+  declare name: string;
 
-  @Column()
-  address: string;
+  @Column({ type: 'text' })
+  declare address: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 6 })
-  latitude: number;
+  @Column({ type: 'decimal', precision: 10, scale: 7 })
+  declare latitude: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 6 })
-  longitude: number;
+  @Column({ type: 'decimal', precision: 10, scale: 7 })
+  declare longitude: number;
 
-  @Column({ default: true })
-  isActive: boolean;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  declare phone: string | null;
 
-  @Column({ default: 'active', type: 'enum', enum: ['active', 'inactive', 'closed'] })
-  status: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  declare email: string | null;
 
-  @Column({ nullable: true })
-  phone: string;
+  @Column({ type: 'boolean', default: true })
+  declare isActive: boolean;
 
-  @Column({ nullable: true })
-  email: string;
+  @OneToMany(() => User, user => user.station)
+  declare agents: User[];
 
-  @OneToMany(() => User, (user) => user.station)
-  agents: User[];
-
-  @OneToMany(() => Product, (product) => product.station)
-  products: Product[];
+  @OneToMany(() => Product, product => product.station)
+  declare products: Product[];
 
   @CreateDateColumn()
-  createdAt: Date;
+  declare createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  declare updatedAt: Date;
 }

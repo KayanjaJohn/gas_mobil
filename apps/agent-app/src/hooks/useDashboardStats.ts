@@ -31,7 +31,7 @@ export function useDashboardStats() {
     setError(null);
     try {
       const token = localStorage.getItem('agent_token');
-      const res = await axios.get(`${API_URL}/admin/dashboard`, {
+      const res = await axios.get(`${API_URL}/agent/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStats(res.data.data || res.data);

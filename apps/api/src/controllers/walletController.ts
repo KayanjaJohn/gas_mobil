@@ -1,105 +1,61 @@
 import { Request, Response } from 'express';
-import AppDataSource from '../config/database';
+import AppDataSource from '../config/database';  // Add this
 import { Wallet } from '../entities/Wallet';
 import { Transaction } from '../entities/Transaction';
 
-const walletRepository = AppDataSource.getRepository(Wallet);
-const transactionRepository = AppDataSource.getRepository(Transaction);
-
 export const getWallet = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const walletRepository = getRepository(Wallet);
+    const transactionRepository = getRepository(Transaction);
 
     const wallet = await walletRepository.findOne({
-      where: { userId },
-      relations: ['transactions'],
+      where: { userId: req.user.id }
     });
 
     if (!wallet) {
-      const newWallet = walletRepository.create({
-        userId,
-        balance: 0,
-        totalCredited: 0,
-        totalDebited: 0,
-      });
-      await walletRepository.save(newWallet);
-
-      return res.json({
-        success: true,
-        data: {
-          ...newWallet,
-          transactions: [],
-        },
-      });
+      return res.status(404).json({ success: false, error: 'Wallet not found' });
     }
 
     const transactions = await transactionRepository.find({
       where: { walletId: wallet.id },
       order: { createdAt: 'DESC' },
-      take: 50,
+      take: 20
     });
 
     res.json({
       success: true,
-      data: {
-        ...wallet,
-        transactions,
-      },
+      data: { wallet, transactions }
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const topUpWallet = async (req: Request, res: Response) => {
-  const queryRunner = AppDataSource.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
-
+export const topUp = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
-    const { amount, paymentMethod, externalReference } = req.body;
+    const { amount, paymentMethod } = req.body;
+    const walletRepository = getRepository(Wallet);
+    const transactionRepository = getRepository(Transaction);
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ success: false, error: 'Invalid amount' });
-    }
-
-    let wallet = await queryRunner.manager.findOne(Wallet, { where: { userId } });
+    const wallet = await walletRepository.findOne({ where: { userId: req.user.id } });
     if (!wallet) {
-      wallet = queryRunner.manager.create(Wallet, {
-        userId,
-        balance: 0,
-        totalCredited: 0,
-        totalDebited: 0,
-      });
+      return res.status(404).json({ success: false, error: 'Wallet not found' });
     }
 
     wallet.balance = Number(wallet.balance) + Number(amount);
-    wallet.totalCredited = Number(wallet.totalCredited) + Number(amount);
-    await queryRunner.manager.save(wallet);
+    await walletRepository.save(wallet);
 
-    const transaction = queryRunner.manager.create(Transaction, {
+    const transaction = transactionRepository.create({
       walletId: wallet.id,
       amount,
       type: 'credit',
-      purpose: 'top_up',
-      description: `Wallet top-up via ${paymentMethod}`,
-      status: 'completed',
-      externalReference,
+      purpose: 'wallet_topup',
+      status: 'completed'
     });
-    await queryRunner.manager.save(transaction);
+    await transactionRepository.save(transaction);
 
-    await queryRunner.commitTransaction();
-
-    res.json({
-      success: true,
-      data: { wallet, transaction },
-      message: 'Wallet topped up successfully',
-    });
+    res.json({ success: true, data: { wallet, transaction } });
   } catch (error: any) {
-    await queryRunner.rollbackTransaction();
     res.status(500).json({ success: false, error: error.message });
-  } finally {
-    await queryRunner.release();
   }
 };

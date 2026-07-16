@@ -28,7 +28,7 @@ export function useDrivers() {
     setError(null);
     try {
       const token = localStorage.getItem('agent_token');
-      const res = await axios.get(`${API_URL}/admin/drivers`, {
+      const res = await axios.get(`${API_URL}/agent/drivers`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDrivers(res.data.data || []);
@@ -42,7 +42,7 @@ export function useDrivers() {
   const updateDriverStatus = useCallback(async (driverId: string, status: string) => {
     try {
       const token = localStorage.getItem('agent_token');
-      await axios.put(`${API_URL}/admin/drivers/${driverId}/status`, {
+      await axios.put(`${API_URL}/agent/drivers/${driverId}/status`, {
         status
       }, {
         headers: { Authorization: `Bearer ${token}` }

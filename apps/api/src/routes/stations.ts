@@ -1,19 +1,20 @@
-import express from 'express';
-import {
-  getStations,
-  getStationById,
-  createStation,
-  updateStation,
-  deleteStation,
-} from '../controllers/stationController';
-import { authMiddleware, requireRole } from '../middleware/auth';
+import { Router } from 'express';
+import { requireAuth } from '../middleware/requireRole';
+import AppDataSource from '../config/database';
+import { Station } from '../entities/Station';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', getStations);
-router.get('/:id', getStationById);
-router.post('/', authMiddleware, requireRole('admin'), createStation);
-router.put('/:id', authMiddleware, requireRole('admin'), updateStation);
-router.delete('/:id', authMiddleware, requireRole('admin'), deleteStation);
+const getStationRepository = () => AppDataSource.getRepository(Station);
+
+router.get('/', requireAuth, async (req, res, next) => {
+  try {
+    const stationRepository = getStationRepository();
+    const stations = await stationRepository.find({ where: { isActive: true } });
+    res.json({ success: true, data: stations });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

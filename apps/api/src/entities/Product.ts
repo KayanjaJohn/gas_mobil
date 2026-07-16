@@ -1,61 +1,50 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
-import { OrderItem } from './OrderItem';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Station } from './Station';
+
+export type ProductType = 'cylinder' | 'accessory';
 
 @Entity('products')
 export class Product {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @Column()
-  name: string;
+  @Column({ type: 'varchar', length: 255 })
+  declare name: string;
 
-  @Column()
-  description: string;
+  @Column({ type: 'text', nullable: true })
+  declare description: string | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  price: number;
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  declare price: number;
 
-  @Column({ default: 0 })
-  stock: number;
+  @Column({ type: 'int', default: 0 })
+  declare stock: number;
 
-  @Column({ nullable: true })
-  weight: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  declare weight: number | null;
 
-  @Column({ nullable: true })
-  size: string;
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  declare size: string | null;
 
-  @Column({ nullable: true })
-  imageUrl: string;
+  @Column({ type: 'enum', enum: ['cylinder', 'accessory'], default: 'cylinder' })
+  declare type: ProductType;
 
-  @Column({ default: true })
-  isAvailable: boolean;
+  @Column({ type: 'boolean', default: true })
+  declare isAvailable: boolean;
 
-  @Column({ nullable: true, type: 'enum', enum: ['cylinder', 'accessory', 'service'] })
-  type: string;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  declare imageUrl: string | null;
 
-  @Column()
-  stationId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare stationId: string;
 
-  @ManyToOne(() => Station, (station) => station.products)
+  @ManyToOne(() => Station, station => station.products)
   @JoinColumn({ name: 'stationId' })
-  station: Station;
-
-  @OneToMany(() => OrderItem, (item) => item.product)
-  orderItems: OrderItem[];
+  declare station: Station;
 
   @CreateDateColumn()
-  createdAt: Date;
+  declare createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  declare updatedAt: Date;
 }

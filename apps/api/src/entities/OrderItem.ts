@@ -1,38 +1,32 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Order } from './Order';
 import { Product } from './Product';
 
 @Entity('order_items')
 export class OrderItem {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  declare id: string;
 
-  @ManyToOne(() => Order, (order) => order.items, { onDelete: 'CASCADE' })
+  @Column({ type: 'varchar', nullable: false })
+  declare orderId: string;
+
+  @ManyToOne(() => Order, order => order.items)
   @JoinColumn({ name: 'orderId' })
-  order: Order;
+  declare order: Order;
 
-  @Column()
-  orderId: string;
+  @Column({ type: 'varchar', nullable: false })
+  declare productId: string;
 
-  @ManyToOne(() => Product, (product) => product.orderItems, { nullable: true })
+  @ManyToOne(() => Product)
   @JoinColumn({ name: 'productId' })
-  product: Product;
+  declare product: Product;
 
-  @Column({ nullable: true })
-  productId: string;
+  @Column({ type: 'int', default: 1 })
+  declare quantity: number;
 
-  @Column()
-  quantity: number;
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  declare price: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  price: number;
-
-  @Column('decimal', { precision: 10, scale: 2 })
-  subtotal: number;
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  declare subtotal: number;
 }
