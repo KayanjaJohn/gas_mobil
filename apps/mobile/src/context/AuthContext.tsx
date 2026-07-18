@@ -24,6 +24,7 @@ interface AuthContextType {
   login: (creds: LoginCredentials) => Promise<void>;
   register: (creds: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
+  clearAuth: () => Promise<void>;
 }
 
 // ── Create context with safe default ─────────────────────────
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => { throw new Error('AuthProvider not mounted'); },
   register: async () => { throw new Error('AuthProvider not mounted'); },
   logout: async () => { throw new Error('AuthProvider not mounted'); },
+  clearAuth: async () => { throw new Error('AuthProvider not mounted'); },
 });
 
 // ── Provider ─────────────────────────────────────────────────
@@ -44,10 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
 
-  // Compute isAuthenticated from user state (always defined)
   const isAuthenticated = !!user;
 
-  // ── Hydrate: Check for existing session on mount ───────────
+  const clearAuth = useCallback(async () => {
+    console.log('[Auth] Clearing auth state');
+    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+    setUser(null);
+  }, []);
+
+  // ── Hydrate: Verify token with API before trusting it ──────
   useEffect(() => {
     let mounted = true;
     const hydrate = async () => {
@@ -56,10 +63,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = await AsyncStorage.getItem('access_token');
         const storedUser = await AsyncStorage.getItem('user');
         console.log('[Auth] Token exists:', !!token, '| User exists:', !!storedUser);
-        if (mounted && token && storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          console.log('[Auth] Restored user:', parsedUser.email);
-          setUser(parsedUser);
+
+        if (!token || !storedUser) {
+          console.log('[Auth] No stored session found');
+          if (mounted) {
+            setIsLoading(false);
+            setIsReady(true);
+          }
+          return;
+        }
+
+        // CRITICAL FIX: Verify token with API before trusting it
+        console.log('[Auth] Verifying token with API...');
+        try {
+          const res = await apiRequest<{ success: boolean; data: User }>(
+            'get', '/auth/me'
+          );
+          if (res.success && res.data) {
+            console.log('[Auth] Token valid | user:', res.data.email);
+            setUser(res.data);
+          } else {
+            throw new Error('Token verification failed');
+          }
+        } catch (verifyError: any) {
+          const status = verifyError?.response?.status;
+          console.warn('[Auth] Token verification failed | status:', status);
+          // 401 = token expired/invalid, 404 = user deleted from DB
+          if (status === 401 || status === 404 || status === 403) {
+            console.log('[Auth] Token invalid or user deleted — clearing session');
+            await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+            setUser(null);
+          } else {
+            // Network error — use cached user but it may be stale
+            console.warn('[Auth] Network error — using cached user (may be stale)');
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+          }
         }
       } catch (err) {
         console.warn('[Auth] Hydration error:', err);
@@ -75,12 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { mounted = false; };
   }, []);
 
-  // ── Route protection (only after hydration) ────────────────
+  // ── Route protection ───────────────────────────────────────
   useEffect(() => {
     if (!isReady || isLoading) return;
 
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
-    console.log('[Auth] Route check | segments:', segments, '| authenticated:', isAuthenticated, '| inAuthGroup:', inAuthGroup);
+    console.log('[Auth] Route check | authenticated:', isAuthenticated, '| inAuthGroup:', inAuthGroup);
 
     if (!isAuthenticated && !inAuthGroup) {
       console.log('[Auth] → Redirecting to /login');
@@ -102,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.success) throw new Error('Login failed');
 
       const { token, refreshToken, user: userData } = res.data;
-      console.log('[Auth] Login success | user:', userData.email, '| role:', userData.role);
+      console.log('[Auth] Login success | user:', userData.email);
       await AsyncStorage.setItem('access_token', token);
       if (refreshToken) await AsyncStorage.setItem('refresh_token', refreshToken);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
@@ -138,12 +177,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Logout ─────────────────────────────────────────────────
   const logout = useCallback(async () => {
     console.log('[Auth] Logging out user');
-    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
-    setUser(null);
+    await clearAuth();
     router.replace('/login');
-  }, [router]);
+  }, [clearAuth, router]);
 
-  // ── Context value (stable reference) ───────────────────────
+  // ── Context value ──────────────────────────────────────────
   const value = React.useMemo(
     () => ({
       user,
@@ -152,8 +190,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      clearAuth,
     }),
-    [user, isAuthenticated, isLoading, login, register, logout]
+    [user, isAuthenticated, isLoading, login, register, logout, clearAuth]
   );
 
   return (

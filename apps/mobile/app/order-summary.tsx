@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import TopBar from "../src/components/TopBar";
@@ -8,7 +8,8 @@ import Card from "../src/components/Card";
 import BottomNav from "../src/components/BottomNav";
 import { useOrderStore } from "../src/store/useOrderStore";
 import { useCartStore } from "../src/store/useCartStore";
-import { COLORS, PRICES } from "../src/utils/constants";
+import { COLORS } from "../src/utils/constants";
+import { apiRequest } from "../src/services/api";
 
 const PAY_METHODS = [
   { key: "wallet", icon: "💳", title: "Gasmobil Wallet", sub: "Balance: UGX 0" },
@@ -18,18 +19,96 @@ const PAY_METHODS = [
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
-  const { orderType, size, paymentMethod, setPaymentMethod, reset } = useOrderStore();
+  const { orderType, size, paymentMethod, setPaymentMethod, reset, deliveryAddress, deliveryLat, deliveryLng, notes } = useOrderStore();
   const { items: cartItems, total: cartTotal, clearCart } = useCartStore();
+  const [products, setProducts] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [placing, setPlacing] = useState(false);
 
-  const cylinderPrice = (PRICES as any)[orderType][size];
+  // Fetch real products from API to get valid UUIDs
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await apiRequest("get", "/products");
+        if (res.success && res.data) {
+          setProducts(res.data);
+        }
+      } catch (err: any) {
+        console.error("[OrderSummary] Failed to fetch products:", err.message);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // Find the real product for the selected cylinder type/size
+  const cylinderProduct = products.find(
+    (p) => p.type === "cylinder" && p.name?.toLowerCase().includes(size.toLowerCase())
+  );
+
+  const cylinderPrice = cylinderProduct?.price || 0;
   const total = cylinderPrice + cartTotal;
 
-  const placeOrder = () => {
-    console.log('[Order] Placing order | type:', orderType, '| size:', size, '| total:', total, '| payment:', paymentMethod);
-    Alert.alert("Order Placed!", "Your gas order has been placed successfully.", [
-      { text: "Track Now", onPress: () => { reset(); clearCart(); console.log('[Order] Navigating to tracking'); router.push("/tracking"); } },
-      { text: "OK", onPress: () => { reset(); clearCart(); console.log('[Order] Navigating home'); router.push("/(tabs)"); } },
-    ]);
+  const placeOrder = async () => {
+    if (placing) return;
+
+    // Build items array with real product UUIDs
+    const items: any[] = [];
+
+    if (cylinderProduct) {
+      items.push({ productId: cylinderProduct.id, quantity: 1 });
+    } else if (orderType && size) {
+      // Fallback: try to find any cylinder product if specific match fails
+      const fallback = products.find((p) => p.type === "cylinder");
+      if (fallback) {
+        items.push({ productId: fallback.id, quantity: 1 });
+      } else {
+        Alert.alert("Error", "No cylinder products available. Please try again later.");
+        return;
+      }
+    }
+
+    // Add accessories from cart
+    for (const cartItem of cartItems) {
+      items.push({ productId: cartItem.product.id, quantity: cartItem.quantity });
+    }
+
+    if (items.length === 0) {
+      Alert.alert("Error", "Your cart is empty.");
+      return;
+    }
+
+    const payload = {
+      items,
+      deliveryAddress: deliveryAddress || "Customer address",
+      deliveryLatitude: deliveryLat,
+      deliveryLongitude: deliveryLng,
+      paymentMethod: paymentMethod || "cod",
+      notes: notes || `${orderType === "swap" ? "Swap Refill" : "Buy Full Kit"} — ${size}`,
+    };
+
+    console.log("[Order] Placing order | payload:", JSON.stringify(payload));
+    setPlacing(true);
+
+    try {
+      const res = await apiRequest("post", "/orders", payload);
+      if (res.success && res.data) {
+        console.log("[Order] Order placed successfully | id:", res.data.id);
+        Alert.alert("Order Placed!", `Your gas order has been placed successfully.\nOrder ID: ${res.data.id?.slice(0, 8)}`, [
+          { text: "Track Now", onPress: () => { reset(); clearCart(); router.push({ pathname: "/tracking", params: { orderId: res.data.id } }); } },
+          { text: "OK", onPress: () => { reset(); clearCart(); router.push("/(tabs)"); } },
+        ]);
+      } else {
+        Alert.alert("Order Failed", res.error || "Failed to place order. Please try again.");
+      }
+    } catch (error: any) {
+      console.error("[Order] Place order error:", error);
+      const msg = error?.response?.data?.error || error?.message || "Network error. Please check your connection.";
+      Alert.alert("Order Failed", msg);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
@@ -48,7 +127,12 @@ export default function OrderSummaryScreen() {
           <View style={styles.sline}><Text style={styles.slabel}>Type</Text><Text style={styles.svalue}>{orderType === "swap" ? "Swap Refill" : "Buy Full Kit"}</Text></View>
           <View style={styles.sline}><Text style={styles.slabel}>Size</Text><Text style={styles.svalue}>{size}</Text></View>
           <View style={styles.sline}><Text style={styles.slabel}>Delivery</Text><Text style={[styles.svalue, { color: COLORS.success }]}>Within 2 hours</Text></View>
-          <View style={styles.sline}><Text style={styles.slabel}>Cylinder ({size})</Text><Text style={styles.svalue}>UGX {cylinderPrice.toLocaleString()}</Text></View>
+          <View style={styles.sline}>
+            <Text style={styles.slabel}>Cylinder ({size})</Text>
+            <Text style={styles.svalue}>
+              {loadingProducts ? "Loading..." : `UGX ${cylinderPrice.toLocaleString()}`}
+            </Text>
+          </View>
           {cartTotal > 0 && (
             <View style={styles.sline}><Text style={styles.slabel}>Accessories</Text><Text style={styles.svalue}>UGX {cartTotal.toLocaleString()}</Text></View>
           )}
@@ -89,8 +173,12 @@ export default function OrderSummaryScreen() {
           <TouchableOpacity style={styles.ghostBtn} onPress={() => router.back()} activeOpacity={0.8}>
             <Text style={styles.ghostText}>Back</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.placeBtn} onPress={placeOrder} activeOpacity={0.85}>
-            <Text style={styles.placeText}>Place Order</Text>
+          <TouchableOpacity style={[styles.placeBtn, placing && { opacity: 0.6 }]} onPress={placeOrder} activeOpacity={0.85} disabled={placing}>
+            {placing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.placeText}>Place Order</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

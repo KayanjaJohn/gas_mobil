@@ -1,7 +1,7 @@
 {
   "name": "gas-mobil-driver",
   "version": "1.0.0",
-  "main": "expo/AppEntry.js",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -19,6 +19,7 @@
     "expo": "~54.0.0",
     "expo-background-fetch": "~13.0.0",
     "expo-constants": "~18.0.0",
+    "expo-router": "~6.0.0",
     "expo-location": "~18.0.0",
     "expo-notifications": "~0.29.0",
     "expo-task-manager": "~12.0.0",

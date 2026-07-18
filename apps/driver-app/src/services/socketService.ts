@@ -8,7 +8,9 @@ export const initializeSocket = async (): Promise<Socket | null> => {
     const token = await AsyncStorage.getItem('driver_token');
     if (!token) return null;
 
-    const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const rawUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+    // Remove /api suffix if present for socket connection
+    const API_URL = rawUrl.replace(/\/api$/, '').replace(/\/api\/$/, '');
 
     socket = io(API_URL, {
       auth: { token },
@@ -20,6 +22,10 @@ export const initializeSocket = async (): Promise<Socket | null> => {
 
     socket.on('connect', () => {
       console.log('Driver socket connected:', socket?.id);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket connect error:', err.message);
     });
 
     socket.on('disconnect', () => {
@@ -50,21 +56,27 @@ export const emitLocation = (data: {
   speed?: number;
   heading?: number;
 }) => {
-  if (socket) {
+  if (socket?.connected) {
     socket.emit('driver_location_update', data);
+  } else {
+    console.warn('Socket not connected, location update dropped');
   }
 };
 
 export const emitStatusChange = (status: string) => {
-  if (socket) {
+  if (socket?.connected) {
     socket.emit('driver_status_change', { status });
   }
 };
 
 export const onNewOrder = (callback: (data: any) => void) => {
-  socket?.on('new_order_assigned', callback);
+  if (socket) {
+    socket.on('new_order_assigned', callback);
+  }
 };
 
 export const removeListeners = () => {
-  socket?.off('new_order_assigned');
+  if (socket) {
+    socket.off('new_order_assigned');
+  }
 };

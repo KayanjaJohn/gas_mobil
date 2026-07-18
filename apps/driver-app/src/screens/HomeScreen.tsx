@@ -9,13 +9,29 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { initializeSocket, disconnectSocket, onNewOrder } from '../services/socketService';
+import api from '../services/api';
+
+interface DriverStats {
+  todayOrders: number;
+  todayCompleted: number;
+  todayEarnings: number;
+  totalDeliveries: number;
+}
 
 export default function HomeScreen() {
   const { user, updateStatus } = useAuth();
   const [isOnline, setIsOnline] = useState(user?.driverStatus === 'online');
+  const [stats, setStats] = useState<DriverStats>({
+    todayOrders: 0,
+    todayCompleted: 0,
+    todayEarnings: 0,
+    totalDeliveries: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
     setupSocket();
+    fetchStats();
     return () => {
       disconnectSocket();
     };
@@ -26,6 +42,20 @@ export default function HomeScreen() {
     onNewOrder((data) => {
       Alert.alert('New Order!', `Order #${data.orderId} has been assigned to you`);
     });
+  };
+
+  const fetchStats = async () => {
+    setLoadingStats(true);
+    try {
+      const res = await api.get('/driver/stats');
+      if (res.data.success) {
+        setStats(res.data.data);
+      }
+    } catch (error) {
+      console.error('Fetch stats error:', error);
+    } finally {
+      setLoadingStats(false);
+    }
   };
 
   const toggleOnlineStatus = async () => {
@@ -63,16 +93,20 @@ export default function HomeScreen() {
 
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>0</Text>
+          <Text style={styles.statNumber}>{stats.todayOrders}</Text>
           <Text style={styles.statLabel}>Today's Orders</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>0</Text>
+          <Text style={styles.statNumber}>{stats.todayCompleted}</Text>
           <Text style={styles.statLabel}>Completed</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>UGX 0</Text>
+          <Text style={styles.statNumber}>UGX {stats.todayEarnings.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Earnings</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.totalDeliveries}</Text>
+          <Text style={styles.statLabel}>Total Deliveries</Text>
         </View>
       </View>
     </View>
@@ -86,7 +120,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   greeting: {
     fontSize: 24,
@@ -100,10 +134,10 @@ const styles = StyleSheet.create({
   },
   statusCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -113,12 +147,11 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 8,
   },
   statusText: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginVertical: 8,
   },
   online: {
     color: '#41f1b6',
@@ -133,22 +166,23 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   statCard: {
-    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
+    width: '47%',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   statNumber: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#7380ec',
   },

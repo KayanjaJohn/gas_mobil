@@ -6,7 +6,7 @@ import { User } from '../entities/User';
 
 const userRepository = AppDataSource.getRepository(User);
 
-// ── NEW: Token generation helper ─────────────────────────────
+// ── Token generation helper ────────────────────────────────
 const generateTokens = (user: User) => {
   const jwtSecret = process.env.JWT_SECRET;
   const refreshSecret = process.env.REFRESH_SECRET;
@@ -30,7 +30,7 @@ const generateTokens = (user: User) => {
   return { accessToken, refreshToken };
 };
 
-// ── NEW: Refresh token endpoint (required by mobile app) ─────
+// ── Refresh token endpoint ─────────────────────────────────
 export const refreshToken = async (req: Request, res: Response) => {
   try {
     const { refreshToken: token } = req.body;
@@ -56,8 +56,8 @@ export const refreshToken = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        token: accessToken,        // backward compat
-        accessToken,                // explicit
+        token: accessToken,
+        accessToken,
         refreshToken: newRefreshToken,
       }
     });
@@ -67,12 +67,15 @@ export const refreshToken = async (req: Request, res: Response) => {
   }
 };
 
-// ── MODIFIED: Register (added validation + refresh token) ────
+// ── Register ─────────────────────────────────────────────
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, password, role = 'customer' } = req.body;
+    const { name, email, phone, password } = req.body;
 
-    // NEW: Validation
+    // SECURITY FIX: Force role to customer — never trust client-sent role
+    const role = 'customer';
+
+    // Validation
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
     }
@@ -101,7 +104,6 @@ export const register = async (req: Request, res: Response) => {
 
     await userRepository.save(user);
 
-    // NEW: Generate both tokens
     const { accessToken, refreshToken } = generateTokens(user);
 
     const { password: _, ...userWithoutPassword } = user;
@@ -109,9 +111,9 @@ export const register = async (req: Request, res: Response) => {
     res.status(201).json({
       success: true,
       data: {
-        token: accessToken,           // backward compat (keep this!)
-        accessToken,                   // explicit
-        refreshToken,                  // NEW: required by mobile app
+        token: accessToken,
+        accessToken,
+        refreshToken,
         user: userWithoutPassword,
       }
     });
@@ -121,12 +123,11 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-// ── MODIFIED: Login (added validation + refresh token) ──────
+// ── Login ──────────────────────────────────────────────────
 export const login = async (req: Request, res: Response) => {
   try {
     const { emailOrPhone, password } = req.body;
 
-    // NEW: Validation
     if (!emailOrPhone || !password) {
       return res.status(400).json({ success: false, error: 'Email/phone and password required' });
     }
@@ -144,7 +145,6 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
-    // NEW: Generate both tokens
     const { accessToken, refreshToken } = generateTokens(user);
 
     const { password: _, ...userWithoutPassword } = user;
@@ -152,9 +152,9 @@ export const login = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        token: accessToken,           // backward compat (keep this!)
-        accessToken,                   // explicit
-        refreshToken,                  // NEW: required by mobile app
+        token: accessToken,
+        accessToken,
+        refreshToken,
         user: userWithoutPassword,
       }
     });
@@ -164,7 +164,7 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-// ── PRESERVED: All your existing endpoints (unchanged) ──────
+// ── PRESERVED: All existing endpoints ──────────────────────
 
 export const verifyToken = async (req: Request, res: Response) => {
   try {

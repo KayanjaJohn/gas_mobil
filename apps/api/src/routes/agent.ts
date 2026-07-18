@@ -4,18 +4,21 @@ import AppDataSource from '../config/database';
 import { Order } from '../entities/Order';
 import { User } from '../entities/User';
 import { Product } from '../entities/Product';
+import { Delivery } from '../entities/Delivery';
 
 const router = Router();
 const orderRepository = AppDataSource.getRepository(Order);
 const userRepository = AppDataSource.getRepository(User);
 const productRepository = AppDataSource.getRepository(Product);
+const deliveryRepository = AppDataSource.getRepository(Delivery);
 
+// GET /api/agent/orders — Orders for agent's station
 router.get('/orders', requireAgent, async (req, res) => {
   try {
     const { user } = req as any;
     const orders = await orderRepository.find({
       where: { stationId: user.stationId },
-      relations: ['items', 'items.product', 'user', 'station', 'deliveries'],  // REMOVED 'deliveries.driver'
+      relations: ['items', 'items.product', 'user', 'station', 'deliveries'],
       order: { createdAt: 'DESC' }
     });
     res.json({ success: true, data: orders });
@@ -24,6 +27,104 @@ router.get('/orders', requireAgent, async (req, res) => {
   }
 });
 
+// POST /api/agent/orders/:id/assign — Agent assigns driver to order
+router.post('/orders/:id/assign', requireAgent, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { driverId } = req.body;
+    const { user } = req as any;
+
+    const order = await orderRepository.findOne({
+      where: { id },
+      relations: ['station']
+    });
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Agent can only assign orders from their own station
+    if (order.stationId !== user.stationId) {
+      return res.status(403).json({ success: false, error: 'Not your station order' });
+    }
+
+    const driver = await userRepository.findOne({
+      where: { id: driverId, role: 'driver', stationId: user.stationId }
+    });
+    if (!driver) {
+      return res.status(400).json({ success: false, error: 'Driver not found at this station' });
+    }
+
+    if (driver.driverStatus !== 'online') {
+      return res.status(400).json({ success: false, error: 'Driver is not online' });
+    }
+
+    const delivery = new Delivery();
+    delivery.orderId = order.id;
+    delivery.driverId = driver.id;
+    delivery.driverName = driver.name;
+    delivery.driverPhone = driver.phone;
+    delivery.vehicleNumber = driver.vehicleNumber;
+    delivery.status = 'pending';
+
+    await deliveryRepository.save(delivery);
+
+    order.status = 'driver_assigned';
+    await orderRepository.save(order);
+
+    const io = (req as any).io || req.app.get('io');
+    if (io) {
+      io.to(`driver_${driver.id}`).emit('new_order_assigned', { orderId: order.id });
+    }
+
+    res.json({ success: true, data: order });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/agent/orders/:id/cancel — Agent cancels order for their station
+router.post('/orders/:id/cancel', requireAgent, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const { user } = req as any;
+
+    const order = await orderRepository.findOne({
+      where: { id },
+      relations: ['items', 'items.product']
+    });
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    if (order.stationId !== user.stationId) {
+      return res.status(403).json({ success: false, error: 'Not your station order' });
+    }
+
+    if (!['pending', 'confirmed'].includes(order.status)) {
+      return res.status(400).json({ success: false, error: 'Order cannot be cancelled at this stage' });
+    }
+
+    order.status = 'cancelled';
+    order.cancellationReason = reason || 'Cancelled by agent';
+    await orderRepository.save(order);
+
+    // Restore stock
+    for (const item of order.items) {
+      const product = await productRepository.findOne({ where: { id: item.productId } });
+      if (product) {
+        product.stock += item.quantity;
+        await productRepository.save(product);
+      }
+    }
+
+    res.json({ success: true, data: order });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/agent/drivers — Drivers at agent's station
 router.get('/drivers', requireAgent, async (req, res) => {
   try {
     const { user } = req as any;
@@ -37,6 +138,7 @@ router.get('/drivers', requireAgent, async (req, res) => {
   }
 });
 
+// GET /api/agent/products — Products at agent's station
 router.get('/products', requireAgent, async (req, res) => {
   try {
     const { user } = req as any;
@@ -49,6 +151,7 @@ router.get('/products', requireAgent, async (req, res) => {
   }
 });
 
+// GET /api/agent/dashboard — Dashboard stats for agent's station
 router.get('/dashboard', requireAgent, async (req, res) => {
   try {
     const { user } = req as any;
@@ -66,13 +169,12 @@ router.get('/dashboard', requireAgent, async (req, res) => {
   }
 });
 
-// POST /api/agent/drivers - Agent creates driver for their station
+// POST /api/agent/drivers — Agent creates driver for their station
 router.post('/drivers', requireAgent, async (req, res) => {
   try {
     const { user } = req as any;
     const { name, email, phone, password, vehicleNumber, vehicleType } = req.body;
 
-    // Check for existing user
     const existingUser = await userRepository.findOne({
       where: [{ email }, { phone }]
     });

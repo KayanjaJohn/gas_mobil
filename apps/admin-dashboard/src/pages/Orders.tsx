@@ -63,7 +63,7 @@ export default function Orders() {
   const cancelOrder = async () => {
     if (!selectedOrder || !cancelReason) return;
     try {
-      await axios.post(`${API_URL}/admin/orders/${selectedOrder.id}/cancel`, { reason: cancelReason },
+      await axios.post(`${API_URL}/orders/${selectedOrder.id}/cancel`, { reason: cancelReason },
         { headers: { Authorization: `Bearer ${token}` } });
       setCancelDialog(false); setSelectedOrder(null); setCancelReason('');
       setSnackbar({ open: true, message: 'Order cancelled', severity: 'success' });

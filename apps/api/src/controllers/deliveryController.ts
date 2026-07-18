@@ -12,19 +12,22 @@ const userRepository = AppDataSource.getRepository(User);
 export const getDeliveryTracking = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
-    const userId = (req as any).userId;
-    const userRole = (req as any).userRole;
+    const user = (req as any).user;
 
     const order = await orderRepository.findOne({
       where: { id: orderId },
-      relations: ['deliveries', 'driver', 'items', 'items.product'],
+      relations: ['deliveries', 'items', 'items.product', 'user', 'station'],
     });
 
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    if (order.userId !== userId && !['admin', 'agent', 'driver'].includes(userRole)) {
+    const isOwner = order.userId === user.id;
+    const isAssignedDriver = order.deliveries?.some((d: Delivery) => d.driverId === user.id);
+    const isAdminOrAgent = ['admin', 'agent'].includes(user.role);
+
+    if (!isOwner && !isAssignedDriver && !isAdminOrAgent) {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
@@ -44,10 +47,9 @@ export const updateDeliveryLocation = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { latitude, longitude, accuracy, speed, heading } = req.body;
-    const driverId = (req as any).userId;
-    const userRole = (req as any).userRole;
+    const user = (req as any).user;
 
-    if (userRole !== 'driver') {
+    if (user.role !== 'driver') {
       return res.status(403).json({ success: false, error: 'Only drivers can update location' });
     }
 
@@ -60,7 +62,7 @@ export const updateDeliveryLocation = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Delivery not found' });
     }
 
-    if (delivery.driverId !== driverId) {
+    if (delivery.driverId !== user.id) {
       return res.status(403).json({ success: false, error: 'Not your assigned delivery' });
     }
 
@@ -75,11 +77,7 @@ export const updateDeliveryLocation = async (req: Request, res: Response) => {
 
     delivery.currentLocation = locationPoint;
 
-    if (!delivery.route) delivery.route = [];
-    delivery.route.push(locationPoint);
-
-    // Update driver location
-    const driver = await userRepository.findOneBy({ id: driverId });
+    const driver = await userRepository.findOneBy({ id: user.id });
     if (driver) {
       driver.currentLatitude = latitude;
       driver.currentLongitude = longitude;
@@ -89,18 +87,15 @@ export const updateDeliveryLocation = async (req: Request, res: Response) => {
 
     await deliveryRepository.save(delivery);
 
-    // Broadcast real-time location to customer
     broadcastToOrder(delivery.orderId, 'driver_location_update', {
       orderId: delivery.orderId,
-      driverId,
+      driverId: user.id,
       driverName: delivery.driverName,
       location: locationPoint,
-      estimatedArrival: delivery.estimatedArrival,
     });
 
-    // Broadcast to admin dashboard
     broadcastToAdmins('driver_location_update', {
-      driverId,
+      driverId: user.id,
       driverName: delivery.driverName,
       orderId: delivery.orderId,
       location: locationPoint,
@@ -119,11 +114,10 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 
   try {
     const { id } = req.params;
-    const { status, deliveryPhoto, customerSignature, deliveryNotes, rating, review } = req.body;
-    const driverId = (req as any).userId;
-    const userRole = (req as any).userRole;
+    const { status, deliveryPhoto, customerSignature, rating } = req.body;
+    const user = (req as any).user;
 
-    if (userRole !== 'driver') {
+    if (user.role !== 'driver') {
       return res.status(403).json({ success: false, error: 'Only drivers can update delivery status' });
     }
 
@@ -136,17 +130,15 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Delivery not found' });
     }
 
-    if (delivery.driverId !== driverId) {
-      return res.status(403).json({ success: false, error: 'Not your assigned delivery' });
+    if (delivery.driverId !== user.id) {
+      return res.status(403).json({ success: false, error: 'Not your delivery' });
     }
 
     const validTransitions: Record<string, string[]> = {
-      'assigned': ['accepted', 'picked_up'],
-      'accepted': ['picked_up'],
+      'pending': ['picked_up'],
       'picked_up': ['in_transit'],
-      'in_transit': ['nearby', 'arrived'],
-      'nearby': ['arrived'],
-      'arrived': ['delivered'],
+      'in_transit': ['nearby', 'delivered'],
+      'nearby': ['delivered'],
     };
 
     if (validTransitions[delivery.status] && !validTransitions[delivery.status].includes(status)) {
@@ -156,52 +148,42 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       });
     }
 
-    delivery.status = status;
+    delivery.status = status as any;
     if (deliveryPhoto) delivery.deliveryPhoto = deliveryPhoto;
     if (customerSignature) delivery.customerSignature = customerSignature;
-    if (deliveryNotes) delivery.deliveryNotes = deliveryNotes;
     if (rating) delivery.rating = rating;
-    if (review) delivery.review = review;
 
     const order = delivery.order;
     const statusMap: Record<string, string> = {
-      'accepted': 'driver_assigned',
       'picked_up': 'picked_up',
       'in_transit': 'in_transit',
       'nearby': 'nearby',
-      'arrived': 'nearby',
       'delivered': 'delivered',
     };
 
     if (statusMap[status]) {
-      order.status = statusMap[status];
+      order.status = statusMap[status] as any;
     }
 
     if (status === 'delivered') {
-      order.actualDeliveryTime = new Date();
-      order.status = 'completed';
+      order.status = 'completed' as any;
+      if (order.paymentMethod === 'cash') {
+        order.paymentStatus = 'paid' as any;
+      }
 
-      const driver = await queryRunner.manager.findOne(User, { where: { id: driverId } });
+      const driver = await queryRunner.manager.findOne(User, { where: { id: user.id } });
       if (driver) {
         driver.driverStatus = 'online';
         await queryRunner.manager.save(driver);
       }
 
-      if (order.paymentMethod === 'cash') {
-        order.paymentStatus = 'completed';
-      }
-
-      // Notify customer of delivery
       broadcastToUser(order.userId, 'order_delivered', {
         orderId: order.id,
         message: 'Your order has been delivered!',
         deliveryPhoto,
         rating,
       });
-    }
-
-    // Notify customer of status change
-    if (status !== 'delivered') {
+    } else {
       broadcastToUser(order.userId, 'order_status_update', {
         orderId: order.id,
         status: order.status,
@@ -210,10 +192,9 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // Notify admins
     broadcastToAdmins('delivery_status_update', {
       orderId: order.id,
-      driverId,
+      driverId: user.id,
       driverName: delivery.driverName,
       status,
       timestamp: new Date().toISOString(),

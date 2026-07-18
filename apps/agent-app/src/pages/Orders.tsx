@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-interface Order { id: string; status: string; totalAmount: number; deliveryAddress: string; user?: { name: string }; driver?: { name: string }; driverId?: string; stationId: string; }
+interface Order { id: string; status: string; totalAmount: number; deliveryAddress: string; user?: { name: string; phone?: string }; driver?: { name: string }; driverId?: string; stationId: string; }
 interface Driver { id: string; name: string; driverStatus: string; stationId: string; }
 
 export default function Orders() {
@@ -36,10 +36,11 @@ export default function Orders() {
     } catch (err) { console.error('Failed to fetch drivers:', err); }
   };
 
+  // FIXED: Call /agent/orders/:id/assign instead of /admin/orders/:id/assign
   const assignDriver = async () => {
     if (!selectedOrder || !selectedDriver) return;
     try {
-      await axios.post(`${API_URL}/admin/orders/${selectedOrder.id}/assign`, { driverId: selectedDriver },
+      await axios.post(`${API_URL}/agent/orders/${selectedOrder.id}/assign`, { driverId: selectedDriver },
         { headers: { Authorization: `Bearer ${token}` } });
       setSelectedOrder(null); setSelectedDriver('');
       setSnackbar({ open: true, message: 'Driver assigned successfully', severity: 'success' });

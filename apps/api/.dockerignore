@@ -1,12 +1,13 @@
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-
-EXPOSE 8081
-
-CMD ["npm", "start"]
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.*.local
+dist
+coverage
+.nyc_output
+.vscode
+.idea
+*.log
+*.tsbuildinfo
+scripts/generate-secrets.js
