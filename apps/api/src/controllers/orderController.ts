@@ -123,8 +123,9 @@ export const getOrders = async (req: Request, res: Response) => {
       .leftJoinAndSelect('items.product', 'product')
       .leftJoinAndSelect('order.user', 'user')
       .leftJoinAndSelect('order.station', 'station')
-      .leftJoinAndSelect('order.deliveries', 'deliveries')
-      .leftJoinAndSelect('deliveries.driver', 'driver');
+      .leftJoinAndSelect('order.deliveries', 'deliveries');
+    // FIXED: Removed .leftJoinAndSelect('deliveries.driver', 'driver')
+    // Delivery entity has no 'driver' relation; driver info is on delivery directly
 
     if (user.role === 'customer') {
       query = query.where('order.userId = :userId', { userId: user.id });
@@ -151,7 +152,8 @@ export const getOrderById = async (req: Request, res: Response) => {
 
     const order = await orderRepository.findOne({
       where: { id },
-      relations: ['items', 'items.product', 'user', 'station', 'deliveries', 'deliveries.driver']
+      relations: ['items', 'items.product', 'user', 'station', 'deliveries']
+      // FIXED: Removed 'deliveries.driver' — Delivery has no 'driver' relation
     });
 
     if (!order) {
