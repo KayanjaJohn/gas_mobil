@@ -4,7 +4,9 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
+import api from '../services/api';
 
 interface EarningRecord {
   id: string;
@@ -12,22 +14,44 @@ interface EarningRecord {
   orderId: string;
   amount: number;
   status: 'pending' | 'paid';
+  customerName: string;
+}
+
+interface EarningsData {
+  earnings: EarningRecord[];
+  totalEarnings: number;
 }
 
 export default function EarningsScreen() {
   const [earnings, setEarnings] = useState<EarningRecord[]>([]);
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch from API when endpoint is ready
-    setEarnings([]);
-    setTotal(0);
+    fetchEarnings();
   }, []);
+
+  const fetchEarnings = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/driver/earnings');
+      if (res.data.success) {
+        const data: EarningsData = res.data.data;
+        setEarnings(data.earnings);
+        setTotal(data.totalEarnings);
+      }
+    } catch (error) {
+      console.error('Fetch earnings error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderEarning = ({ item }: { item: EarningRecord }) => (
     <View style={styles.earningCard}>
-      <View>
+      <View style={{ flex: 1 }}>
         <Text style={styles.orderId}>Order #{item.orderId.slice(0, 8)}</Text>
+        <Text style={styles.customer}>{item.customerName}</Text>
         <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
       </View>
       <View style={styles.right}>
@@ -47,16 +71,21 @@ export default function EarningsScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Recent Earnings</Text>
-      <FlatList
-        data={earnings}
-        renderItem={renderEarning}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No earnings yet</Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#7380ec" style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={earnings}
+          renderItem={renderEarning}
+          keyExtractor={(item) => item.id}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No earnings yet</Text>
+              <Text style={styles.emptySubtext}>Complete deliveries to start earning</Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -103,10 +132,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
+  customer: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
   date: {
     fontSize: 12,
     color: '#999',
-    marginTop: 4,
+    marginTop: 2,
   },
   right: {
     alignItems: 'flex-end',
@@ -140,5 +174,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#999',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#bbb',
+    marginTop: 8,
   },
 });

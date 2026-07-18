@@ -32,12 +32,15 @@ export default function OrderDetailScreen() {
     }
   };
 
+  // FIXED: Use /driver/delivery/:id/status instead of /delivery/:id/status
   const updateDeliveryStatus = async (status: string) => {
     try {
       const deliveryId = order?.deliveries?.[0]?.id;
-      if (!deliveryId) return;
-
-      await api.put(`/delivery/${deliveryId}/status`, { status });
+      if (!deliveryId) {
+        Alert.alert('Error', 'No delivery found for this order');
+        return;
+      }
+      await api.put(`/driver/delivery/${deliveryId}/status`, { status });
       Alert.alert('Success', 'Status updated');
       fetchOrder();
     } catch (error: any) {
@@ -192,7 +195,7 @@ const styles = StyleSheet.create({
     color: '#7380ec',
   },
   actions: {
-    padding: 16,
+    padding: 12,
     gap: 12,
   },
   actionBtn: {
@@ -202,7 +205,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#fff',
-    fontSize: 16,
     fontWeight: '600',
+    fontSize: 16,
   },
 });

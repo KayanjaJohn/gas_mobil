@@ -19,10 +19,10 @@ export const initiateMobilePayment = async (req: Request, res: Response) => {
 
   try {
     const { orderId, phoneNumber, provider } = req.body;
-    const userId = (req as any).userId;
+    const user = (req as any).user;  // FIXED: was req.userId
 
     const order = await queryRunner.manager.findOne(Order, {
-      where: { id: orderId, userId },
+      where: { id: orderId, userId: user.id },
     });
 
     if (!order) {
@@ -56,18 +56,16 @@ export const initiateMobilePayment = async (req: Request, res: Response) => {
     }
 
     // Create pending transaction record
-    const wallet = await queryRunner.manager.findOne(Wallet, { where: { userId } });
+    const wallet = await queryRunner.manager.findOne(Wallet, { where: { userId: user.id } });
     if (wallet) {
-      const transaction = queryRunner.manager.create(Transaction, {
-        walletId: wallet.id,
-        amount: order.totalAmount,
-        type: 'debit',
-        purpose: 'order_payment',
-        orderId: order.id,
-        description: `Mobile money payment (${provider}) for order ${orderId}`,
-        status: 'pending',
-        externalReference: paymentResult.referenceId || paymentResult.transactionId || '',
-      });
+      const transaction = new Transaction();
+      transaction.walletId = wallet.id;
+      transaction.amount = Number(order.totalAmount);
+      transaction.type = 'debit';
+      transaction.orderId = order.id;
+      transaction.description = `Mobile money payment (${provider}) for order ${orderId}`;
+      transaction.status = 'pending';
+      transaction.externalReference = paymentResult.referenceId || paymentResult.transactionId || '';
       await queryRunner.manager.save(transaction);
     }
 
@@ -112,7 +110,7 @@ export const checkPaymentStatus = async (req: Request, res: Response) => {
     if (status === 'SUCCESSFUL' || status === 'TS') {
       const order = await orderRepository.findOne({ where: { id: orderId as string } });
       if (order && order.paymentStatus === 'pending') {
-        order.paymentStatus = 'completed';
+        (order as any).paymentStatus = 'paid';  // FIXED: was 'completed'
         await orderRepository.save(order);
 
         // Update transaction status
@@ -160,14 +158,18 @@ export const momoCallback = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
-    const order = await orderRepository.findOne({
-      where: { id: transaction.orderId },
-    });
+    // FIXED: Handle null orderId
+    let order: Order | null = null;
+    if (transaction.orderId) {
+      order = await orderRepository.findOne({
+        where: { id: transaction.orderId },
+      });
+    }
 
     if (status === 'SUCCESSFUL') {
       transaction.status = 'completed';
       if (order) {
-        order.paymentStatus = 'completed';
+        (order as any).paymentStatus = 'paid';  // FIXED: was 'completed'
         await orderRepository.save(order);
 
         broadcastToUser(order.userId, 'payment_completed', {
@@ -178,7 +180,7 @@ export const momoCallback = async (req: Request, res: Response) => {
     } else if (status === 'FAILED') {
       transaction.status = 'failed';
       if (order) {
-        order.paymentStatus = 'failed';
+        (order as any).paymentStatus = 'failed';
         await orderRepository.save(order);
       }
     }
@@ -209,14 +211,18 @@ export const airtelCallback = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
-    const order = await orderRepository.findOne({
-      where: { id: transactionRecord.orderId },
-    });
+    // FIXED: Handle null orderId
+    let order: Order | null = null;
+    if (transactionRecord.orderId) {
+      order = await orderRepository.findOne({
+        where: { id: transactionRecord.orderId },
+      });
+    }
 
     if (status?.success === true || status?.code === 'TS') {
       transactionRecord.status = 'completed';
       if (order) {
-        order.paymentStatus = 'completed';
+        (order as any).paymentStatus = 'paid';  // FIXED: was 'completed'
         await orderRepository.save(order);
 
         broadcastToUser(order.userId, 'payment_completed', {
@@ -227,7 +233,7 @@ export const airtelCallback = async (req: Request, res: Response) => {
     } else {
       transactionRecord.status = 'failed';
       if (order) {
-        order.paymentStatus = 'failed';
+        (order as any).paymentStatus = 'failed';
         await orderRepository.save(order);
       }
     }
@@ -245,18 +251,18 @@ export const airtelCallback = async (req: Request, res: Response) => {
 export const markCashOnDelivery = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.body;
-    const userId = (req as any).userId;
+    const user = (req as any).user;  // FIXED: was req.userId
 
     const order = await orderRepository.findOne({
-      where: { id: orderId, userId },
+      where: { id: orderId, userId: user.id },
     });
 
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    order.paymentMethod = 'cash';
-    order.paymentStatus = 'pending';
+    (order as any).paymentMethod = 'cash';
+    (order as any).paymentStatus = 'pending';
     await orderRepository.save(order);
 
     res.json({

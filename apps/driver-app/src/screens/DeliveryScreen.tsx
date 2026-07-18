@@ -36,7 +36,7 @@ export default function DeliveryScreen() {
     try {
       const res = await api.get('/driver/orders');
       const orders = res.data.data || [];
-      const active = orders.find((o: Order) => 
+      const active = orders.find((o: Order) =>
         ['driver_assigned', 'picked_up', 'in_transit'].includes(o.status)
       );
       setActiveOrder(active || null);
@@ -45,10 +45,16 @@ export default function DeliveryScreen() {
     }
   };
 
+  // FIXED: Use /driver/delivery/:id/status instead of /delivery/:id/status
   const updateStatus = async (status: string) => {
     if (!activeOrder) return;
     try {
-      await api.put(`/delivery/${activeOrder.deliveries?.[0]?.id}/status`, { status });
+      const deliveryId = activeOrder.deliveries?.[0]?.id;
+      if (!deliveryId) {
+        Alert.alert('Error', 'No delivery found for this order');
+        return;
+      }
+      await api.put(`/driver/delivery/${deliveryId}/status`, { status });
       Alert.alert('Success', `Status updated to ${status}`);
       fetchActiveDelivery();
     } catch (error: any) {

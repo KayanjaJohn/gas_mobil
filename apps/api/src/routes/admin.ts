@@ -6,6 +6,7 @@ const router = Router();
 
 router.get('/dashboard', requireAdmin, adminController.getDashboardStats);
 router.get('/orders', requireAdmin, adminController.getAllOrders);
+router.get('/customers', requireAdmin, adminController.getAllCustomers);  // ← FIXED: was missing
 router.get('/drivers', requireAdmin, adminController.getAllDrivers);
 router.post('/orders/:id/assign', requireAgent, adminController.assignDriverToOrder);
 
@@ -14,7 +15,7 @@ router.get('/stations', requireAdmin, adminController.getAllStations);
 router.post('/stations', requireAdmin, adminController.createStation);
 router.put('/stations/:id', requireAdmin, adminController.updateStation);
 router.delete('/stations/:id', requireAdmin, adminController.deleteStation);
-router.post('/stations/:id/agents', requireAdmin, adminController.addAgentToStation); // NEW
+router.post('/stations/:id/agents', requireAdmin, adminController.addAgentToStation);
 
 // Agent routes
 router.put('/agents/:id', requireAdmin, adminController.updateAgent);

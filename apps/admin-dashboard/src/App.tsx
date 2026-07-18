@@ -16,15 +16,16 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="products" element={<Products />} />
-          <Route path="drivers" element={<Drivers />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="stations" element={<Stations />} />
-          <Route path="reports" element={<Reports />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/drivers" element={<Drivers />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/stations" element={<Stations />} />
+          <Route path="/reports" element={<Reports />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AuthProvider>
   );

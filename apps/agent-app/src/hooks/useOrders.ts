@@ -37,6 +37,7 @@ export function useOrders() {
     }
   }, []);
 
+  // FIXED: Use /agent/orders/:id/assign instead of /admin/orders/:id/assign
   const assignDriver = useCallback(async (orderId: string, driverId: string) => {
     try {
       const token = localStorage.getItem('agent_token');
@@ -51,6 +52,7 @@ export function useOrders() {
     }
   }, [fetchOrders]);
 
+  // FIXED: Use /agent/orders/:id/cancel instead of non-existent endpoint
   const cancelOrder = useCallback(async (orderId: string, reason: string) => {
     try {
       const token = localStorage.getItem('agent_token');
