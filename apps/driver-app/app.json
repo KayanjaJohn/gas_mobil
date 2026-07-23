@@ -1,0 +1,7 @@
+{
+  "expo": {
+    "name": "gas-mobil-driver",
+    "slug": "gas-mobil-driver",
+    "plugins": ["expo-router"]
+  }
+}

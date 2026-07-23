@@ -23,6 +23,7 @@ import {
 	Assessment,
 	Logout,
 	Menu as MenuIcon,
+	People as PeopleIcon,
 	Brightness4 as Brightness4Icon,
 	Brightness7 as Brightness7Icon,
 } from "@mui/icons-material";
@@ -35,6 +36,7 @@ const menuItems = [
 	{ path: "/", label: "Dashboard", icon: <Dashboard /> },
 	{ path: "/orders", label: "Orders", icon: <ShoppingCart /> },
 	{ path: "/products", label: "Products", icon: <Inventory /> },
+	{ path: "/customers", label: "Customers", icon: <PeopleIcon /> },
 	{ path: "/drivers", label: "Drivers", icon: <LocalShipping /> },
 	{ path: "/reports", label: "Reports", icon: <Assessment /> },
 ];

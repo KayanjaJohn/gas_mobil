@@ -125,6 +125,21 @@ router.post('/orders/:id/cancel', requireAgent, async (req, res) => {
 });
 
 // GET /api/agent/drivers — Drivers at agent's station
+router.get('/customers', requireAgent, async (req, res) => {
+  try {
+    const { user } = req as any;
+    const customers = await userRepository.find({
+      where: { role: 'customer', stationId: user.stationId },
+      select: ['id', 'name', 'email', 'phone',  'currentLatitude', 'currentLongitude', 'lastLocationUpdate', 'stationId']
+    });
+    res.json({ success: true, data: customers });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// GET /api/agent/drivers — Drivers at agent's station
 router.get('/drivers', requireAgent, async (req, res) => {
   try {
     const { user } = req as any;

@@ -3,6 +3,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
+import Customers from './pages/Customers';
 import Drivers from './pages/Drivers';
 import Reports from './pages/Reports';
 import Layout from './components/Layout';
@@ -17,6 +18,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="orders" element={<Orders />} />
           <Route path="products" element={<Products />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="drivers" element={<Drivers />} />
           <Route path="reports" element={<Reports />} />
         </Route>
