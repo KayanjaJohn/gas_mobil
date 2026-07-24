@@ -1,140 +1,85 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
+  Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const { login } = useAuth();
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (!emailOrPhone.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter both email/phone and password');
       return;
     }
-
     setLoading(true);
-    try {
-      await login(email, password);
-    } catch (error: any) {
-      Alert.alert('Login Failed', error.response?.data?.error || error.message || 'Invalid credentials');
-    } finally {
-      setLoading(false);
+    const result = await login(emailOrPhone.trim(), password.trim());
+    setLoading(false);
+    if (!result.success) {
+      Alert.alert('Login Failed', result.error || 'Please check your credentials and try again.');
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.card}>
-        <Text style={styles.title}>GasMobil Driver</Text>
-        <Text style={styles.subtitle}>Sign in to your driver account</Text>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <Text style={styles.title}>GasMobil Driver</Text>
+          <Text style={styles.subtitle}>Sign in to your driver account</Text>
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email or Phone"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+        <View style={styles.form}>
+          <Text style={styles.label}>Email or Phone</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="driver@example.com or 077XXXXXXX"
+            placeholderTextColor="#9CA3AF"
+            value={emailOrPhone}
+            onChangeText={setEmailOrPhone}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            placeholderTextColor="#9CA3AF"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Sign In</Text>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.hint}>Demo: driver@gasmobil.com / Driver@123</Text>
-      </View>
+          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} activeOpacity={0.8}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#7380ec',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#7380ec',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  container: { flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#0F172A' },
+  header: { alignItems: 'center', marginBottom: 40 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
+  subtitle: { fontSize: 14, color: '#94A3B8' },
+  form: { gap: 16 },
+  label: { fontSize: 14, fontWeight: '600', color: '#E2E8F0', marginBottom: 4 },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    fontSize: 16,
+    backgroundColor: '#1E293B', borderRadius: 12, padding: 14, color: '#fff',
+    borderWidth: 1, borderColor: '#334155', fontSize: 15,
   },
   button: {
-    backgroundColor: '#7380ec',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
+    backgroundColor: '#F59E0B', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8,
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  hint: {
-    marginTop: 16,
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

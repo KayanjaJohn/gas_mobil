@@ -1,60 +1,64 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import AppDataSource from '../config/database';
-import { User } from '../entities/User';
+import * as jwt from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+import AppDataSource from "../config/database";
+import { User } from "../entities/User";
 
-const userRepository = AppDataSource.getRepository(User);
-
-// Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-    }
-  }
+interface DecodedToken {
+  userId: string;
+  email: string;
+  name?: string;
+  iat: number;
+  exp: number;
 }
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+
+  if (!token) {
+    return res.status(401).json({ success: false, error: "Authorization token required" });
+  }
+
   try {
-    const authHeader = req.headers.authorization;
+    const jwtSecret = process.env.JWT_SECRET || "secret";
+    const decoded = jwt.verify(token, jwtSecret as any) as DecodedToken;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, error: 'Access token required' });
+    // Set both old-style and new-style properties for compatibility
+    (req as any).userId = decoded.userId;
+    (req as any).userName = decoded.name || "Unknown User";
+
+    // Fetch full user for role checks
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ 
+      where: { id: decoded.userId },
+    });
+
+    if (!user) {
+      return res.status(401).json({ success: false, error: "User not found" });
     }
 
-    const token = authHeader.split(' ')[1];
+    (req as any).user = user;
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('❌ JWT_SECRET is not set in environment');
-      return res.status(500).json({ success: false, error: 'Server configuration error' });
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as { id: string };
-
-    const user = await userRepository.findOne({ where: { id: decoded.id } });
-
-    if (!user || !user.isActive) {
-      return res.status(401).json({ success: false, error: 'User not found or inactive' });
-    }
-
-    req.user = user;
     next();
-  } catch (error: any) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, error: 'Token expired' });
-    }
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
-    }
-    return res.status(401).json({ success: false, error: 'Authentication failed' });
+  } catch (error) {
+    return res.status(401).json({ success: false, error: "Invalid or expired token" });
   }
 };
 
-export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
-  authMiddleware(req, res, next);
+export const generateToken = (userId: string, email: string, name?: string) => {
+  const jwtSecret = process.env.JWT_SECRET || "secret";
+  return jwt.sign(
+    { userId, email, name },
+    jwtSecret as any,
+    { expiresIn: process.env.JWT_EXPIRE || "7d" } as any,
+  );
 };
 
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-  authMiddleware(req, res, next);
+export const verifyToken = (token: string): DecodedToken | null => {
+  try {
+    const jwtSecret = process.env.JWT_SECRET || "secret";
+    return jwt.verify(token, jwtSecret as any) as DecodedToken;
+  } catch {
+    return null;
+  }
 };
