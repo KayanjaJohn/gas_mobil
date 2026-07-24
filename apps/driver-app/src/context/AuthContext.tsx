@@ -37,15 +37,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const verifySession = async () => {
       try {
         const storedToken = await AsyncStorage.getItem('driver_token');
-
-        console.log('[Auth] Hydrating session...');
+        console.log('[Auth] Hydrating session, token exists:', !!storedToken);
 
         if (!storedToken) {
-          console.log('[Auth] No stored token');
-          setIsLoading(false);
+          if (mounted) {
+            setUser(null);
+            setToken(null);
+            setIsLoading(false);
+          }
           return;
         }
 
@@ -56,10 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (res.data?.success && res.data?.data) {
             const userData = res.data.data;
-            console.log('[Auth] Token valid | user:', userData.email);
-            setUser(userData);
-            setToken(storedToken);
-            await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
+            console.log('[Auth] Token valid, user:', userData.email);
+            if (mounted) {
+              setUser(userData);
+              setToken(storedToken);
+              await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
+            }
           } else {
             throw new Error('Invalid response');
           }
@@ -67,17 +73,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] Token verification failed:', verifyErr.message);
           await AsyncStorage.removeItem('driver_token');
           await AsyncStorage.removeItem('driver_user');
-          setUser(null);
-          setToken(null);
+          if (mounted) {
+            setUser(null);
+            setToken(null);
+          }
         }
       } catch (err) {
         console.error('[Auth] Session hydration error:', err);
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     verifySession();
+    return () => { mounted = false; };
   }, []);
 
   const login = async (emailOrPhone: string, password: string) => {
@@ -104,7 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       console.error('[Auth] Login error:', error.message, error.response?.data);
 
-      // Extract specific error message from API response
       const apiError = error?.response?.data?.error;
       const status = error?.response?.status;
 
@@ -115,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: apiError };
       }
 
-      return { success: false, error: 'Network error. Please check your connection and make sure the API server is running.' };
+      return { success: false, error: 'Network error. Please check your connection.' };
     }
   };
 

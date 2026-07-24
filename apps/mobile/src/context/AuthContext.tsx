@@ -27,20 +27,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const verifySession = async () => {
       try {
         const storedToken = await AsyncStorage.getItem('token');
+        console.log('[Auth] Hydrating session, token exists:', !!storedToken);
 
         if (!storedToken) {
-          setIsLoading(false);
+          if (mounted) {
+            setUser(null);
+            setToken(null);
+            setIsLoading(false);
+          }
           return;
         }
 
         try {
           const res = await apiRequest('get', '/auth/me');
           if (res.success && res.data) {
-            setUser(res.data);
-            setToken(storedToken);
+            console.log('[Auth] Token valid, user:', res.data.email);
+            if (mounted) {
+              setUser(res.data);
+              setToken(storedToken);
+            }
           } else {
             throw new Error('Invalid response');
           }
@@ -48,25 +58,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] Token verification failed:', verifyErr.message);
           await AsyncStorage.removeItem('token');
           await AsyncStorage.removeItem('user');
-          setUser(null);
-          setToken(null);
+          if (mounted) {
+            setUser(null);
+            setToken(null);
+          }
         }
       } catch (err) {
         console.error('[Auth] Session hydration error:', err);
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     verifySession();
+
+    return () => { mounted = false; };
   }, []);
 
   const login = async (emailOrPhone: string, password: string) => {
     try {
+      console.log('[Auth] Login attempt:', emailOrPhone);
       const res = await apiRequest('post', '/auth/login', { emailOrPhone, password });
 
       if (res.success && res.data?.token) {
         const { token: newToken, user: userData } = res.data;
+        console.log('[Auth] Login success:', userData.email);
         await AsyncStorage.setItem('token', newToken);
         await AsyncStorage.setItem('user', JSON.stringify(userData));
         setToken(newToken);
@@ -76,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: false, error: res.error || 'Login failed' };
     } catch (error: any) {
+      console.error('[Auth] Login error:', error);
       const apiError = error?.response?.data?.error;
       const status = error?.response?.status;
 
@@ -97,7 +116,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, isAuthenticated: !!user && !!token, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      isLoading, 
+      isAuthenticated: !!user && !!token, 
+      login, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -35,16 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Verify token with API on mount (page refresh)
   useEffect(() => {
+    let mounted = true;
+
     const verifySession = async () => {
       const storedToken = localStorage.getItem('agent_token');
-
-      console.log('[Auth] Hydrating session...');
+      console.log('[Auth] Hydrating session, token exists:', !!storedToken);
 
       if (!storedToken) {
         console.log('[Auth] No stored token');
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
         return;
       }
 
@@ -56,10 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.data) {
-            console.log('[Auth] Token valid | user:', data.data.email);
-            setUser(data.data);
-            setToken(storedToken);
-            localStorage.setItem('agent_user', JSON.stringify(data.data));
+            console.log('[Auth] Token valid, user:', data.data.email);
+            if (mounted) {
+              setUser(data.data);
+              setToken(storedToken);
+              localStorage.setItem('agent_user', JSON.stringify(data.data));
+            }
           } else {
             throw new Error('Invalid response');
           }
@@ -67,29 +69,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] Token invalid or expired');
           localStorage.removeItem('agent_token');
           localStorage.removeItem('agent_user');
-          setUser(null);
-          setToken(null);
+          if (mounted) {
+            setUser(null);
+            setToken(null);
+          }
         } else {
-          console.log('[Auth] Server error, using cached user');
-          const storedUser = localStorage.getItem('agent_user');
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-            setToken(storedToken);
+          console.log('[Auth] Server error during verification');
+          localStorage.removeItem('agent_token');
+          localStorage.removeItem('agent_user');
+          if (mounted) {
+            setUser(null);
+            setToken(null);
           }
         }
       } catch (err) {
         console.log('[Auth] Network error during verification:', err);
-        const storedUser = localStorage.getItem('agent_user');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-          setToken(storedToken);
+        localStorage.removeItem('agent_token');
+        localStorage.removeItem('agent_user');
+        if (mounted) {
+          setUser(null);
+          setToken(null);
         }
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
 
     verifySession();
+    return () => { mounted = false; };
   }, []);
 
   const login = async (emailOrPhone: string, password: string) => {

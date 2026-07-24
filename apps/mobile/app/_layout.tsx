@@ -1,32 +1,52 @@
-import { Stack } from "expo-router";
+import React, { useEffect } from "react";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { AuthProvider } from "../src/context/index";
-
-const ErrorUtils = (global as any).ErrorUtils;
-if (ErrorUtils && typeof ErrorUtils.setGlobalHandler === "function") {
-  const previousHandler = ErrorUtils.getGlobalHandler?.();
-  ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
-    const detail =
-      error && error.stack
-        ? error.stack
-        : error && error.message
-          ? error.message
-          : String(error);
-    console.error("[GlobalError]" + (isFatal ? " (fatal)" : "") + ":\n" + detail);
-    if (previousHandler) previousHandler(error, isFatal);
-  });
-}
+import { useAuth } from "../src/context/AuthContext";
+import { View, ActivityIndicator } from "react-native";
+import { COLORS } from "../src/utils/constants";
 
 export default function RootLayout() {
-  console.log('[App] RootLayout mounted');
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === "(tabs)";
+    console.log("[Auth] Route check | authenticated:", isAuthenticated, "| inAuthGroup:", inAuthGroup);
+
+    if (!isAuthenticated && inAuthGroup) {
+      console.log("[Auth] → Redirecting to /login");
+      router.replace("/login");
+    } else if (isAuthenticated && !inAuthGroup) {
+      console.log("[Auth] → Redirecting to /(tabs)");
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated, isLoading, segments]);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+      </View>
+    );
+  }
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="light" />
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="order" options={{ headerShown: false }} />
+        <Stack.Screen name="order-summary" options={{ headerShown: false }} />
+        <Stack.Screen name="tracking" options={{ headerShown: false }} />
+        <Stack.Screen name="accessories" options={{ headerShown: false }} />
+        <Stack.Screen name="stations" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+      </Stack>
+      <StatusBar style="light" />
+    </>
   );
 }
