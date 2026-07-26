@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, TextField, Button, Typography, Paper, Alert, CircularProgress,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
+  const navigate = useNavigate();
   const { login } = useAuth();
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -14,17 +16,16 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (!emailOrPhone.trim() || !password.trim()) {
       setError('Please enter both email/phone and password');
       return;
     }
-
     setLoading(true);
     const result = await login(emailOrPhone.trim(), password);
     setLoading(false);
-
-    if (!result.success) {
+    if (result.success) {
+      navigate('/dashboard', { replace: true });
+    } else {
       setError(result.error || 'Login failed');
     }
   };

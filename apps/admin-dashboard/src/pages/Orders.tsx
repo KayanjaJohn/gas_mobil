@@ -49,11 +49,13 @@ export default function Orders() {
 
   const fetchOrders = async () => {
     try {
+      setLoading(true);
       const res = await fetch(`${API_BASE_URL}/admin/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (data.success) setOrders(data.data || []);
+      const ordersData = data.data || data.orders || [];
+      if (res.ok) setOrders(ordersData);
       else setError(data.error || "Failed to fetch orders");
     } catch {
       setError("Network error");
@@ -68,7 +70,8 @@ export default function Orders() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (data.success) setDrivers(data.data || []);
+      const driversData = data.data || data.drivers || [];
+      if (res.ok) setDrivers(driversData);
     } catch {
       console.error("Failed to fetch drivers");
     }
@@ -86,7 +89,7 @@ export default function Orders() {
         body: JSON.stringify({ driverId: selectedDriver }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success || res.ok) {
         setDialogOpen(false);
         fetchOrders();
       } else {
@@ -108,7 +111,7 @@ export default function Orders() {
         },
       });
       const data = await res.json();
-      if (data.success) fetchOrders();
+      if (data.success || res.ok) fetchOrders();
       else setError(data.error || "Failed to cancel order");
     } catch {
       setError("Network error");

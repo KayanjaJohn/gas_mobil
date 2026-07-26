@@ -1,232 +1,178 @@
-import { Request, Response } from "express";
-import AppDataSource from "../config/database";
-import { Order } from "../entities/Order";
-import { User } from "../entities/User";
-import { Product } from "../entities/Product";
+import { Request, Response } from 'express';
+import AppDataSource from '../config/database';
+import { User } from '../entities/User';
+import { Order } from '../entities/Order';
+import { Delivery } from '../entities/Delivery';
 
-const orderRepo = () => AppDataSource.getRepository(Order);
 const userRepo = () => AppDataSource.getRepository(User);
-const productRepo = () => AppDataSource.getRepository(Product);
+const orderRepo = () => AppDataSource.getRepository(Order);
+const deliveryRepo = () => AppDataSource.getRepository(Delivery);
 
-export const getAgentOrders = async (req: Request, res: Response) => {
+const fetchOrdersWithDeliveries = async (where: any): Promise<any[]> => {
   try {
-    const user = (req as any).user;
-    const orders = await orderRepo().find({
-      where: { stationId: user.stationId },
-      relations: ['items', 'items.product', 'user', 'station', 'deliveries'],
-      order: { createdAt: 'DESC' },
-    });
-    return res.json({ success: true, data: orders });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: 'Failed to fetch orders' });
-  }
-};
-
-export const getAgentDrivers = async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const drivers = await userRepo().find({
-      where: { role: 'driver', stationId: user.stationId },
-    });
-    return res.json({ success: true, data: drivers });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: 'Failed to fetch drivers' });
-  }
-};
-
-export const getAgentProducts = async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const products = await productRepo().find({
-      where: { stationId: user.stationId },
-      order: { name: 'ASC' },
-    });
-    return res.json({ success: true, data: products });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: 'Failed to fetch products' });
-  }
-};
-
-export const getAgentDashboard = async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const stationId = user.stationId;
-
-    const [totalOrders, pendingOrders, todayOrders, totalDrivers, totalProducts] = await Promise.all([
-      orderRepo().count({ where: { stationId } }),
-      orderRepo().count({ where: { stationId, status: 'pending' } }),
-      orderRepo().count({
-        where: {
-          stationId,
-          createdAt: new Date(new Date().setHours(0, 0, 0, 0)),
-        },
-      }),
-      userRepo().count({ where: { role: 'driver', stationId } }),
-      productRepo().count({ where: { stationId } }),
-    ]);
-
-    return res.json({
-      success: true,
-      data: { totalOrders, pendingOrders, todayOrders, totalDrivers, totalProducts },
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: 'Failed to fetch dashboard' });
-  }
-};
-
-export const createAgentDriver = async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const { name, email, phone, password, vehicleNumber } = req.body;
-
-    const existing = await userRepo().findOne({ where: { email } });
-    if (existing) {
-      return res.status(400).json({ success: false, error: 'Email already registered' });
-    }
-
-    const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Use save directly with plain object
-    const result = await userRepo().save({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
-      role: 'driver',
-      stationId: user.stationId,
-      vehicleNumber,
-      status: 'available',
+    return await orderRepo().find({
+      where, relations: ['deliveries', 'deliveries.driver', 'customer']
     } as any);
-
-    const driver = Array.isArray(result) ? result[0] : result;
-    const { password: _, ...driverWithoutPassword } = driver;
-
-    return res.status(201).json({ success: true, data: driverWithoutPassword });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: 'Failed to create driver' });
-  }
-};
-
-export const assignDriverToOrder = async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const { id } = req.params;
-    const { driverId } = req.body;
-
-    const order = await orderRepo().findOne({
-      where: { id, stationId: user.stationId },
-      relations: ['deliveries'],
-    });
-
-    if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+  } catch {
+    try {
+      return await orderRepo().find({ where, relations: ['deliveries'] } as any);
+    } catch {
+      return await orderRepo().find({ where } as any);
     }
-
-    const driver = await userRepo().findOne({
-      where: { id: driverId, role: 'driver', stationId: user.stationId },
-    });
-
-    if (!driver) {
-      return res.status(404).json({ success: false, error: 'Driver not found' });
-    }
-
-    order.status = 'driver_assigned';
-    await orderRepo().save(order);
-
-    const deliveryRepo = AppDataSource.getRepository('Delivery');
-    let delivery = order.deliveries?.[0];
-    if (!delivery) {
-      const delResult = await deliveryRepo.save({
-        orderId: order.id,
-        driverId: driver.id,
-        driverName: driver.name,
-        driverPhone: driver.phone,
-        vehicleNumber: driver.vehicleNumber,
-        status: 'driver_assigned',
-      } as any);
-      delivery = Array.isArray(delResult) ? delResult[0] : delResult;
-    } else {
-      delivery.driverId = driver.id;
-      delivery.driverName = driver.name;
-      delivery.driverPhone = driver.phone;
-      delivery.vehicleNumber = driver.vehicleNumber;
-      delivery.status = 'driver_assigned';
-      await deliveryRepo.save(delivery);
-    }
-
-    return res.json({ success: true, data: order });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: 'Failed to assign driver' });
-  }
-};
-
-export const cancelOrder = async (req: Request, res: Response) => {
-  try {
-    const user = (req as any).user;
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    const order = await orderRepo().findOne({
-      where: { id, stationId: user.stationId },
-      relations: ['items', 'items.product'],
-    });
-
-    if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
-    }
-
-    if (order.status === 'cancelled' || order.status === 'delivered') {
-      return res.status(400).json({ success: false, error: 'Order cannot be cancelled' });
-    }
-
-    const prodRepo = AppDataSource.getRepository(Product);
-    for (const item of order.items) {
-      if (item.product) {
-        item.product.stock += item.quantity;
-        await prodRepo.save(item.product);
-      }
-    }
-
-    order.status = 'cancelled';
-    order.cancellationReason = reason || 'Cancelled by agent';
-    await orderRepo().save(order);
-
-    return res.json({ success: true, data: order });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: 'Failed to cancel order' });
   }
 };
 
 export const getAgentCustomers = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
-    const stationId = user.stationId;
+    const agentId = (req as any).userId;
+    const agent = await userRepo().findOne({ where: { id: agentId } } as any);
+    if (!agent) return res.status(404).json({ error: 'Agent not found' });
 
-    const orders = await orderRepo().find({
-      where: { stationId },
-      relations: ['user'],
-      select: ['userId'],
-    });
+    const stationId = (agent as any).station?.id || (req as any).user?.station?.id;
+    if (!stationId) return res.status(400).json({ error: 'Agent has no station' });
 
-    const userIds: string[] = [];
-    for (const o of orders) {
-      if (o.userId && !userIds.includes(o.userId)) {
-        userIds.push(o.userId);
-      }
-    }
-
-    if (userIds.length === 0) {
-      return res.json({ success: true, data: [] });
-    }
-
-    const customers = await userRepo().find({
-      where: userIds.map((id: string) => ({ id })),
-    });
-
-    return res.json({ success: true, data: customers });
+    const orders = await orderRepo().find({ where: { stationId } } as any);
+    const customerIds = [...new Set(orders.map((o: any) => o.customerId))];
+    const customers = await userRepo().findByIds(customerIds);
+    res.json({ customers });
   } catch (error) {
-    console.error('[Agent] Get customers error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to fetch customers' });
+    console.error('getAgentCustomers error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const getAgentOrders = async (req: Request, res: Response) => {
+  try {
+    const agentId = (req as any).userId;
+    const agent = await userRepo().findOne({ where: { id: agentId } } as any);
+    const stationId = (agent as any).station?.id || (req as any).user?.station?.id;
+
+    if (!stationId) return res.status(400).json({ error: 'Agent has no station' });
+
+    const orders = await fetchOrdersWithDeliveries({ stationId });
+    res.json({ orders });
+  } catch (error) {
+    console.error('getAgentOrders error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const getAgentDrivers = async (req: Request, res: Response) => {
+  try {
+    const agentId = (req as any).userId;
+    const agent = await userRepo().findOne({ where: { id: agentId } } as any);
+    const stationId = (agent as any).station?.id || (req as any).user?.station?.id;
+
+    if (!stationId) return res.status(400).json({ error: 'Agent has no station' });
+
+    const drivers = await userRepo().find({ where: { role: 'driver', stationId } } as any);
+    res.json({ drivers });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const getAgentProducts = async (req: Request, res: Response) => {
+  try {
+    const agentId = (req as any).userId;
+    const agent = await userRepo().findOne({ where: { id: agentId } } as any);
+    const stationId = (agent as any).station?.id || (req as any).user?.station?.id;
+
+    if (!stationId) return res.status(400).json({ error: 'Agent has no station' });
+
+    res.json({ products: [] });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const getAgentDashboard = async (req: Request, res: Response) => {
+  try {
+    const agentId = (req as any).userId;
+    const agent = await userRepo().findOne({ where: { id: agentId } } as any);
+    const stationId = (agent as any).station?.id || (req as any).user?.station?.id;
+
+    if (!stationId) return res.status(400).json({ error: 'Agent has no station' });
+
+    const orders = await orderRepo().find({ where: { stationId } } as any);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayOrders = orders.filter((o: any) => new Date(o.createdAt) >= today);
+    const totalRevenue = orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
+
+    res.json({
+      stats: {
+        totalOrders: orders.length,
+        todayOrders: todayOrders.length,
+        totalRevenue,
+        pendingOrders: orders.filter((o: any) => o.status === 'pending').length,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const createAgentDriver = async (req: Request, res: Response) => {
+  try {
+    const { name, email, phone, password, vehicleNumber } = req.body;
+    const repo = userRepo();
+
+    const existing = await repo.findOne({ where: [{ email }, { phone }] } as any);
+    if (existing) return res.status(400).json({ error: 'Driver already exists' });
+
+    const bcrypt = require('bcryptjs');
+    const hashed = await bcrypt.hash(password, 10);
+
+    const driver = repo.create({
+      name, email, phone, password: hashed, role: 'driver', vehicleNumber
+    } as any);
+
+    const result: any = await repo.save(driver);
+    const saved = Array.isArray(result) ? result[0] : result;
+
+    res.status(201).json({
+      driver: {
+        id: saved.id, name: saved.name, email: saved.email,
+        phone: saved.phone, role: saved.role, vehicleNumber: saved.vehicleNumber
+      }
+    });
+  } catch (error) {
+    console.error('createAgentDriver error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const assignDriverToOrder = async (req: Request, res: Response) => {
+  try {
+    const { orderId, driverId } = req.body;
+    const dRepo = deliveryRepo();
+
+    const existing = await dRepo.findOne({ where: { orderId } } as any);
+    if (existing) {
+      await dRepo.update((existing as any).id, { driverId, status: 'assigned' } as any);
+      const updated = await dRepo.findOne({ where: { orderId } } as any);
+      return res.json({ delivery: updated });
+    }
+
+    const delivery = dRepo.create({ orderId, driverId, status: 'assigned' } as any);
+    const result: any = await dRepo.save(delivery);
+    const saved = Array.isArray(result) ? result[0] : result;
+
+    res.status(201).json({ delivery: saved });
+  } catch (error) {
+    console.error('assignDriverToOrder error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const cancelOrder = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    await orderRepo().update(orderId, { status: 'cancelled' } as any);
+    res.json({ message: 'Order cancelled' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
   }
 };

@@ -1,26 +1,21 @@
 import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useAuth } from "../src/context/AuthContext";
+import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { View, ActivityIndicator } from "react-native";
 import { COLORS } from "../src/utils/constants";
 
-export default function RootLayout() {
+function RootLayoutInner() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (isLoading) return;
-
     const inAuthGroup = segments[0] === "(tabs)";
-    console.log("[Auth] Route check | authenticated:", isAuthenticated, "| inAuthGroup:", inAuthGroup);
-
     if (!isAuthenticated && inAuthGroup) {
-      console.log("[Auth] → Redirecting to /login");
       router.replace("/login");
     } else if (isAuthenticated && !inAuthGroup) {
-      console.log("[Auth] → Redirecting to /(tabs)");
       router.replace("/(tabs)");
     }
   }, [isAuthenticated, isLoading, segments]);
@@ -48,5 +43,13 @@ export default function RootLayout() {
       </Stack>
       <StatusBar style="light" />
     </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutInner />
+    </AuthProvider>
   );
 }

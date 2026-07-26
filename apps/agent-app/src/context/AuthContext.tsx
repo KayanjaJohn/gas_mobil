@@ -1,20 +1,15 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import axios from 'axios';
 
-interface Station {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface User {
   id: string;
   name: string;
   email: string;
-  phone?: string;
+  phone: string;
   role: string;
-  stationId?: string;
-  station?: Station | null;
+  station?: any;
 }
 
 interface AuthContextType {
@@ -28,9 +23,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const api = axios.create({ baseURL: API_BASE_URL });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,116 +33,101 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    const verifySession = async () => {
-      const storedToken = localStorage.getItem('agent_token');
-      console.log('[Auth] Hydrating session, token exists:', !!storedToken);
-
-      if (!storedToken) {
-        console.log('[Auth] No stored token');
+    const verify = async () => {
+      const savedToken = localStorage.getItem('agent_token');
+      if (!savedToken) {
         if (mounted) setIsLoading(false);
         return;
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${storedToken}` }
-        });
+        api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+        const res = await api.get('/auth/me');
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.data) {
-            console.log('[Auth] Token valid, user:', data.data.email);
-            if (mounted) {
-              setUser(data.data);
-              setToken(storedToken);
-              localStorage.setItem('agent_user', JSON.stringify(data.data));
-            }
-          } else {
-            throw new Error('Invalid response');
-          }
-        } else if (res.status === 401 || res.status === 404) {
-          console.log('[Auth] Token invalid or expired');
-          localStorage.removeItem('agent_token');
-          localStorage.removeItem('agent_user');
-          if (mounted) {
-            setUser(null);
-            setToken(null);
-          }
-        } else {
-          console.log('[Auth] Server error during verification');
-          localStorage.removeItem('agent_token');
-          localStorage.removeItem('agent_user');
-          if (mounted) {
-            setUser(null);
-            setToken(null);
-          }
+        // Backend returns { success: true, data: { ...user } }
+        const userData = res.data?.data;
+
+        if (!userData) {
+          throw new Error('Invalid response');
         }
-      } catch (err) {
-        console.log('[Auth] Network error during verification:', err);
-        localStorage.removeItem('agent_token');
-        localStorage.removeItem('agent_user');
+
         if (mounted) {
-          setUser(null);
+          setToken(savedToken);
+          setUser(userData);
+        }
+      } catch (err: any) {
+        // ANY error = wipe everything, no stale fallback
+        console.log('[Agent Auth] Token invalid, clearing:', err?.response?.data?.error || err.message);
+        localStorage.removeItem('agent_token');
+        localStorage.removeItem('agent_refresh_token');
+        localStorage.removeItem('agent_user');
+        delete api.defaults.headers.common['Authorization'];
+        if (mounted) {
           setToken(null);
+          setUser(null);
         }
       } finally {
         if (mounted) setIsLoading(false);
       }
     };
 
-    verifySession();
+    verify();
     return () => { mounted = false; };
   }, []);
 
   const login = async (emailOrPhone: string, password: string) => {
     try {
-      console.log('[Auth] Login attempt:', emailOrPhone);
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailOrPhone, password }),
-      });
+      const res = await api.post('/auth/login', { emailOrPhone, password });
+      const data = res.data;
 
-      const data = await res.json();
-
-      if (data.success && data.data?.token) {
-        const { token: newToken, user: userData } = data.data;
-        console.log('[Auth] Login success:', userData.email);
-
-        localStorage.setItem('agent_token', newToken);
-        localStorage.setItem('agent_user', JSON.stringify(userData));
-        setToken(newToken);
-        setUser(userData);
-        return { success: true };
+      if (!data.success) {
+        return { success: false, error: data.error || 'Login failed' };
       }
 
-      return { success: false, error: data.error || 'Login failed' };
-    } catch (err: any) {
-      console.error('[Auth] Login error:', err);
-      return { success: false, error: 'Network error. Please check your connection.' };
+      const { accessToken, refreshToken, user: userData } = data.data;
+
+      localStorage.setItem('agent_token', accessToken);
+      if (refreshToken) localStorage.setItem('agent_refresh_token', refreshToken);
+      if (userData) localStorage.setItem('agent_user', JSON.stringify(userData));
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      setToken(accessToken);
+      setUser(userData);
+
+      return { success: true };
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Login failed';
+      return { success: false, error: msg };
     }
   };
 
   const logout = () => {
     localStorage.removeItem('agent_token');
+    localStorage.removeItem('agent_refresh_token');
     localStorage.removeItem('agent_user');
+    delete api.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);
   };
 
   return (
     <AuthContext.Provider value={{
-      user, token, isLoading,
+      user,
+      token,
+      isLoading,
       isAuthenticated: !!user && !!token,
-      login, logout,
+      login,
+      logout
     }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
+};
+
+export { api };

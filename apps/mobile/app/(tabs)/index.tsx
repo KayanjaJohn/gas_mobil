@@ -6,8 +6,8 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/index";
 import { TopBar } from "../../src/components/index";
-import {Card} from "../../src/components/index";
-import {BottomNav} from "../../src/components/index";
+import { Card } from "../../src/components/index";
+import { BottomNav } from "../../src/components/index";
 import { COLORS } from "../../src/utils/constants";
 import { formatDate } from "../../src/utils/formatters";
 import { apiRequest } from "../../src/services/api";
@@ -58,7 +58,6 @@ export default function HomeScreen() {
       if (res.success && res.data) {
         const activeStations = res.data.filter((s: Station) => s.isActive);
         setStations(activeStations);
-        // Set first active station as "nearest" (could use GPS in future)
         if (activeStations.length > 0) {
           setNearestStation(activeStations[0]);
         }
@@ -89,10 +88,6 @@ export default function HomeScreen() {
 
   const color = getColor(percent);
   const status = getStatus(percent);
-  const interpolated = gaugeAnim.interpolate({
-    inputRange: [0, 100],
-    outputRange: ["0deg", "360deg"],
-  });
 
   return (
     <View style={styles.container}>
@@ -230,13 +225,29 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 22 }}>🔥</Text>
             </View>
             <View>
-              <Text style={styles.contactTitle}>Need Help?</Text>
-              <Text style={styles.contactSub}>Our support team is available 24/7</Text>
+              <Text style={styles.contactTitle}>Gasmobil Uganda</Text>
+              <Text style={styles.contactSub}>
+                A member of <Text style={{ color: COLORS.accent }}>Lambula Creative Agency</Text>
+              </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.contactBtn} activeOpacity={0.8}>
-            <Text style={styles.contactBtnText}>📞 Call Support</Text>
-          </TouchableOpacity>
+          <View style={styles.divider} />
+          {[
+            { icon: "📞", text: "+256 785 796 333 · 0776 800 386" },
+            { icon: "✉️", text: "info@gasmobil.ug" },
+            { icon: "📍", text: "Plot 12, Kampala Road, Kampala, Uganda" },
+            { icon: "🌐", text: "www.gasmobil.ug" },
+          ].map((item, i) => (
+            <View key={i} style={styles.contactRow}>
+              <Text style={styles.contactIcon}>{item.icon}</Text>
+              <Text style={styles.contactText}>{item.text}</Text>
+            </View>
+          ))}
+          <View style={styles.divider} />
+          <Text style={styles.copyright}>
+            © {new Date().getFullYear()} Gasmobil Uganda. All rights reserved.{"\n"}
+            Powered by <Text style={{ color: COLORS.accent }}>Lambula Creative Agency</Text>
+          </Text>
         </Card>
 
         <View style={{ height: 100 }} />
@@ -249,54 +260,56 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   scrollContent: { paddingBottom: 20 },
-  heroCard: { marginHorizontal: 16, marginTop: 12, marginBottom: 14, backgroundColor: COLORS.card, borderRadius: 20, overflow: "hidden" },
-  heroInner: { flexDirection: "row", alignItems: "center", padding: 20 },
-  heroText: { flex: 1 },
-  tag: { color: COLORS.accent, fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 8 },
-  heroTitle: { color: "#fff", fontSize: 18, fontWeight: "700", lineHeight: 24, marginBottom: 14 },
-  heroBtn: { backgroundColor: COLORS.accent, alignSelf: "flex-start", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+  heroCard: { backgroundColor: "#0e1828", borderColor: "#16223a", overflow: "hidden" },
+  heroInner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  heroText: { maxWidth: "62%" },
+  tag: { color: COLORS.accent, fontSize: 11, letterSpacing: 1.4, fontWeight: "700" },
+  heroTitle: { color: "#fff", fontSize: 18, fontWeight: "600", lineHeight: 24, marginTop: 8, marginBottom: 14 },
+  heroBtn: { backgroundColor: COLORS.accent, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 20, alignSelf: "flex-start", shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 22 },
   heroBtnText: { color: "#fff", fontWeight: "600", fontSize: 13 },
-  flameArt: { fontSize: 56, marginLeft: 10 },
-  sectionLabel: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginHorizontal: 16, marginTop: 18, marginBottom: 10 },
-  sectionTitle: { fontSize: 13, color: COLORS.text, fontWeight: "600" },
-  viewAll: { color: COLORS.accent, fontSize: 12, fontWeight: "600" },
-  cylinderCard: { marginHorizontal: 16, marginBottom: 14 },
-  cylinderInner: { flexDirection: "row", alignItems: "center", gap: 16, padding: 4 },
-  progressRing: { width: 90, height: 90, borderRadius: 45, borderWidth: 5, alignItems: "center", justifyContent: "center" },
-  progressInner: { alignItems: "center" },
-  percent: { fontSize: 22, fontWeight: "800" },
-  fullLabel: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
+  flameArt: { fontSize: 84, textShadowColor: "rgba(20,132,255,0.45)", textShadowOffset: { width: 0, height: 8 }, textShadowRadius: 25 },
+  sectionLabel: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 22, paddingTop: 18, paddingBottom: 8 },
+  sectionTitle: { fontSize: 11, letterSpacing: 1.5, color: COLORS.muted, fontWeight: "600", textTransform: "uppercase" },
+  viewAll: { fontSize: 12, color: COLORS.accent, fontWeight: "600" },
+  cylinderCard: { backgroundColor: "#1a0e12", borderColor: "#3a1a22" },
+  cylinderInner: { flexDirection: "row", alignItems: "center", gap: 18 },
+  progressRing: { width: 96, height: 96, borderRadius: 48, borderWidth: 6, alignItems: "center", justifyContent: "center" },
+  progressInner: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#120a10", alignItems: "center", justifyContent: "center" },
+  percent: { fontSize: 20, fontWeight: "700" },
+  fullLabel: { fontSize: 9, letterSpacing: 1.5, color: COLORS.muted, marginTop: 4 },
   cylInfo: { flex: 1 },
   cylTitle: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  warn: { fontSize: 12, marginTop: 4, fontWeight: "500" },
-  insp: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
-  actions: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: 16, gap: 10 },
-  action: { width: "47%", backgroundColor: COLORS.card, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: COLORS.border },
-  actionIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  actionLabel: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  deliveryCard: { marginHorizontal: 16, marginBottom: 14 },
+  warn: { fontSize: 12, marginTop: 6, marginBottom: 6 },
+  insp: { fontSize: 11, color: COLORS.muted },
+  actions: { flexDirection: "row", paddingHorizontal: 16, gap: 10 },
+  action: { flex: 1, alignItems: "center", gap: 8, paddingVertical: 14, paddingHorizontal: 6, borderRadius: 16, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border },
+  actionIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  actionLabel: { fontSize: 11, color: "#cfd3dc", textAlign: "center" },
+  deliveryCard: {},
   deliveryInner: { flexDirection: "row", alignItems: "center", gap: 14 },
-  deliveryIconWrap: { width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(20,132,255,0.12)", alignItems: "center", justifyContent: "center" },
-  deliveryIcon: { fontSize: 22 },
+  deliveryIconWrap: { width: 46, height: 46, borderRadius: 23, backgroundColor: "rgba(20,132,255,0.15)", alignItems: "center", justifyContent: "center" },
+  deliveryIcon: { fontSize: 20, color: COLORS.accent },
   deliveryText: { flex: 1 },
   deliveryTitle: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  deliverySub: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
-  bolt: { fontSize: 20 },
-  stationCard: { marginHorizontal: 16, marginBottom: 14 },
-  stationInner: { flexDirection: "row", alignItems: "center", gap: 14 },
-  stationAvatar: { width: 48, height: 48, borderRadius: 14, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center" },
-  stationAvatarText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  deliverySub: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
+  bolt: { fontSize: 18, color: COLORS.accent },
+  stationCard: {},
+  stationInner: { flexDirection: "row", alignItems: "center", gap: 12 },
+  stationAvatar: { width: 46, height: 46, borderRadius: 14, backgroundColor: "rgba(34,197,94,0.15)", alignItems: "center", justifyContent: "center" },
+  stationAvatarText: { color: "#3ddc84", fontWeight: "700", fontSize: 14 },
   stationInfo: { flex: 1 },
   stationName: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  stationSub: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
+  stationSub: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
   stationMeta: { alignItems: "flex-end" },
-  stationKm: { color: COLORS.muted, fontSize: 11 },
-  stationOpen: { color: COLORS.success, fontSize: 11, fontWeight: "600", marginTop: 2 },
-  contactCard: { marginHorizontal: 16, marginBottom: 14 },
-  contactHead: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
-  contactLogo: { width: 44, height: 44, borderRadius: 12, backgroundColor: "rgba(20,132,255,0.12)", alignItems: "center", justifyContent: "center" },
-  contactTitle: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  contactSub: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
-  contactBtn: { backgroundColor: COLORS.accent, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  contactBtnText: { color: "#fff", fontWeight: "600", fontSize: 13 },
+  stationOpen: { fontSize: 10, color: COLORS.success, marginTop: 2 },
+  contactCard: { marginTop: 18, marginBottom: 24 },
+  contactHead: { flexDirection: "row", alignItems: "center", gap: 12 },
+  contactLogo: { width: 46, height: 46, borderRadius: 14, backgroundColor: "#0a1830", borderWidth: 1, borderColor: "#16223a", alignItems: "center", justifyContent: "center" },
+  contactTitle: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  contactSub: { fontSize: 11, color: COLORS.muted, marginTop: 2 },
+  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 14 },
+  contactRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
+  contactIcon: { width: 24, textAlign: "center", color: COLORS.accent, fontSize: 14 },
+  contactText: { fontSize: 12.5, color: "#cfd3dc" },
+  copyright: { fontSize: 10.5, color: COLORS.muted, textAlign: "center", lineHeight: 18 },
 });
