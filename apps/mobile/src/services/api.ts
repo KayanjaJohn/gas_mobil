@@ -20,8 +20,8 @@ interface PendingRequest {
 let isRefreshing = false;
 const refreshSubscribers: PendingRequest[] = [];
 
-const subscribeTokenRefresh = (callback: (token: string) => void) => {
-  refreshSubscribers.push({ resolve: callback, reject: () => {} });
+const subscribeTokenRefresh = (resolveCb: (token: string) => void, rejectCb: (err: any) => void) => {
+  refreshSubscribers.push({ resolve: resolveCb, reject: rejectCb });
 };
 
 const onRefreshed = (token: string) => {
@@ -47,6 +47,7 @@ api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('access_token');
     if (token) {
+      if (!config.headers) config.headers = {} as any;
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -61,6 +62,16 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // If there's no original request (some other error), bail out
+    if (!originalRequest) return Promise.reject(error);
+
+    // Avoid trying to refresh if the failing request was the refresh endpoint itself
+    if (originalRequest.url && originalRequest.url.includes('/auth/refresh')) {
+      // Clear auth data and let caller handle redirect
+      await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -91,7 +102,7 @@ api.interceptors.response.use(
         } catch (refreshError) {
           console.error('[API] Token refresh failed:', refreshError);
           onRefreshFailed(refreshError);
-          // Clear auth data and redirect to login
+          // Clear auth data and reject so callers can redirect to login
           await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
           return Promise.reject(refreshError);
         } finally {
@@ -102,8 +113,11 @@ api.interceptors.response.use(
       // Wait for token refresh to complete, then retry
       return new Promise((resolve, reject) => {
         subscribeTokenRefresh((token: string) => {
+          if (!originalRequest.headers) originalRequest.headers = {};
           originalRequest.headers.Authorization = `Bearer ${token}`;
           resolve(api(originalRequest));
+        }, (err) => {
+          reject(err);
         });
       });
     }
