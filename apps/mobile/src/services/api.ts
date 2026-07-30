@@ -1,48 +1,40 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 if (!API_URL) {
-  throw new Error(
-    '[API] EXPO_PUBLIC_API_URL is not set. Please check your .env file.'
-  );
+  throw new Error('[API] EXPO_PUBLIC_API_URL is not set. Please check your .env file.');
 }
 
 console.log('[API] Initializing with URL:', API_URL);
 
-// Queue for refresh token requests
-interface PendingRequest {
-  resolve: (token: string) => void;
-  reject: (error: any) => void;
-}
-
 let isRefreshing = false;
-const refreshSubscribers: PendingRequest[] = [];
+const refreshSubscribers: Array<(token: string) => void> = [];
+const refreshRejecters: Array<(error: any) => void> = [];
 
 const subscribeTokenRefresh = (resolveCb: (token: string) => void, rejectCb: (err: any) => void) => {
   refreshSubscribers.push({ resolve: resolveCb, reject: rejectCb });
 };
 
 const onRefreshed = (token: string) => {
-  refreshSubscribers.forEach((sub) => sub.resolve(token));
+  refreshSubscribers.forEach((sub) => sub(token));
   refreshSubscribers.length = 0;
+  refreshRejecters.length = 0;
 };
 
 const onRefreshFailed = (error: any) => {
-  refreshSubscribers.forEach((sub) => sub.reject(error));
+  refreshRejecters.forEach((sub) => sub(error));
   refreshSubscribers.length = 0;
+  refreshRejecters.length = 0;
 };
 
-// Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor: Add token to requests
+// Request interceptor
 api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('access_token');
@@ -52,16 +44,15 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor: Handle 401 and token refresh
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const status = error.response?.status;
 
     // If there's no original request (some other error), bail out
     if (!originalRequest) return Promise.reject(error);
@@ -119,50 +110,63 @@ api.interceptors.response.use(
         }, (err) => {
           reject(err);
         });
-      });
+
+        const { accessToken, refreshToken: newRefreshToken } = response.data.data || response.data;
+        await AsyncStorage.setItem('access_token', accessToken);
+        if (newRefreshToken) {
+          await AsyncStorage.setItem('refresh_token', newRefreshToken);
+        }
+
+        onRefreshed(accessToken);
+        originalRequest.headers!.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        console.error('[API] Token refresh failed:', refreshError);
+        onRefreshFailed(refreshError);
+        await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
 
     return Promise.reject(error);
   }
 );
 
-// Type-safe API request function
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
-  message?: string;
 }
 
-export const apiRequest = async <T = any>(
-  method: 'get' | 'post' | 'put' | 'patch' | 'delete',
+export const apiRequest = async <T>(
+  method: 'get' | 'post' | 'put' | 'delete' | 'patch',
   url: string,
   data?: any,
-  retries: number = 2
+  retries = 3
 ): Promise<ApiResponse<T>> => {
-  let lastError: any;
+  let lastError: AxiosError | null = null;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`[API] ${method.toUpperCase()} ${url} (attempt ${attempt}/${retries})`);
-      const response = await api[method]<ApiResponse<T>>(url, data);
-      console.log(`[API] Response:`, response.data);
+      const response = await api.request<ApiResponse<T>>({
+        method,
+        url,
+        data,
+      });
       return response.data;
     } catch (error: any) {
       lastError = error;
       const status = error.response?.status;
       const message = error.response?.data?.error || error.message;
 
-      console.error(
-        `[API] Error on attempt ${attempt}/${retries}: ${status} - ${message}`
-      );
+      console.error(`[API] Error on attempt ${attempt}/${retries}: ${status} - ${message}`);
 
-      // Don't retry on client errors (4xx) except 401 and 429
       if (status && status >= 400 && status < 500 && status !== 401 && status !== 429) {
         throw error;
       }
 
-      // Wait before retrying (exponential backoff)
       if (attempt < retries) {
         const delay = Math.pow(2, attempt - 1) * 1000;
         console.log(`[API] Retrying in ${delay}ms...`);

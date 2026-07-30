@@ -1,112 +1,57 @@
-import { Request, Response } from 'express';
-import bcryptjs from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import AppDataSource from '../config/database';
-import { User } from '../entities/User';
+import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import AppDataSource from "../config/database";
+import { User } from "../entities/User";
+import { generateToken, generateRefreshToken } from "../middleware/auth";
 
 const userRepository = AppDataSource.getRepository(User);
 
-// ── Token generation helper ────────────────────────────────
-const generateTokens = (user: User) => {
-  const jwtSecret = process.env.JWT_SECRET;
-  const refreshSecret = process.env.REFRESH_SECRET;
-
-  if (!jwtSecret || !refreshSecret) {
-    throw new Error('JWT_SECRET and REFRESH_SECRET must be set in environment');
-  }
-
-  const accessToken = jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
-    jwtSecret,
-    { expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as jwt.SignOptions['expiresIn'] }
-  );
-
-  const refreshToken = jwt.sign(
-    { id: user.id },
-    refreshSecret,
-    { expiresIn: (process.env.REFRESH_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'] }
-  );
-
-  return { accessToken, refreshToken };
-};
-
-// ── Refresh token endpoint ─────────────────────────────────
-export const refreshToken = async (req: Request, res: Response) => {
-  try {
-    const { refreshToken: token } = req.body;
-
-    if (!token) {
-      return res.status(401).json({ success: false, error: 'Refresh token required' });
-    }
-
-    const refreshSecret = process.env.REFRESH_SECRET;
-    if (!refreshSecret) {
-      return res.status(500).json({ success: false, error: 'Server configuration error' });
-    }
-
-    const decoded = jwt.verify(token, refreshSecret) as { id: string };
-    const user = await userRepository.findOne({ where: { id: decoded.id } });
-
-    if (!user || !user.isActive) {
-      return res.status(401).json({ success: false, error: 'Invalid refresh token' });
-    }
-
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
-
-    res.json({
-      success: true,
-      data: {
-        token: accessToken,
-        accessToken,
-        refreshToken: newRefreshToken,
-      }
-    });
-  } catch (error: any) {
-    console.error('[Auth] Refresh error:', error.message);
-    res.status(401).json({ success: false, error: 'Invalid or expired refresh token' });
-  }
-};
-
-// ── Register ─────────────────────────────────────────────
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, phone, password } = req.body;
 
     // SECURITY FIX: Force role to customer — never trust client-sent role
-    const role = 'customer';
+    const role = "customer";
 
-    // Validation
     if (!name || !email || !phone || !password) {
-      return res.status(400).json({ success: false, error: 'All fields are required' });
+      return res.status(400).json({
+        success: false,
+        error: "Name, email, phone, and password are required",
+      });
     }
+
     if (password.length < 6) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+      return res.status(400).json({
+        success: false,
+        error: "Password must be at least 6 characters",
+      });
     }
 
     const existingUser = await userRepository.findOne({
-      where: [{ email }, { phone }]
+      where: [{ email }, { phone }],
     });
 
     if (existingUser) {
-      return res.status(400).json({ success: false, error: 'Email or phone already registered' });
+      return res.status(400).json({ success: false, error: "User already exists" });
     }
 
-    const hashedPassword = await bcryptjs.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = userRepository.create({
+    const userData: any = {
       name,
       email,
       phone,
       password: hashedPassword,
       role,
       isActive: true,
-    });
+    };
 
-    await userRepository.save(user);
+    const result = await userRepository.save(userData);
+    const user = Array.isArray(result) ? result[0] : result;
 
-    const { accessToken, refreshToken } = generateTokens(user);
-
-    const { password: _, ...userWithoutPassword } = user;
+    const accessToken = generateToken(user.id, user.email, user.name, user.role);
+    const refreshToken = generateRefreshToken(user.id);
 
     res.status(201).json({
       success: true,
@@ -114,40 +59,56 @@ export const register = async (req: Request, res: Response) => {
         token: accessToken,
         accessToken,
         refreshToken,
-        user: userWithoutPassword,
-      }
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        },
+      },
     });
   } catch (error: any) {
-    console.error('[Auth] Register error:', error);
-    res.status(500).json({ success: false, error: 'Registration failed' });
+    console.error("[REGISTER] ERROR:", error);
+    res.status(500).json({ success: false, error: error.message || "Internal server error" });
   }
 };
 
-// ── Login ──────────────────────────────────────────────────
 export const login = async (req: Request, res: Response) => {
   try {
     const { emailOrPhone, password } = req.body;
 
-    if (!emailOrPhone || !password) {
-      return res.status(400).json({ success: false, error: 'Email/phone and password required' });
+    if (!password || !emailOrPhone) {
+      return res.status(400).json({
+        success: false,
+        error: "Email/phone and password are required",
+      });
     }
 
-    const user = await userRepository.findOne({
-      where: [{ email: emailOrPhone }, { phone: emailOrPhone }]
-    });
+    const isEmail = emailOrPhone.includes("@");
+    const where = isEmail ? { email: emailOrPhone } : { phone: emailOrPhone };
+
+    const user = await userRepository.findOne({ where });
 
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
 
-    const isValidPassword = await bcryptjs.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
 
-    const { accessToken, refreshToken } = generateTokens(user);
+    const accessToken = generateToken(user.id, user.email, user.name, user.role);
+    const refreshToken = generateRefreshToken(user.id);
 
-    const { password: _, ...userWithoutPassword } = user;
+    const userResponse: any = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+    };
 
     res.json({
       success: true,
@@ -155,84 +116,112 @@ export const login = async (req: Request, res: Response) => {
         token: accessToken,
         accessToken,
         refreshToken,
-        user: userWithoutPassword,
-      }
+        user: userResponse,
+      },
     });
   } catch (error: any) {
-    console.error('[Auth] Login error:', error);
-    res.status(500).json({ success: false, error: 'Login failed' });
+    console.error("[LOGIN] ERROR:", error);
+    res.status(500).json({ success: false, error: error.message || "Internal server error" });
   }
 };
 
-// ── PRESERVED: All existing endpoints ──────────────────────
-
-export const verifyToken = async (req: Request, res: Response) => {
+export const verify = async (req: Request, res: Response) => {
   try {
-    const { user } = req as any;
-    const userData = await userRepository.findOne({ where: { id: user.id } });
-    if (!userData) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+    const userId = (req as any).userId;
+    const user = await userRepository.findOneBy({ id: userId });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
     }
-    const { password: _, ...userWithoutPassword } = userData;
-    res.json({ success: true, data: userWithoutPassword });
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        },
+      },
+    });
   } catch (error: any) {
+    console.error("[VERIFY] ERROR:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+export const verifyToken = verify;
 
 export const getCurrentUser = async (req: Request, res: Response) => {
   try {
-    const { user } = req as any;
-    const userData = await userRepository.findOne({
-      where: { id: user.id },
-      relations: ['station']
+    const userId = (req as any).userId;
+    const user = await userRepository.findOne({
+      where: { id: userId },
+      relations: ["station"],
     });
-    if (!userData) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
     }
-    const { password: _, ...userWithoutPassword } = userData;
-    res.json({ success: true, data: userWithoutPassword });
+
+    const userResponse: any = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      station: user.station,
+    };
+
+    res.json({
+      success: true,
+      data: userResponse,
+    });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("[GET CURRENT USER] ERROR:", error);
+    res.status(500).json({ success: false, error: error.message || "Internal server error" });
   }
 };
 
-export const updateProfile = async (req: Request, res: Response) => {
+export const refreshToken = async (req: Request, res: Response) => {
   try {
-    const { user } = req as any;
-    const { name, phone, email } = req.body;
-    const userData = await userRepository.findOne({ where: { id: user.id } });
-    if (!userData) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+    const { refreshToken: token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, error: "Refresh token required" });
     }
-    if (name) userData.name = name;
-    if (phone) userData.phone = phone;
-    if (email) userData.email = email;
-    await userRepository.save(userData);
-    const { password: _, ...userWithoutPassword } = userData;
-    res.json({ success: true, data: userWithoutPassword });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
 
-export const changePassword = async (req: Request, res: Response) => {
-  try {
-    const { user } = req as any;
-    const { currentPassword, newPassword } = req.body;
-    const userData = await userRepository.findOne({ where: { id: user.id } });
-    if (!userData) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+    const refreshSecret = process.env.REFRESH_SECRET;
+    if (!refreshSecret) {
+      return res.status(500).json({ success: false, error: "Server configuration error" });
     }
-    const isValidPassword = await bcryptjs.compare(currentPassword, userData.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+
+    const decoded = jwt.verify(token, refreshSecret) as { userId?: string; id?: string };
+    const userId = decoded.userId || decoded.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: "Invalid token payload" });
     }
-    userData.password = await bcryptjs.hash(newPassword, 12);
-    await userRepository.save(userData);
-    res.json({ success: true, message: 'Password updated successfully' });
+
+    const user = await userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      return res.status(401).json({ success: false, error: "User not found" });
+    }
+
+    const newAccessToken = generateToken(user.id, user.email, user.name, user.role);
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    res.json({
+      success: true,
+      data: {
+        token: newAccessToken,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      },
+    });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(401).json({ success: false, error: "Invalid or expired refresh token" });
   }
 };
 
@@ -240,10 +229,12 @@ export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     const user = await userRepository.findOne({ where: { email } });
+
     if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, error: "User not found" });
     }
-    res.json({ success: true, message: 'Password reset link sent to your email' });
+
+    res.json({ success: true, message: "Password reset instructions sent" });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -251,8 +242,74 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const { token, newPassword } = req.body;
-    res.json({ success: true, message: 'Password reset successful' });
+    const { token, password } = req.body;
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return res.status(500).json({ success: false, error: "Server configuration error" });
+    }
+
+    const decoded = jwt.verify(token, jwtSecret) as { userId?: string; id?: string };
+    const userId = decoded.userId || decoded.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: "Invalid token payload" });
+    }
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    await userRepository.update(userId, { password: hashedPassword } as any);
+
+    res.json({ success: true, message: "Password reset successfully" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: "Invalid or expired token" });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { name, phone } = req.body;
+
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+
+    await userRepository.update(userId, updateData);
+
+    const user = await userRepository.findOne({ where: { id: userId } });
+
+    const userResponse: any = {
+      id: user!.id,
+      name: user!.name,
+      email: user!.email,
+      phone: user!.phone,
+      role: user!.role,
+    };
+
+    res.json({ success: true, data: userResponse });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(400).json({ success: false, error: "Current password is incorrect" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await userRepository.update(userId, { password: hashedPassword } as any);
+
+    res.json({ success: true, message: "Password changed successfully" });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

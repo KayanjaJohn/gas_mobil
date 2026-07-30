@@ -1,32 +1,59 @@
-import { Stack } from "expo-router";
+import React, { useEffect } from "react";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { AuthProvider } from "../src/context/index";
+import { AuthProvider, useAuth } from "../src/context/AuthContext";
+import { View, ActivityIndicator } from "react-native";
+import { COLORS } from "../src/utils/constants";
 
-const ErrorUtils = (global as any).ErrorUtils;
-if (ErrorUtils && typeof ErrorUtils.setGlobalHandler === "function") {
-  const previousHandler = ErrorUtils.getGlobalHandler?.();
-  ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
-    const detail =
-      error && error.stack
-        ? error.stack
-        : error && error.message
-          ? error.message
-          : String(error);
-    console.error("[GlobalError]" + (isFatal ? " (fatal)" : "") + ":\n" + detail);
-    if (previousHandler) previousHandler(error, isFatal);
-  });
+function RootLayoutInner() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === "(tabs)";
+    const inLoginGroup = segments[0] === "login" || segments[0] === "register";
+
+    // Defer navigation to avoid setState-during-render errors
+    const timer = setTimeout(() => {
+      if (!isAuthenticated && inAuthGroup) {
+        router.replace("/login");
+      } else if (isAuthenticated && !inAuthGroup && !inLoginGroup) {
+        router.replace("/(tabs)");
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isLoading]);
+  // NOTE: segments intentionally removed from deps to prevent redirect loops
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+      <StatusBar style="light" />
+    </>
+  );
 }
 
 export default function RootLayout() {
-  console.log('[App] RootLayout mounted');
-
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="light" />
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <RootLayoutInner />
+    </AuthProvider>
   );
 }

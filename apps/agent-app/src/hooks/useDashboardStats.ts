@@ -6,6 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 interface DashboardStats {
   totalOrders: number;
   pendingOrders: number;
+  totalCustomers: number;
   totalDrivers: number;
   totalProducts: number;
   todayRevenue: number;
@@ -17,6 +18,7 @@ export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats>({
     totalOrders: 0,
     pendingOrders: 0,
+    totalCustomers:0,
     totalDrivers: 0,
     totalProducts: 0,
     todayRevenue: 0,

@@ -21,21 +21,41 @@ const STATUS_MAP: Record<string, { label: string; icon: string; done: boolean }>
 
 const TIMELINE_KEYS = ["pending", "picked_up", "in_transit", "delivered"];
 
+interface Order {
+  id: string;
+  status: string;
+  totalAmount: number;
+  deliveryAddress?: string;
+  createdAt: string;
+  deliveries?: Array<{
+    driverName?: string;
+    driverPhone?: string;
+    status?: string;
+  }>;
+}
+
 export default function TrackingScreen() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
-  const [order, setOrder] = useState<any>(null);
+
+  // Single-order tracking state
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Orders list state (when no orderId provided)
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
   const fetchOrder = async () => {
     if (!orderId) {
-      setError("No order ID provided");
       setLoading(false);
       return;
     }
+    setLoading(true);
+    setError(null);
     try {
-      const res = await apiRequest("get", `/orders/${orderId}`);
+      const res = await apiRequest<{ success: boolean; data: Order; error?: string }>("get", `/orders/${orderId}`);
       if (res.success && res.data) {
         setOrder(res.data);
         setError(null);
@@ -50,11 +70,31 @@ export default function TrackingScreen() {
     }
   };
 
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const res = await apiRequest<{ success: boolean; data: Order[]; error?: string }>("get", "/orders");
+      if (res.success && res.data) {
+        // Only show non-delivered, non-cancelled orders for tracking
+        const active = res.data.filter((o: Order) => o.status !== "delivered" && o.status !== "cancelled");
+        setOrders(active);
+      }
+    } catch (err: any) {
+      console.error("[Tracking] Fetch orders error:", err);
+    } finally {
+      setOrdersLoading(false);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchOrder();
-    // Poll every 10 seconds
-    const interval = setInterval(fetchOrder, 10000);
-    return () => clearInterval(interval);
+    if (orderId) {
+      fetchOrder();
+      const interval = setInterval(fetchOrder, 10000);
+      return () => clearInterval(interval);
+    } else {
+      fetchOrders();
+    }
   }, [orderId]);
 
   const getTimeline = () => {
@@ -74,59 +114,128 @@ export default function TrackingScreen() {
 
   const timeline = getTimeline();
 
+  const navigateToOrderTracking = (id: string) => {
+    router.push(`/tracking?orderId=${id}`);
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <TopBar title="Live Tracking" showBack onBack={() => router.push("/(tabs)")} />
+      <TopBar title="Live Tracking" onBack={() => router.push("/(tabs)")} />
 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
         {/* Map Mock */}
         <View style={styles.map}>
           <View style={styles.path} />
           <View style={[styles.dot, styles.dotStart]} />
           <View style={[styles.dot, styles.dotEnd]} />
+          <Text style={{ position: "absolute", bottom: 10, left: 10, color: COLORS.muted, fontSize: 10 }}>
+            🗺️ Map view — coming soon
+          </Text>
         </View>
 
-        <Card>
-          {loading ? (
-            <ActivityIndicator color={COLORS.accent} style={{ marginVertical: 20 }} />
-          ) : error ? (
-            <View style={{ paddingVertical: 20, alignItems: "center" }}>
-              <Text style={{ color: COLORS.danger, fontSize: 14 }}>{error}</Text>
-              <TouchableOpacity onPress={fetchOrder} style={{ marginTop: 12 }}>
-                <Text style={{ color: COLORS.accent, fontSize: 14 }}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.orderId}>Order #{order?.id?.slice(0, 12)?.toUpperCase() || "GM-UNKNOWN"}</Text>
-              {order?.deliveries?.[0]?.driverName && (
+        {loading ? (
+          <View style={{ padding: 40, alignItems: "center" }}>
+            <ActivityIndicator size="large" color={COLORS.accent} />
+            <Text style={{ color: COLORS.muted, marginTop: 12 }}>Loading...</Text>
+          </View>
+        ) : error ? (
+          <View style={{ padding: 40, alignItems: "center" }}>
+            <Text style={{ color: COLORS.danger, fontSize: 14, marginBottom: 16 }}>{error}</Text>
+            <TouchableOpacity onPress={fetchOrder} style={styles.retryBtn}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : orderId && order ? (
+          <>
+            <Card style={{ marginHorizontal: 16, marginBottom: 14 }}>
+              <Text style={styles.orderId}>Order #{order.id?.slice(0, 12)?.toUpperCase() || "GM-UNKNOWN"}</Text>
+              {order.deliveries?.[0]?.driverName && (
                 <Text style={styles.driver}>
                   Driver: {order.deliveries[0].driverName} · {order.deliveries[0].vehicleNumber || "Vehicle"}
                 </Text>
               )}
-              <Text style={[styles.statusBadge, { color: order?.status === "cancelled" ? COLORS.danger : COLORS.success }]}>
-                Status: {(order?.status || "pending").replace("_", " ").toUpperCase()}
+              <Text style={[styles.statusBadge, { color: order.status === "cancelled" ? COLORS.danger : COLORS.success }]}>
+                Status: {(order.status || "pending").replace("_", " ").toUpperCase()}
               </Text>
+            </Card>
 
+            <Card style={{ marginHorizontal: 16 }}>
               <View style={styles.timeline}>
                 {timeline.map((item, i) => (
                   <View key={i} style={styles.tl}>
                     <View style={[styles.tlIcon, item.done && styles.tlIconDone]}>
-                      <Text style={{ fontSize: 12, color: item.done ? "#fff" : COLORS.muted }}>{item.icon}</Text>
+                      <Text style={{ fontSize: 14 }}>{item.icon}</Text>
                     </View>
                     <View style={styles.tlText}>
                       <Text style={styles.tlTitle}>{item.status}</Text>
                       <Text style={styles.tlTime}>{item.time}</Text>
                     </View>
-                    {i < timeline.length - 1 && <View style={[styles.tlLine, item.done && styles.tlLineDone]} />}
+                    {i < timeline.length - 1 && (
+                      <View style={[styles.tlLine, item.done && styles.tlLineDone]} />
+                    )}
                   </View>
                 ))}
               </View>
-            </>
-          )}
-        </Card>
+            </Card>
+          </>
+        ) : (
+          /* No orderId — show list of active orders */
+          <View style={{ marginHorizontal: 16 }}>
+            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600", marginBottom: 12 }}>
+              📦 Active Orders
+            </Text>
+            {ordersLoading ? (
+              <ActivityIndicator size="small" color={COLORS.accent} />
+            ) : orders.length === 0 ? (
+              <Card>
+                <Text style={{ color: COLORS.muted, textAlign: "center", padding: 20 }}>
+                  No active orders to track.
+Place an order first!
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/order")}
+                  style={[styles.retryBtn, { marginTop: 12, alignSelf: "center" }]}
+                >
+                  <Text style={styles.retryText}>Place Order →</Text>
+                </TouchableOpacity>
+              </Card>
+            ) : (
+              orders.map((o) => (
+                <TouchableOpacity
+                  key={o.id}
+                  onPress={() => navigateToOrderTracking(o.id)}
+                  activeOpacity={0.8}
+                >
+                  <Card style={{ marginBottom: 10 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <View>
+                        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>
+                          Order #{o.id?.slice(0, 8)?.toUpperCase()}
+                        </Text>
+                        <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 4 }}>
+                          {(o.status || "pending").replace("_", " ").toUpperCase()}
+                        </Text>
+                        {o.deliveryAddress && (
+                          <Text style={{ color: COLORS.muted, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                            📍 {o.deliveryAddress}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={{ color: COLORS.accent, fontWeight: "700" }}>
+                        UGX {o.totalAmount?.toLocaleString()}
+                      </Text>
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
       </ScrollView>
-      <View style={{ height: 100 }} />
+
       <BottomNav />
     </View>
   );
@@ -151,4 +260,6 @@ const styles = StyleSheet.create({
   tlTime: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   tlLine: { position: "absolute", left: 15, top: 32, bottom: 0, width: 2, backgroundColor: "#1a2236" },
   tlLineDone: { backgroundColor: COLORS.accent },
+  retryBtn: { backgroundColor: COLORS.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
+  retryText: { color: "#fff", fontWeight: "600" },
 });

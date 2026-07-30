@@ -1,11 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import TopBar from "../src/components/TopBar";
 import BottomNav from "../src/components/BottomNav";
-import { STATIONS, COLORS } from "../src/utils/constants";
+import { COLORS } from "../src/utils/constants";
+import { apiRequest } from "../src/services/api";
+
+interface Station {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  region: string;
+  isActive: boolean;
+  latitude: number;
+  longitude: number;
+}
 
 const REGIONS = ["All", "Central", "Western", "Eastern", "Northern"];
 
@@ -13,12 +25,36 @@ export default function StationsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [region, setRegion] = useState("All");
+  const [stations, setStations] = useState<Station[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = STATIONS.filter((s) => {
-    const matchesRegion = region === "All" || s.region === region;
-    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.city.toLowerCase().includes(search.toLowerCase());
+  useEffect(() => {
+    fetchStations();
+  }, []);
+
+  const fetchStations = async () => {
+    setLoading(true);
+    try {
+      const res = await apiRequest<{ success: boolean; data: Station[] }>("get", "/stations");
+      if (res.success && res.data) {
+        setStations(res.data);
+      }
+    } catch (err: any) {
+      console.error("[Stations] Fetch error:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = stations.filter((s) => {
+    const matchesRegion = region === "All" || (s.region || "").toLowerCase() === region.toLowerCase();
+    const matchesSearch = s.name?.toLowerCase().includes(search.toLowerCase()) || 
+                          s.city?.toLowerCase().includes(search.toLowerCase()) ||
+                          s.address?.toLowerCase().includes(search.toLowerCase());
     return matchesRegion && matchesSearch;
   });
+
+  const activeCount = stations.filter(s => s.isActive).length;
 
   return (
     <View style={styles.container}>
@@ -28,8 +64,8 @@ export default function StationsScreen() {
         <View style={styles.netsum}>
           <Text style={styles.netsumLabel}>🔥 NETWORK SUMMARY</Text>
           <View style={styles.netsumNums}>
-            <View><Text style={styles.netsumBig}>62</Text><Text style={styles.netsumSmall}>Partner Stations</Text></View>
-            <View><Text style={styles.netsumBig}>5,215</Text><Text style={styles.netsumSmall}>Cylinders Sold (30d)</Text></View>
+            <View><Text style={styles.netsumBig}>{activeCount}</Text><Text style={styles.netsumSmall}>Active Stations</Text></View>
+            <View><Text style={styles.netsumBig}>{stations.length}</Text><Text style={styles.netsumSmall}>Total Stations</Text></View>
           </View>
         </View>
 
@@ -52,28 +88,38 @@ export default function StationsScreen() {
           ))}
         </ScrollView>
 
-        <Text style={styles.count}>Showing {filtered.length} of {STATIONS.length} stations</Text>
-
-        <View style={{ paddingHorizontal: 16, paddingBottom: 100, gap: 10 }}>
-          {filtered.map((station) => (
-            <View key={station.id} style={styles.station}>
-              <View style={[styles.avatar, { backgroundColor: station.isActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)" }]}>
-                <Text style={[styles.avatarText, { color: station.isActive ? "#3ddc84" : "#ff6b6b" }]}>{station.name.slice(0, 2).toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={styles.stationName}>{station.name}</Text>
-                  <View style={[styles.pill, { backgroundColor: station.isActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)" }]}>
-                    <Text style={[styles.pillText, { color: station.isActive ? "#34d399" : "#ff6b6b" }]}>{station.isActive ? "OPEN" : "CLOSED"}</Text>
+        {loading ? (
+          <ActivityIndicator color={COLORS.accent} style={{ marginTop: 40 }} />
+        ) : (
+          <>
+            <Text style={styles.count}>Showing {filtered.length} of {stations.length} stations</Text>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 100, gap: 10 }}>
+              {filtered.map((station) => (
+                <View key={station.id} style={styles.station}>
+                  <View style={[styles.avatar, { backgroundColor: station.isActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)" }]}>
+                    <Text style={[styles.avatarText, { color: station.isActive ? "#3ddc84" : "#ff6b6b" }]}>{station.name?.slice(0, 2)?.toUpperCase()}</Text>
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text style={styles.stationName}>{station.name}</Text>
+                      <View style={[styles.pill, { backgroundColor: station.isActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)" }]}>
+                        <Text style={[styles.pillText, { color: station.isActive ? "#34d399" : "#ff6b6b" }]}>{station.isActive ? "OPEN" : "CLOSED"}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.stationSub}>{station.city || station.address}</Text>
+                    <Text style={styles.stationSold}>{station.region || "Uganda"}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7}><Text>📍</Text></TouchableOpacity>
                 </View>
-                <Text style={styles.stationSub}>{station.city} • {station.region} Region</Text>
-                <Text style={styles.stationSold}>109 sold (30d)</Text>
-              </View>
-              <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7}><Text>📍</Text></TouchableOpacity>
+              ))}
+              {filtered.length === 0 && (
+                <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                  <Text style={{ color: COLORS.muted }}>No stations found</Text>
+                </View>
+              )}
             </View>
-          ))}
-        </View>
+          </>
+        )}
       </ScrollView>
       <BottomNav />
     </View>

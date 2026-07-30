@@ -1,17 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Switch,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { initializeSocket, disconnectSocket, onNewOrder } from '../services/socketService';
 import api from '../services/api';
 
-interface DriverStats {
+interface Order {
+  id: string;
+  status: string;
+  deliveryAddress: string;
+  totalAmount: number;
+  createdAt: string;
+  user?: { name: string; phone: string };
+}
+
+interface Stats {
   todayOrders: number;
   todayCompleted: number;
   todayEarnings: number;
@@ -19,176 +23,169 @@ interface DriverStats {
 }
 
 export default function HomeScreen() {
-  const { user, updateStatus } = useAuth();
-  const [isOnline, setIsOnline] = useState(user?.driverStatus === 'online');
-  const [stats, setStats] = useState<DriverStats>({
-    todayOrders: 0,
-    todayCompleted: 0,
-    todayEarnings: 0,
-    totalDeliveries: 0,
-  });
-  const [loadingStats, setLoadingStats] = useState(false);
+  const navigation = useNavigation();
+  const { user, logout } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [stats, setStats] = useState<Stats>({ todayOrders: 0, todayCompleted: 0, todayEarnings: 0, totalDeliveries: 0 });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    setupSocket();
-    fetchStats();
-    return () => {
-      disconnectSocket();
-    };
+  const fetchData = useCallback(async () => {
+    try {
+      const [ordersRes, statsRes] = await Promise.all([
+        api.get('/driver/orders'),
+        api.get('/driver/stats'),
+      ]);
+
+      if (ordersRes.data?.success) {
+        setOrders(ordersRes.data.data || []);
+      }
+      if (statsRes.data?.success) {
+        setStats(statsRes.data.data || { todayOrders: 0, todayCompleted: 0, todayEarnings: 0, totalDeliveries: 0 });
+      }
+    } catch (err: any) {
+      console.error('[Home] Fetch error:', err.message);
+    }
   }, []);
 
-  const setupSocket = async () => {
-    await initializeSocket();
-    onNewOrder((data) => {
-      Alert.alert('New Order!', `Order #${data.orderId} has been assigned to you`);
-    });
+  useEffect(() => {
+    fetchData().then(() => setLoading(false));
+  }, [fetchData]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
   };
 
-  const fetchStats = async () => {
-    setLoadingStats(true);
-    try {
-      const res = await api.get('/driver/stats');
-      if (res.data.success) {
-        setStats(res.data.data);
-      }
-    } catch (error) {
-      console.error('Fetch stats error:', error);
-    } finally {
-      setLoadingStats(false);
-    }
-  };
-
-  const toggleOnlineStatus = async () => {
-    const newStatus = isOnline ? 'offline' : 'online';
-    try {
-      await updateStatus(newStatus);
-      setIsOnline(!isOnline);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update status');
-    }
-  };
+  const pendingOrders = orders.filter(o => ['confirmed', 'driver_assigned', 'picked_up'].includes(o.status));
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0]}</Text>
-        <Text style={styles.vehicle}>{user?.vehicleNumber} • {user?.vehicleType}</Text>
+        <View>
+          <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0] || 'Driver'}</Text>
+          <Text style={styles.subtitle}>{user?.station?.name || 'GasMobil Driver'}</Text>
+        </View>
+        <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile' as never)}>
+          <Text style={styles.profileText}>{user?.name?.charAt(0)?.toUpperCase() || 'D'}</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.statusCard}>
-        <Text style={styles.statusLabel}>You are currently</Text>
-        <Text style={[styles.statusText, isOnline ? styles.online : styles.offline]}>
-          {isOnline ? 'ONLINE' : 'OFFLINE'}
-        </Text>
-        <Switch
-          value={isOnline}
-          onValueChange={toggleOnlineStatus}
-          trackColor={{ false: '#767577', true: '#41f1b6' }}
-          thumbColor={isOnline ? '#fff' : '#f4f3f4'}
-        />
-        <Text style={styles.statusHint}>
-          {isOnline ? 'You will receive new orders' : 'You will not receive orders'}
-        </Text>
-      </View>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.todayOrders}</Text>
+            <Text style={styles.statLabel}>Today's Orders</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.todayCompleted}</Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>UGX {stats.todayEarnings.toLocaleString()}</Text>
+            <Text style={styles.statLabel}>Earnings</Text>
+          </View>
+        </View>
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.todayOrders}</Text>
-          <Text style={styles.statLabel}>Today's Orders</Text>
+        {/* Quick Actions */}
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Earnings' as never)}>
+            <Text style={styles.actionIcon}>💰</Text>
+            <Text style={styles.actionText}>Earnings</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Profile' as never)}>
+            <Text style={styles.actionIcon}>⚙️</Text>
+            <Text style={styles.actionText}>Settings</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.todayCompleted}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>UGX {stats.todayEarnings.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Earnings</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.totalDeliveries}</Text>
-          <Text style={styles.statLabel}>Total Deliveries</Text>
-        </View>
-      </View>
+
+        {/* Pending Orders */}
+        <Text style={styles.sectionTitle}>Pending Orders ({pendingOrders.length})</Text>
+        {loading ? (
+          <ActivityIndicator color="#F59E0B" style={{ marginTop: 20 }} />
+        ) : pendingOrders.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyText}>No pending orders</Text>
+          </View>
+        ) : (
+          pendingOrders.map(order => (
+            <TouchableOpacity
+              key={order.id}
+              style={styles.orderCard}
+              onPress={() => navigation.navigate('OrderDetail' as never, { orderId: order.id } as never)}
+            >
+              <View style={styles.orderHeader}>
+                <Text style={styles.orderId}>Order #{order.id.slice(0, 8)}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+                  <Text style={styles.statusText}>{order.status.replace('_', ' ')}</Text>
+                </View>
+              </View>
+              <Text style={styles.orderAddress}>📍 {order.deliveryAddress}</Text>
+              <Text style={styles.orderCustomer}>👤 {order.user?.name || 'Customer'}</Text>
+              <Text style={styles.orderAmount}>UGX {order.totalAmount?.toLocaleString() || '0'}</Text>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
     </View>
   );
 }
 
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'confirmed': return 'rgba(59,130,246,0.2)';
+    case 'driver_assigned': return 'rgba(245,158,11,0.2)';
+    case 'picked_up': return 'rgba(139,92,246,0.2)';
+    case 'in_transit': return 'rgba(6,182,212,0.2)';
+    case 'delivered': return 'rgba(34,197,94,0.2)';
+    default: return 'rgba(148,163,184,0.2)';
+  }
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-  },
+  container: { flex: 1, backgroundColor: '#0B1120' },
   header: {
-    marginBottom: 24,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
   },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+  greeting: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  subtitle: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
+  profileBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#F59E0B',
+    alignItems: 'center', justifyContent: 'center',
   },
-  vehicle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  statusCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  statusText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginVertical: 8,
-  },
-  online: {
-    color: '#41f1b6',
-  },
-  offline: {
-    color: '#ff7782',
-  },
-  statusHint: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 8,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
+  profileText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
   statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    width: '47%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    flex: 1, backgroundColor: '#1E293B', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#334155', alignItems: 'center',
   },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#7380ec',
+  statNumber: { fontSize: 18, fontWeight: '700', color: '#F59E0B' },
+  statLabel: { fontSize: 11, color: '#94A3B8', marginTop: 4 },
+  actionsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
+  actionBtn: {
+    flex: 1, backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#334155', alignItems: 'center',
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+  actionIcon: { fontSize: 24, marginBottom: 6 },
+  actionText: { color: '#fff', fontSize: 13, fontWeight: '500' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#fff', paddingHorizontal: 20, marginBottom: 12 },
+  emptyBox: { paddingHorizontal: 20, paddingVertical: 30, alignItems: 'center' },
+  emptyText: { color: '#64748B', fontSize: 14 },
+  orderCard: {
+    backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
+    marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#334155',
   },
+  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  orderId: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusText: { color: '#fff', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  orderAddress: { color: '#94A3B8', fontSize: 13, marginBottom: 4 },
+  orderCustomer: { color: '#94A3B8', fontSize: 13, marginBottom: 4 },
+  orderAmount: { color: '#F59E0B', fontSize: 14, fontWeight: '700' },
 });
