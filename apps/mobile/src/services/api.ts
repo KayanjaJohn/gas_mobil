@@ -13,9 +13,8 @@ let isRefreshing = false;
 const refreshSubscribers: Array<(token: string) => void> = [];
 const refreshRejecters: Array<(error: any) => void> = [];
 
-const subscribeTokenRefresh = (onSuccess: (token: string) => void, onError: (error: any) => void) => {
-  refreshSubscribers.push(onSuccess);
-  refreshRejecters.push(onError);
+const subscribeTokenRefresh = (resolveCb: (token: string) => void, rejectCb: (err: any) => void) => {
+  refreshSubscribers.push({ resolve: resolveCb, reject: rejectCb });
 };
 
 const onRefreshed = (token: string) => {
@@ -40,6 +39,7 @@ api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('access_token');
     if (token) {
+      if (!config.headers) config.headers = {} as any;
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -54,36 +54,61 @@ api.interceptors.response.use(
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
     const status = error.response?.status;
 
-    if (status === 401 && !originalRequest._retry) {
+    // If there's no original request (some other error), bail out
+    if (!originalRequest) return Promise.reject(error);
+
+    // Avoid trying to refresh if the failing request was the refresh endpoint itself
+    if (originalRequest.url && originalRequest.url.includes('/auth/refresh')) {
+      // Clear auth data and let caller handle redirect
+      await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+      return Promise.reject(error);
+    }
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      if (isRefreshing) {
-        // Wait for refresh to complete, then retry
-        return new Promise((resolve, reject) => {
-          subscribeTokenRefresh(
-            (token: string) => {
-              originalRequest.headers!.Authorization = `Bearer ${token}`;
-              resolve(api(originalRequest));
-            },
-            (err: any) => {
-              reject(err);
-            }
-          );
-        });
+      if (!isRefreshing) {
+        isRefreshing = true;
+
+        try {
+          const refreshToken = await AsyncStorage.getItem('refresh_token');
+          if (!refreshToken) {
+            throw new Error('No refresh token available');
+          }
+
+          console.log('[API] Refreshing token...');
+          const response = await axios.post(`${API_URL}/auth/refresh`, {
+            refreshToken,
+          });
+
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+          await AsyncStorage.setItem('access_token', accessToken);
+          if (newRefreshToken) {
+            await AsyncStorage.setItem('refresh_token', newRefreshToken);
+          }
+
+          api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+          onRefreshed(accessToken);
+          console.log('[API] Token refreshed successfully');
+        } catch (refreshError) {
+          console.error('[API] Token refresh failed:', refreshError);
+          onRefreshFailed(refreshError);
+          // Clear auth data and reject so callers can redirect to login
+          await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
       }
 
-      isRefreshing = true;
-
-      try {
-        const refreshToken = await AsyncStorage.getItem('refresh_token');
-
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        console.log('[API] Refreshing token...');
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-          refreshToken,
+      // Wait for token refresh to complete, then retry
+      return new Promise((resolve, reject) => {
+        subscribeTokenRefresh((token: string) => {
+          if (!originalRequest.headers) originalRequest.headers = {};
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          resolve(api(originalRequest));
+        }, (err) => {
+          reject(err);
         });
 
         const { accessToken, refreshToken: newRefreshToken } = response.data.data || response.data;
