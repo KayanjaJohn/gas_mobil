@@ -12,18 +12,28 @@ function RootLayoutInner() {
 
   useEffect(() => {
     if (isLoading) return;
+
     const inAuthGroup = segments[0] === "(tabs)";
-    if (!isAuthenticated && inAuthGroup) {
-      router.replace("/login");
-    } else if (isAuthenticated && !inAuthGroup) {
-      router.replace("/(tabs)");
-    }
-  }, [isAuthenticated, isLoading, segments]);
+    const inLoginGroup = segments[0] === "login" || segments[0] === "register";
+
+    // Defer navigation to avoid setState-during-render errors
+    const timer = setTimeout(() => {
+      if (!isAuthenticated && inAuthGroup) {
+        router.replace("/login");
+      } else if (isAuthenticated && !inAuthGroup && !inLoginGroup) {
+        router.replace("/(tabs)");
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isLoading]);
+  // NOTE: segments intentionally removed from deps to prevent redirect loops
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -31,15 +41,9 @@ function RootLayoutInner() {
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
-        <Stack.Screen name="order" options={{ headerShown: false }} />
-        <Stack.Screen name="order-summary" options={{ headerShown: false }} />
-        <Stack.Screen name="tracking" options={{ headerShown: false }} />
-        <Stack.Screen name="accessories" options={{ headerShown: false }} />
-        <Stack.Screen name="stations" options={{ headerShown: false }} />
-        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="light" />
     </>

@@ -1,15 +1,16 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// IMPORTANT: Change this to your computer's actual IP address
-// Find it by running `ipconfig` (Windows) or `ifconfig` (Mac/Linux)
-// Example: 'http://192.168.1.100:5000/api'
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.43.124:5000/api';
+// IMPORTANT: Set EXPO_PUBLIC_API_URL in your .env file
+// Example: EXPO_PUBLIC_API_URL=http://192.168.1.100:5000/api
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-console.log('[API] Initializing with URL:', API_URL);
+if (!API_URL) {
+  console.warn('[API] EXPO_PUBLIC_API_URL not set. Falling back to localhost.');
+}
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL || 'http://localhost:5000/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -36,12 +37,10 @@ api.interceptors.response.use(
     const apiError = error.response?.data?.error;
 
     if (status === 401) {
-      console.log('[API] 401 Unauthorized - clearing token');
       await AsyncStorage.removeItem('driver_token');
       await AsyncStorage.removeItem('driver_user');
     }
 
-    // Enhance error with API message
     if (apiError) {
       error.message = apiError;
     }

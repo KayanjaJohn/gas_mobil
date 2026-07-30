@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { apiRequest } from '../services/api';
+import axios from 'axios';
 import { User } from '../types';
 
 interface LoginCredentials {
@@ -69,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Verify token with API. If verify fails and we have a refresh token, attempt a refresh once.
+        console.log('[Auth] Verifying token with API...');
         try {
           const res = await apiRequest<{ success: boolean; data: User }>('get', '/auth/me');
           if (res.success && res.data) {
@@ -80,12 +83,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (verifyError: any) {
           const status = verifyError?.response?.status;
           console.warn('[Auth] Token verification failed | status:', status);
-          if (status === 401 || status === 404 || status === 403) {
+
+          // If we have a refresh token, attempt to refresh and re-verify once
+          const refreshToken = await AsyncStorage.getItem('refresh_token');
+          if ((status === 401 || status === 403) && refreshToken) {
+            try {
+              console.log('[Auth] Attempting refresh token during hydration...');
+              const refreshResp = await axios.post(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/refresh`, { refreshToken });
+              const data = refreshResp.data?.data || {};
+              const newAccess = data.accessToken || data.token;
+              const newRefresh = data.refreshToken || data.refreshToken;
+              if (newAccess) {
+                await AsyncStorage.setItem('access_token', newAccess);
+                if (newRefresh) await AsyncStorage.setItem('refresh_token', newRefresh);
+                // Try to verify again using apiRequest which will now pick up the stored access_token
+                const retry = await apiRequest<{ success: boolean; data: User }>('get', '/auth/me');
+                if (retry.success && retry.data) {
+                  console.log('[Auth] Token refreshed and verified | user:', retry.data.email);
+                  setUser(retry.data);
+                } else {
+                  throw new Error('Re-verify failed after refresh');
+                }
+              } else {
+                throw new Error('Refresh response missing access token');
+              }
+            } catch (refreshErr) {
+              console.error('[Auth] Refresh during hydration failed:', refreshErr);
+              await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+              setUser(null);
+            }
+          } else if (status === 404) {
+            // user deleted
+            console.log('[Auth] User not found — clearing session');
             await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
             setUser(null);
           } else {
-            // Network error — use cached user
-            console.warn('[Auth] Network error — using cached user');
+            // Network error — use cached user but it may be stale
+            console.warn('[Auth] Network error — using cached user (may be stale)');
             const parsedUser = JSON.parse(storedUser);
             setUser(parsedUser);
           }
@@ -94,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('[Auth] Hydration error:', err);
       } finally {
         if (mounted) {
+          console.log('[Auth] Hydration complete, isLoading=false');
           setIsLoading(false);
           setIsReady(true);
         }
@@ -106,12 +141,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Route protection
   useEffect(() => {
     if (!isReady || isLoading) return;
+
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
     console.log('[Auth] Route check | auth:', isAuthenticated, '| inAuth:', inAuthGroup);
 
     if (!isAuthenticated && !inAuthGroup) {
+      console.log('[Auth] → Redirecting to /login');
       router.replace('/login');
     } else if (isAuthenticated && inAuthGroup) {
+      console.log('[Auth] → Redirecting to /(tabs)');
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, isLoading, isReady, segments, router]);

@@ -3,148 +3,169 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
 interface Station {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
+ id: string;
+ name: string;
+ address: string;
+ city: string;
 }
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  role: string;
-  stationId?: string;
-  station?: Station | null;
-  status?: string;
-  vehicleNumber?: string;
+ id: string;
+ name: string;
+ email: string;
+ phone?: string;
+ role: string;
+ stationId?: string;
+ station?: Station | null;
+ status?: string;
+ vehicleNumber?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  login: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>;
+ user: User | null;
+ token: string | null;
+ isLoading: boolean;
+ login: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
+ logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// FIX: Safe default context value
+const AuthContext = createContext<AuthContextType>({
+ user: null,
+ token: null,
+ isLoading: true,
+ login: async () => ({ success: false, error: 'AuthProvider not mounted' }),
+ logout: async () => {},
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+ const [user, setUser] = useState<User | null>(null);
+ const [token, setToken] = useState<string | null>(null);
+ const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
+ useEffect(() => {
+ let mounted = true;
 
-    const verifySession = async () => {
-      try {
-        const storedToken = await AsyncStorage.getItem('driver_token');
-        console.log('[Auth] Hydrating session, token exists:', !!storedToken);
+ const verifySession = async () => {
+ try {
+ const storedToken = await AsyncStorage.getItem('driver_token');
+ if (__DEV__) console.log('[Auth] Hydrating session, token exists:', !!storedToken);
 
-        if (!storedToken) {
-          if (mounted) {
-            setUser(null);
-            setToken(null);
-            setIsLoading(false);
-          }
-          return;
-        }
+ if (!storedToken) {
+ if (mounted) {
+ setUser(null);
+ setToken(null);
+ setIsLoading(false);
+ }
+ return;
+ }
 
-        try {
-          const res = await api.get('/auth/me', {
-            headers: { Authorization: `Bearer ${storedToken}` }
-          });
+ try {
+ const res = await api.get('/auth/me', {
+ headers: { Authorization: `Bearer ${storedToken}` }
+ });
 
-          if (res.data?.success && res.data?.data) {
-            const userData = res.data.data;
-            console.log('[Auth] Token valid, user:', userData.email);
-            if (mounted) {
-              setUser(userData);
-              setToken(storedToken);
-              await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
-            }
-          } else {
-            throw new Error('Invalid response');
-          }
-        } catch (verifyErr: any) {
-          console.log('[Auth] Token verification failed:', verifyErr.message);
-          await AsyncStorage.removeItem('driver_token');
-          await AsyncStorage.removeItem('driver_user');
-          if (mounted) {
-            setUser(null);
-            setToken(null);
-          }
-        }
-      } catch (err) {
-        console.error('[Auth] Session hydration error:', err);
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+ if (res.data?.success && res.data?.data) {
+ const userData = res.data.data;
 
-    verifySession();
-    return () => { mounted = false; };
-  }, []);
+ // FIX: Role gate — reject non-drivers
+ if (userData.role !== 'driver') {
+   throw new Error('This app is for drivers only');
+ }
 
-  const login = async (emailOrPhone: string, password: string) => {
-    try {
-      console.log('[Auth] Login attempt:', emailOrPhone);
+ if (__DEV__) console.log('[Auth] Token valid, user:', userData.email);
+ if (mounted) {
+ setUser(userData);
+ setToken(storedToken);
+ await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
+ }
+ } else {
+ throw new Error('Invalid response');
+ }
+ } catch (verifyErr: any) {
+ if (__DEV__) console.log('[Auth] Token verification failed:', verifyErr.message);
+ await AsyncStorage.removeItem('driver_token');
+ await AsyncStorage.removeItem('driver_user');
+ if (mounted) {
+ setUser(null);
+ setToken(null);
+ }
+ }
+ } catch (err) {
+ console.error('[Auth] Session hydration error:', err);
+ } finally {
+ if (mounted) {
+ setIsLoading(false);
+ }
+ }
+ };
 
-      const res = await api.post('/auth/login', { 
-        emailOrPhone: emailOrPhone.trim(), 
-        password 
-      });
+ verifySession();
+ return () => { mounted = false; };
+ }, []);
 
-      if (res.data?.success && res.data?.data?.token) {
-        const { token: newToken, user: userData } = res.data.data;
-        console.log('[Auth] Login success:', userData.email);
+ const login = async (emailOrPhone: string, password: string) => {
+ try {
+ if (__DEV__) console.log('[Auth] Login attempt:', emailOrPhone);
 
-        await AsyncStorage.setItem('driver_token', newToken);
-        await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
-        setToken(newToken);
-        setUser(userData);
-        return { success: true };
-      }
+ const res = await api.post('/auth/login', {
+ emailOrPhone: emailOrPhone.trim(),
+ password
+ });
 
-      return { success: false, error: res.data?.error || 'Login failed' };
-    } catch (error: any) {
-      console.error('[Auth] Login error:', error.message, error.response?.data);
+ if (res.data?.success && res.data?.data?.token) {
+ const { token: newToken, refreshToken, user: userData } = res.data.data;
 
-      const apiError = error?.response?.data?.error;
-      const status = error?.response?.status;
+ // FIX: Role gate — only drivers allowed
+ if (userData.role !== 'driver') {
+   return { success: false, error: 'This app is for drivers only' };
+ }
 
-      if (status === 429) {
-        return { success: false, error: 'Too many attempts. Please wait 15 minutes and try again.' };
-      }
-      if (apiError) {
-        return { success: false, error: apiError };
-      }
+ if (__DEV__) console.log('[Auth] Login success:', userData.email);
 
-      return { success: false, error: 'Network error. Please check your connection.' };
-    }
-  };
+ await AsyncStorage.setItem('driver_token', newToken);
+ if (refreshToken) await AsyncStorage.setItem('driver_refresh_token', refreshToken);
+ await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
+ setToken(newToken);
+ setUser(userData);
+ return { success: true };
+ }
 
-  const logout = async () => {
-    await AsyncStorage.removeItem('driver_token');
-    await AsyncStorage.removeItem('driver_user');
-    setToken(null);
-    setUser(null);
-  };
+ return { success: false, error: res.data?.error || 'Login failed' };
+ } catch (error: any) {
+ console.error('[Auth] Login error:', error.message, error.response?.data);
 
-  return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+ const apiError = error?.response?.data?.error;
+ const status = error?.response?.status;
+
+ if (status === 429) {
+ return { success: false, error: 'Too many attempts. Please wait 15 minutes and try again.' };
+ }
+ if (apiError) {
+ return { success: false, error: apiError };
+ }
+
+ return { success: false, error: 'Network error. Please check your connection.' };
+ }
+ };
+
+ const logout = async () => {
+ await AsyncStorage.removeItem('driver_token');
+ await AsyncStorage.removeItem('driver_refresh_token');
+ await AsyncStorage.removeItem('driver_user');
+ setToken(null);
+ setUser(null);
+ };
+
+ return (
+ <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+ {children}
+ </AuthContext.Provider>
+ );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+ const ctx = useContext(AuthContext);
+ if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+ return ctx;
 }

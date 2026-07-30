@@ -14,7 +14,7 @@ import {
 
 const router = Router();
 
-// All routes require agent role
+// All routes require authentication + agent role
 router.use(authMiddleware, requireAgent);
 
 router.get('/orders', getAgentOrders);

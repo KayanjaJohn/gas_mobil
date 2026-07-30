@@ -4,9 +4,11 @@ import AppDataSource from "../config/database";
 import { User } from "../entities/User";
 
 interface DecodedToken {
-  userId: string;
+  userId?: string;
+  id?: string;
   email: string;
   name?: string;
+  role?: string;
   iat: number;
   exp: number;
 }
@@ -20,17 +22,26 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   }
 
   try {
-    const jwtSecret = process.env.JWT_SECRET || "secret";
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("❌ JWT_SECRET is not set in environment");
+      return res.status(500).json({ success: false, error: "Server configuration error" });
+    }
+
     const decoded = jwt.verify(token, jwtSecret as any) as DecodedToken;
 
-    // Set both old-style and new-style properties for compatibility
-    (req as any).userId = decoded.userId;
+    // SUPPORT BOTH OLD { id } AND NEW { userId } TOKEN SHAPES
+    const userId = decoded.userId || decoded.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Invalid token payload" });
+    }
+
+    (req as any).userId = userId;
     (req as any).userName = decoded.name || "Unknown User";
 
-    // Fetch full user for role checks
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ 
-      where: { id: decoded.userId },
+    const user = await userRepo.findOne({
+      where: { id: userId },
     });
 
     if (!user) {
@@ -40,23 +51,45 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     (req as any).user = user;
 
     next();
-  } catch (error) {
-    return res.status(401).json({ success: false, error: "Invalid or expired token" });
+  } catch (error: any) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ success: false, error: "Token expired" });
+    }
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ success: false, error: "Invalid token" });
+    }
+    return res.status(401).json({ success: false, error: "Authentication failed" });
   }
 };
 
-export const generateToken = (userId: string, email: string, name?: string) => {
-  const jwtSecret = process.env.JWT_SECRET || "secret";
+export const generateToken = (userId: string, email: string, name?: string, role?: string) => {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("JWT_SECRET is not set");
+  }
   return jwt.sign(
-    { userId, email, name },
+    { userId, id: userId, email, name, role },
     jwtSecret as any,
-    { expiresIn: process.env.JWT_EXPIRE || "7d" } as any,
+    { expiresIn: process.env.JWT_EXPIRE || "15m" } as any,
+  );
+};
+
+export const generateRefreshToken = (userId: string) => {
+  const refreshSecret = process.env.REFRESH_SECRET;
+  if (!refreshSecret) {
+    throw new Error("REFRESH_SECRET is not set");
+  }
+  return jwt.sign(
+    { userId, id: userId },
+    refreshSecret as any,
+    { expiresIn: process.env.REFRESH_EXPIRES_IN || "7d" } as any,
   );
 };
 
 export const verifyToken = (token: string): DecodedToken | null => {
   try {
-    const jwtSecret = process.env.JWT_SECRET || "secret";
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) return null;
     return jwt.verify(token, jwtSecret as any) as DecodedToken;
   } catch {
     return null;

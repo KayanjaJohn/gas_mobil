@@ -121,6 +121,59 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 	}
 };
 
+// POST /api/admin/drivers - create drivers for specific stations
+export const createAgentDriver = async (req: Request, res: Response) => {
+  try {
+	const stationId = await getAgentStationId(req);
+	if (!stationId)
+	  return res.status(400).json({ success: false, error: "Agent has no station" });
+
+	const { name, email, phone, password, vehicleNumber, vehicleType } = req.body;
+	const repo = userRepo();
+
+	const existing = await repo.findOne({
+	  where: [{ email }, { phone }],
+	} as any);
+	if (existing)
+	  return res.status(400).json({ success: false, error: "Driver already exists" });
+
+	const hashed = await bcrypt.hash(password || "Driver@123", 12);
+
+	const driver = repo.create({
+	  name,
+	  email,
+	  phone,
+	  password: hashed,
+	  role: "driver",
+	  stationId,
+	  vehicleNumber,
+	  vehicleType,
+	  driverStatus: "offline",
+	  isActive: true,
+	} as any);
+
+	const result: any = await repo.save(driver);
+	const saved = Array.isArray(result) ? result[0] : result;
+
+	res.status(201).json({
+	  success: true,
+	  driver: {
+		id: saved.id,
+		name: saved.name,
+		email: saved.email,
+		phone: saved.phone,
+		role: saved.role,
+		vehicleNumber: saved.vehicleNumber,
+		vehicleType: saved.vehicleType,
+		stationId: saved.stationId,
+	  },
+	});
+  } catch (error) {
+	console.error("createAgentDriver error:", error);
+	res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+ 
 // POST /api/admin/orders/:id/assign
 export const assignDriverToOrder = async (req: Request, res: Response) => {
 	try {

@@ -11,12 +11,15 @@ import { BottomNav } from "../../src/components/index";
 import { COLORS } from "../../src/utils/constants";
 import { formatDate } from "../../src/utils/formatters";
 import { apiRequest } from "../../src/services/api";
+import * as Location from 'expo-location';
 
 interface Station {
   id: string;
   name: string;
-  address: string;
-  city: string;
+  address?: string;
+  city?: string;
+  latitude?: string | number;
+  longitude?: string | number;
   isActive: boolean;
 }
 
@@ -50,7 +53,25 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch real stations from API
+  // Haversine distance (meters)
+  const toRadians = (deg: number) => (deg * Math.PI) / 180;
+  const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // metres
+    const φ1 = toRadians(lat1);
+    const φ2 = toRadians(lat2);
+    const Δφ = toRadians(lat2 - lat1);
+    const Δλ = toRadians(lon2 - lon1);
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // meters
+  };
+
+  // Fetch real stations from API and compute nearest using device location
   const fetchStations = useCallback(async () => {
     setLoadingStations(true);
     try {
@@ -58,26 +79,66 @@ export default function HomeScreen() {
       if (res.success && res.data) {
         const activeStations = res.data.filter((s: Station) => s.isActive);
         setStations(activeStations);
-        if (activeStations.length > 0) {
+
+        if (activeStations.length === 0) {
+          setNearestStation(null);
+          return;
+        }
+
+        // Try to get device location to compute nearest station
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const { latitude, longitude } = loc.coords;
+
+            let best: Station | null = null;
+            let bestDist = Number.POSITIVE_INFINITY;
+            for (const st of activeStations) {
+              const lat = Number(st.latitude ?? (st as any).lat);
+              const lng = Number(st.longitude ?? (st as any).lng);
+              if (isNaN(lat) || isNaN(lng)) continue;
+              const dist = haversineDistance(latitude, longitude, lat, lng);
+              if (dist < bestDist) {
+                bestDist = dist;
+                best = st;
+              }
+            }
+
+            setNearestStation(best || activeStations[0]);
+          } else {
+            // Permission denied — fallback to first active station
+            setNearestStation(activeStations[0]);
+          }
+        } catch (locErr) {
+          console.warn('[Home] Location error, falling back to first station', locErr);
           setNearestStation(activeStations[0]);
         }
       }
     } catch (err: any) {
-      console.error("[Home] Failed to fetch stations:", err.message);
+      console.error("[Home] Failed to fetch stations:", err?.message || err);
     } finally {
       setLoadingStations(false);
     }
   }, []);
 
+  // Only fetch stations once user is authenticated
   useEffect(() => {
-    fetchStations();
-  }, [fetchStations]);
+    if (user) {
+      fetchStations();
+    } else {
+      // If user logged out, clear stations
+      setStations([]);
+      setNearestStation(null);
+      setLoadingStations(false);
+    }
+  }, [user, fetchStations]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchStations();
+    if (user) fetchStations();
     setTimeout(() => setRefreshing(false), 1500);
-  }, [fetchStations]);
+  }, [fetchStations, user]);
 
   const getColor = (p: number) => (p < 20 ? COLORS.danger : p < 50 ? COLORS.warn : COLORS.success);
   const getStatus = (p: number) => {
@@ -265,7 +326,7 @@ const styles = StyleSheet.create({
   heroText: { maxWidth: "62%" },
   tag: { color: COLORS.accent, fontSize: 11, letterSpacing: 1.4, fontWeight: "700" },
   heroTitle: { color: "#fff", fontSize: 18, fontWeight: "600", lineHeight: 24, marginTop: 8, marginBottom: 14 },
-  heroBtn: { backgroundColor: COLORS.accent, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 20, alignSelf: "flex-start", shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 22 },
+  heroBtn: { backgroundColor: COLORS.accent, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 20, alignSelf: "flex-start", shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20 },
   heroBtnText: { color: "#fff", fontWeight: "600", fontSize: 13 },
   flameArt: { fontSize: 84, textShadowColor: "rgba(20,132,255,0.45)", textShadowOffset: { width: 0, height: 8 }, textShadowRadius: 25 },
   sectionLabel: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 22, paddingTop: 18, paddingBottom: 8 },
