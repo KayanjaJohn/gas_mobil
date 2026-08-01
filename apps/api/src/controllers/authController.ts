@@ -9,7 +9,7 @@ const userRepository = AppDataSource.getRepository(User);
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, address, city, latitude, longitude } = req.body;
 
     // SECURITY FIX: Force role to customer — never trust client-sent role
     const role = "customer";
@@ -45,6 +45,10 @@ export const register = async (req: Request, res: Response) => {
       password: hashedPassword,
       role,
       isActive: true,
+      address: address || null,
+      city: city || null,
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
     };
 
     const result = await userRepository.save(userData);
@@ -267,11 +271,15 @@ export const resetPassword = async (req: Request, res: Response) => {
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const { name, phone } = req.body;
+    const { name, phone, address, city, latitude, longitude } = req.body;
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (city !== undefined) updateData.city = city;
+    if (latitude !== undefined) updateData.latitude = parseFloat(latitude);
+    if (longitude !== undefined) updateData.longitude = parseFloat(longitude);
 
     await userRepository.update(userId, updateData);
 

@@ -6,9 +6,11 @@ const router = Router();
 
 router.get('/dashboard', requireAdmin, adminController.getDashboardStats);
 router.get('/orders', requireAdmin, adminController.getAllOrders);
-router.get('/customers', requireAdmin, adminController.getAllCustomers);  // ← FIXED: was missing
+router.get('/customers', requireAdmin, adminController.getAllCustomers);
 router.get('/drivers', requireAdmin, adminController.getAllDrivers);
+router.post('/drivers', requireAdmin, adminController.createDriver);
 router.post('/orders/:id/assign', requireAgent, adminController.assignDriverToOrder);
+router.post('/orders/:id/cancel', requireAdmin, adminController.cancelOrder);
 
 // Station routes
 router.get('/stations', requireAdmin, adminController.getAllStations);

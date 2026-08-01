@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
+import path from 'path';  // ← FIX: Added missing import
 import AppDataSource from './config/database';
 import { initializeSocket } from './config/socket';
 import authRoutes from './routes/auth';
@@ -17,6 +18,8 @@ import agentRoutes from './routes/agent';
 import deliveryRoutes from './routes/delivery';
 import paymentRoutes from './routes/payments';
 import walletRoutes from './routes/wallet';
+import catalogRoutes from "./routes/catalog";
+import uploadRoutes from "./routes/upload";
 import { errorHandler } from './middleware/errorHandler';
 import { authMiddleware } from './middleware/auth';
 
@@ -67,6 +70,8 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 // ── API Routes ─────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/orders',  authMiddleware, orderRoutes);
@@ -78,6 +83,8 @@ app.use('/api/agent',  authMiddleware, agentRoutes);
 app.use('/api/delivery', authMiddleware, deliveryRoutes);
 app.use('/api/payments', authMiddleware, paymentRoutes);
 app.use('/api/wallet', authMiddleware, walletRoutes);
+app.use("/api/catalog", authMiddleware, catalogRoutes);
+app.use("/api/upload", authMiddleware, uploadRoutes);
 
 // ── Error Handling ─────────────────────────────────────────
 app.use(errorHandler);

@@ -45,14 +45,14 @@ const fetchOrdersWithDeliveries = async (where: any): Promise<Order[]> => {
   try {
     return await orderRepo().find({
       where,
-      relations: ["deliveries", "deliveries.driver", "customer", "station"],
+      relations: ["deliveries", "user", "station", "items", "items.product"],
       order: { createdAt: "DESC" },
     } as any);
   } catch {
     try {
       return await orderRepo().find({
         where,
-        relations: ["deliveries", "station"],
+        relations: ["deliveries", "user", "station"],
         order: { createdAt: "DESC" },
       } as any);
     } catch {
@@ -71,7 +71,7 @@ export const getAgentCustomers = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Agent has no station" });
 
     const orders = await orderRepo().find({ where: { stationId } } as any);
-    const customerIds = [...new Set(orders.map((o: any) => o.customerId))].filter(Boolean);
+    const customerIds = [...new Set(orders.map((o: any) => o.userId))].filter(Boolean);
 
     const customers =
       customerIds.length > 0
