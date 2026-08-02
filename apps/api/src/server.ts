@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
-import path from 'path';  // ← FIX: Added missing import
+import path from 'path';
 import AppDataSource from './config/database';
 import { initializeSocket } from './config/socket';
 import authRoutes from './routes/auth';
@@ -20,6 +20,7 @@ import paymentRoutes from './routes/payments';
 import walletRoutes from './routes/wallet';
 import catalogRoutes from "./routes/catalog";
 import uploadRoutes from "./routes/upload";
+import notificationRoutes from "./routes/notifications";
 import { errorHandler } from './middleware/errorHandler';
 import { authMiddleware } from './middleware/auth';
 
@@ -28,12 +29,12 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-// ── Socket.IO setup (unified via config/socket.ts) ──────────
+// ── Socket.IO setup ──────────
 initializeSocket(httpServer);
 
 const PORT = process.env.PORT || 5000;
 
-// ── Security ─────────────────────────────────────────────────
+// ── Security ─────────────────
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
@@ -42,7 +43,7 @@ app.use(cors({
   credentials: true,
 }));
 
-// ── Rate Limiting ──────────────────────────────────────────
+// ── Rate Limiting ──────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -61,40 +62,41 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api', apiLimiter);
 
-// ── Body Parsing ───────────────────────────────────────────
+// ── Body Parsing ───────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ── Health Check ───────────────────────────────────────────
+// ── Health Check ─────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// ── API Routes ─────────────────────────────────────────────
+// ── API Routes ─────────────────
 app.use('/api/auth', authRoutes);
-app.use('/api/orders',  authMiddleware, orderRoutes);
-app.use('/api/products', authMiddleware,  productRoutes);
-app.use('/api/stations', authMiddleware,  stationRoutes);
-app.use('/api/driver',  authMiddleware, driverRoutes);
-app.use('/api/admin', authMiddleware,  adminRoutes);
-app.use('/api/agent',  authMiddleware, agentRoutes);
+app.use('/api/orders', authMiddleware, orderRoutes);
+app.use('/api/products', authMiddleware, productRoutes);
+app.use('/api/stations', authMiddleware, stationRoutes);
+app.use('/api/driver', authMiddleware, driverRoutes);
+app.use('/api/admin', authMiddleware, adminRoutes);
+app.use('/api/agent', authMiddleware, agentRoutes);
 app.use('/api/delivery', authMiddleware, deliveryRoutes);
 app.use('/api/payments', authMiddleware, paymentRoutes);
 app.use('/api/wallet', authMiddleware, walletRoutes);
-app.use("/api/catalog", authMiddleware, catalogRoutes);
-app.use("/api/upload", authMiddleware, uploadRoutes);
+app.use('/api/catalog', authMiddleware, catalogRoutes);
+app.use('/api/upload', authMiddleware, uploadRoutes);
+app.use('/api/notifications', authMiddleware, notificationRoutes);
 
-// ── Error Handling ─────────────────────────────────────────
+// ── Error Handling ─────────────
 app.use(errorHandler);
 
-// ── 404 Handler ────────────────────────────────────────────
+// ── 404 Handler ────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Route not found' });
 });
 
-// ── Start Server ───────────────────────────────────────────
+// ── Start Server ───────────────
 const startServer = async () => {
   try {
     const required = ['JWT_SECRET', 'REFRESH_SECRET'];

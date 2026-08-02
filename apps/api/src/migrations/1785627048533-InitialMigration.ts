@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialMigration1785591100996 implements MigrationInterface {
-    name = 'InitialMigration1785591100996'
+export class InitialMigration1785627048533 implements MigrationInterface {
+    name = 'InitialMigration1785627048533'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE \`products\` (\`id\` varchar(36) NOT NULL, \`name\` varchar(255) NOT NULL, \`description\` text NULL, \`price\` decimal(12,2) NOT NULL, \`stock\` int NOT NULL DEFAULT '0', \`weight\` decimal(10,2) NULL, \`size\` varchar(50) NULL, \`type\` enum ('cylinder', 'accessory') NOT NULL DEFAULT 'cylinder', \`isAvailable\` tinyint NOT NULL DEFAULT 1, \`imageUrl\` varchar(500) NULL, \`stationId\` varchar(255) NOT NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
@@ -12,6 +12,8 @@ export class InitialMigration1785591100996 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE \`orders\` (\`id\` varchar(36) NOT NULL, \`userId\` varchar(255) NOT NULL, \`stationId\` varchar(255) NOT NULL, \`totalAmount\` decimal(12,2) NOT NULL, \`deliveryAddress\` text NOT NULL, \`deliveryCity\` varchar(100) NULL, \`deliveryLatitude\` decimal(10,7) NULL, \`deliveryLongitude\` decimal(10,7) NULL, \`status\` enum ('pending', 'confirmed', 'driver_assigned', 'picked_up', 'in_transit', 'nearby', 'delivered', 'completed', 'cancelled', 'failed', 'refunded') NOT NULL DEFAULT 'pending', \`paymentMethod\` enum ('cash', 'wallet', 'momo', 'airtel') NOT NULL DEFAULT 'cash', \`paymentStatus\` enum ('pending', 'paid', 'failed', 'refunded') NOT NULL DEFAULT 'pending', \`notes\` text NULL, \`cancellationReason\` text NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`CREATE TABLE \`transactions\` (\`id\` varchar(36) NOT NULL, \`walletId\` varchar(255) NOT NULL, \`orderId\` varchar(255) NULL, \`amount\` decimal(12,2) NOT NULL, \`type\` enum ('credit', 'debit') NOT NULL, \`status\` enum ('pending', 'completed', 'failed') NOT NULL DEFAULT 'pending', \`externalReference\` varchar(100) NULL, \`description\` text NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`CREATE TABLE \`wallets\` (\`id\` varchar(36) NOT NULL, \`userId\` varchar(255) NOT NULL, \`balance\` decimal(12,2) NOT NULL DEFAULT '0.00', \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
+        await queryRunner.query(`CREATE TABLE \`notifications\` (\`id\` varchar(36) NOT NULL, \`userId\` varchar(255) NOT NULL, \`type\` enum ('order_placed', 'order_confirmed', 'driver_assigned', 'picked_up', 'in_transit', 'delivered', 'cancelled', 'payment_received') NOT NULL, \`orderId\` varchar(255) NULL, \`title\` varchar(255) NOT NULL, \`message\` text NOT NULL, \`isRead\` tinyint NOT NULL DEFAULT 0, \`data\` json NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), INDEX \`IDX_692a909ee0fa9383e7859f9b40\` (\`userId\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
+        await queryRunner.query(`CREATE TABLE \`product_catalog\` (\`id\` varchar(36) NOT NULL, \`name\` varchar(255) NOT NULL, \`description\` text NULL, \`defaultPrice\` decimal(12,2) NOT NULL, \`defaultWeight\` decimal(10,2) NULL, \`defaultSize\` varchar(50) NULL, \`category\` enum ('cylinder', 'accessory') NOT NULL DEFAULT 'cylinder', \`imageUrl\` varchar(500) NULL, \`isActive\` tinyint NOT NULL DEFAULT 1, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`ALTER TABLE \`products\` ADD CONSTRAINT \`FK_22c8e640d9c51a9e77e0733f134\` FOREIGN KEY (\`stationId\`) REFERENCES \`stations\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE \`users\` ADD CONSTRAINT \`FK_94754bc4f5522eee5c245371906\` FOREIGN KEY (\`stationId\`) REFERENCES \`stations\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE \`order_items\` ADD CONSTRAINT \`FK_f1d359a55923bb45b057fbdab0d\` FOREIGN KEY (\`orderId\`) REFERENCES \`orders\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
@@ -33,6 +35,9 @@ export class InitialMigration1785591100996 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE \`order_items\` DROP FOREIGN KEY \`FK_f1d359a55923bb45b057fbdab0d\``);
         await queryRunner.query(`ALTER TABLE \`users\` DROP FOREIGN KEY \`FK_94754bc4f5522eee5c245371906\``);
         await queryRunner.query(`ALTER TABLE \`products\` DROP FOREIGN KEY \`FK_22c8e640d9c51a9e77e0733f134\``);
+        await queryRunner.query(`DROP TABLE \`product_catalog\``);
+        await queryRunner.query(`DROP INDEX \`IDX_692a909ee0fa9383e7859f9b40\` ON \`notifications\``);
+        await queryRunner.query(`DROP TABLE \`notifications\``);
         await queryRunner.query(`DROP TABLE \`wallets\``);
         await queryRunner.query(`DROP TABLE \`transactions\``);
         await queryRunner.query(`DROP TABLE \`orders\``);
