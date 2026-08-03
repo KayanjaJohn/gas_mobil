@@ -4,47 +4,43 @@ import {
   ActivityIndicator, Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../src/context/AuthContext";
-import { apiRequest } from "../src/services/api";
 import TopBar from "../src/components/TopBar";
 import BottomNav from "../src/components/BottomNav";
+import { useAuth } from "../src/context/AuthContext";
+import { apiRequest } from "../src/services/api";
 import { COLORS } from "../src/utils/constants";
 
-const ROLE_STYLES: Record<string, { label: string; color: string }> = {
-  customer: { label: "Consumer Mode", color: "#1484FF" },
-  driver:   { label: "Driver Mode",   color: "#22c55e" },
-  agent:    { label: "Agent Mode",    color: "#f59e0b" },
-  admin:    { label: "Admin Mode",    color: "#ff4d4d" },
+const ROLE_STYLES: Record<string, { label: string; color: string; bg: string }> = {
+  customer: { label: "Consumer Mode", color: "#1484FF", bg: "rgba(20,132,255,0.15)" },
+  driver:   { label: "Driver Mode",   color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
+  agent:    { label: "Agent Mode",    color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
+  admin:    { label: "Admin Mode",    color: "#ff4d4d", bg: "rgba(255,77,77,0.15)" },
 };
 
 const MENU_ITEMS = [
-  { icon: "📦", title: "My Cylinders",    subtitle: "View & register your cylinders", route: "/cylinders" as const },
-  { icon: "💳", title: "Payment Methods", subtitle: "Wallet, M-Pesa, Airtel",       route: "/payments" as const },
-  { icon: "🔔", title: "Notifications",   subtitle: "Order updates & alerts",       route: "/(tabs)/notifications" as const },
-  { icon: "⚡", title: "Auto-Refill",     subtitle: "Never run out of gas",         route: "/auto-refill" as const },
-  { icon: "❓", title: "Help & Support",  subtitle: "FAQs, call us, report issue",  route: "/help" as const },
-  { icon: "🔧", title: "Settings",        subtitle: "Language, location, privacy",  route: "/settings" as const },
+  { icon: "📦", title: "My Cylinders",    sub: "View & register your cylinders", route: "/cylinders" as const },
+  { icon: "💳", title: "Payment Methods", sub: "Wallet, M-Pesa, Airtel",       route: "/payments" as const },
+  { icon: "🔔", title: "Notifications",   sub: "Order updates & alerts",       route: "/(tabs)/notifications" as const },
+  { icon: "⚡", title: "Auto-Refill",     sub: "Never run out of gas",         route: "/auto-refill" as const },
+  { icon: "❓", title: "Help & Support",  sub: "FAQs, call us, report issue",  route: "/help" as const },
+  { icon: "🔧", title: "Settings",        sub: "Language, location, privacy",  route: "/settings" as const },
 ];
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, updateUser } = useAuth();
 
-  /* ── Wallet ── */
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletLoading, setWalletLoading] = useState(true);
-
-  /* ── Edit mode ── */
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
-    address: user?.address || "",
-    city: user?.city || "",
+    address: (user as any)?.address || "",
+    city: (user as any)?.city || "",
   });
 
-  /* ── Derived ── */
   const initials = (user?.name || "?")
     .split(" ")
     .map((n) => n[0])
@@ -52,31 +48,26 @@ export default function ProfileScreen() {
     .toUpperCase()
     .slice(0, 2);
 
-  const roleStyle = ROLE_STYLES[user?.role || "customer"] || ROLE_STYLES.customer;
+  const role = ROLE_STYLES[user?.role || "customer"] || ROLE_STYLES.customer;
 
-  /* ── Effects ── */
   useEffect(() => {
     fetchWallet();
   }, []);
 
   useEffect(() => {
-    // Keep form in sync when user data changes (e.g. after update)
     if (user) {
       setForm({
         name: user.name || "",
         phone: user.phone || "",
-        address: (user as any).address || "",
-        city: (user as any).city || "",
+        address: (user as any)?.address || "",
+        city: (user as any)?.city || "",
       });
     }
   }, [user]);
 
-  /* ── Handlers ── */
   const fetchWallet = async () => {
     try {
-      const res = await apiRequest<{ success: boolean; data?: { balance: number } }>(
-        "get", "/wallet"
-      );
+      const res = await apiRequest<{ success: boolean; data?: { balance: number } }>("get", "/wallet");
       if (res.success && res.data) setWalletBalance(Number(res.data.balance) || 0);
     } catch (err) {
       console.error("[Profile] Wallet fetch error:", err);
@@ -108,51 +99,48 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to sign out?", [
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: async () => {
+      { text: "Sign Out", style: "destructive", onPress: async () => {
           await logout();
           router.replace("/login");
         }},
     ]);
   };
 
-  /* ── Render ── */
   return (
     <View style={styles.container}>
-      <TopBar title="Profile" showBack={false} showBell={false} />
+      <TopBar showBack onBack={() => router.push("/(tabs)")} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* ── Avatar Header ── */}
+        {/* Avatar + Role */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+          <View style={[styles.avatar, { backgroundColor: role.bg }]}>
+            <Text style={[styles.avatarText, { color: role.color }]}>{initials}</Text>
           </View>
           <Text style={styles.name}>{user?.name || "Guest"}</Text>
           <Text style={styles.email}>{user?.email || ""}</Text>
-          <View style={[styles.roleBadge, { backgroundColor: `${roleStyle.color}18` }]}>
-            <Text style={[styles.roleText, { color: roleStyle.color }]}>
-              {roleStyle.label}
-            </Text>
+          <View style={[styles.roleBadge, { backgroundColor: role.bg }]}>
+            <Text style={[styles.roleText, { color: role.color }]}>{role.label}</Text>
           </View>
         </View>
 
-        {/* ── Wallet Card (Blueprint style) ── */}
-        <View style={styles.walletCard}>
+        {/* Wallet Card */}
+        <View style={styles.wallet}>
           <Text style={styles.walletLabel}>GASMOBIL WALLET</Text>
-          <Text style={styles.walletBalance}>
+          <Text style={styles.walletBal}>
             UGX {walletBalance.toLocaleString("en-UG")}
           </Text>
           <TouchableOpacity
-            style={styles.topUpBtn}
+            style={styles.topupBtn}
             activeOpacity={0.8}
             onPress={() => Alert.alert("Coming Soon", "Wallet top-up will be available shortly.")}
           >
-            <Text style={styles.topUpText}>Top Up</Text>
+            <Text style={styles.topupText}>Top Up</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Personal Info Card ── */}
+        {/* Personal Info Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Personal Information</Text>
@@ -227,47 +215,34 @@ export default function ProfileScreen() {
           </View>
 
           {editing && (
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={handleSave}
-              activeOpacity={0.8}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveBtnText}>Save Changes</Text>
-              )}
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.8} disabled={loading}>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
             </TouchableOpacity>
           )}
         </View>
 
-        {/* ── Menu List (Blueprint style) ── */}
+        {/* Menu */}
         <View style={styles.menuCard}>
-          {MENU_ITEMS.map((item, idx) => (
+          {MENU_ITEMS.map((item, i) => (
             <TouchableOpacity
-              key={idx}
-              style={[styles.menuItem, idx === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
+              key={i}
+              style={[styles.menuItem, i === MENU_ITEMS.length - 1 && { borderBottomWidth: 0 }]}
               activeOpacity={0.7}
               onPress={() => router.push(item.route as any)}
             >
               <Text style={styles.menuIcon}>{item.icon}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                <Text style={styles.menuSub}>{item.sub}</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chev}>›</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* ── Sign Out ── */}
-        <TouchableOpacity
-          style={styles.signOutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.signOutText}>🚪  Sign Out</Text>
+        {/* Logout */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+          <Text style={styles.logoutText}>🚪  Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -277,74 +252,47 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#070b14" },
-
-  /* Avatar */
+  container: { flex: 1, backgroundColor: COLORS.bg },
   avatarSection: { alignItems: "center", paddingVertical: 28 },
-  avatar: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: "#1484FF",
-    alignItems: "center", justifyContent: "center",
-    marginBottom: 12,
-  },
-  avatarText: { color: "#fff", fontSize: 28, fontWeight: "800" },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  avatarText: { fontSize: 28, fontWeight: "800" },
   name: { color: "#fff", fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
-  email: { color: "#8A93A6", fontSize: 13, marginTop: 4 },
-  roleBadge: {
-    marginTop: 10, paddingHorizontal: 14, paddingVertical: 5,
-    borderRadius: 999,
-  },
+  email: { color: COLORS.muted, fontSize: 13, marginTop: 4 },
+  roleBadge: { marginTop: 10, paddingHorizontal: 14, paddingVertical: 5, borderRadius: 999 },
   roleText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
 
-  /* Wallet */
-  walletCard: {
+  wallet: {
     marginHorizontal: 16, marginBottom: 14,
+    backgroundColor: "#0e1d3f", borderWidth: 1, borderColor: "#1c2c4a",
     borderRadius: 18, padding: 20,
-    backgroundColor: "#0e1d3f",
-    borderWidth: 1, borderColor: "#1c2c4a",
   },
-  walletLabel: { color: "#1484FF", fontSize: 11, fontWeight: "700", letterSpacing: 1.5 },
-  walletBalance: { color: "#fff", fontSize: 32, fontWeight: "800", marginVertical: 8 },
-  topUpBtn: {
-    backgroundColor: "#1484FF", borderRadius: 999,
-    paddingVertical: 10, paddingHorizontal: 20,
-    alignSelf: "flex-start",
-  },
-  topUpText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  walletLabel: { color: COLORS.accent, fontSize: 11, fontWeight: "700", letterSpacing: 1.5 },
+  walletBal: { color: "#fff", fontSize: 32, fontWeight: "800", marginVertical: 8 },
+  topupBtn: { backgroundColor: COLORS.accent, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 20, alignSelf: "flex-start" },
+  topupText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 
-  /* Card */
   card: {
     marginHorizontal: 16, marginBottom: 14,
-    backgroundColor: "#101723",
-    borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: "#1F2A3D",
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: COLORS.border,
   },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
   cardTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  editLink: { color: "#1484FF", fontSize: 13, fontWeight: "600" },
-
+  editLink: { color: COLORS.accent, fontSize: 13, fontWeight: "600" },
   field: { marginBottom: 14 },
-  label: { color: "#8A93A6", fontSize: 11, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
+  label: { color: COLORS.muted, fontSize: 11, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
   value: { color: "#fff", fontSize: 14 },
   input: {
-    backgroundColor: "#0f172a", borderRadius: 10,
-    padding: 12, color: "#fff", fontSize: 14,
-    borderWidth: 1, borderColor: "#1F2A3D",
+    backgroundColor: "#0f172a", borderRadius: 10, padding: 12,
+    color: "#fff", fontSize: 14, borderWidth: 1, borderColor: COLORS.border,
   },
-
-  saveBtn: {
-    backgroundColor: "#1484FF", borderRadius: 14,
-    paddingVertical: 14, alignItems: "center", marginTop: 4,
-  },
+  saveBtn: { backgroundColor: COLORS.accent, borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 4 },
   saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  /* Menu */
   menuCard: {
     marginHorizontal: 16, marginBottom: 14,
-    backgroundColor: "#101723",
-    borderRadius: 16,
-    borderWidth: 1, borderColor: "#1F2A3D",
-    paddingHorizontal: 4,
+    backgroundColor: COLORS.card, borderRadius: 16,
+    borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 4,
   },
   menuItem: {
     flexDirection: "row", alignItems: "center",
@@ -353,15 +301,14 @@ const styles = StyleSheet.create({
   },
   menuIcon: { fontSize: 18, width: 32, textAlign: "center" },
   menuTitle: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  menuSubtitle: { color: "#8A93A6", fontSize: 11, marginTop: 2 },
-  chevron: { color: "#8A93A6", fontSize: 18, fontWeight: "400" },
+  menuSub: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
+  chev: { color: COLORS.muted, fontSize: 18 },
 
-  /* Sign Out */
-  signOutBtn: {
+  logoutBtn: {
     marginHorizontal: 16, marginTop: 4, marginBottom: 40,
     backgroundColor: "rgba(239,68,68,0.08)",
     borderWidth: 1, borderColor: "rgba(239,68,68,0.3)",
     borderRadius: 14, paddingVertical: 16, alignItems: "center",
   },
-  signOutText: { color: "#ff6b6b", fontWeight: "700", fontSize: 14 },
+  logoutText: { color: "#ff6b6b", fontWeight: "700", fontSize: 14 },
 });

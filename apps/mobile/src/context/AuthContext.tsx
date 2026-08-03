@@ -145,7 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   }, []);
 
-
   const updateUser = useCallback(async (data: Partial<User>) => {
     const res = await apiRequest<{ success: boolean; data: User; error?: string }>(
       "put", "/auth/profile", data
@@ -156,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.data);
     await AsyncStorage.setItem("user", JSON.stringify(res.data));
   }, []);
+
 
   const logout = useCallback(async () => {
     if (__DEV__) console.log('[Auth] Logging out');

@@ -2,7 +2,9 @@ import { useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+// Socket.IO lives at the BASE url, not /api
+const rawUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+const SOCKET_URL = rawUrl.replace(/\/api\/?$/, ""); // strip trailing /api
 
 export function useSocket(onNotification?: (data: any) => void) {
   const socketRef = useRef<Socket | null>(null);
@@ -12,12 +14,16 @@ export function useSocket(onNotification?: (data: any) => void) {
     if (!token) return;
 
     const socket = io(SOCKET_URL, {
-      transports: ["websocket"],
+      transports: ["polling", "websocket"], // RN needs polling first
       auth: { token },
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
     });
 
     socket.on("connect", () => {
-      console.log("[Socket] Connected");
+      console.log("[Socket] Connected:", socket.id);
     });
 
     socket.on("notification", (data) => {
@@ -30,12 +36,12 @@ export function useSocket(onNotification?: (data: any) => void) {
       onNotification?.(data);
     });
 
-    socket.on("disconnect", () => {
-      console.log("[Socket] Disconnected");
+    socket.on("disconnect", (reason) => {
+      console.log("[Socket] Disconnected:", reason);
     });
 
     socket.on("connect_error", (err) => {
-      console.error("[Socket] Error:", err.message);
+      console.error("[Socket] Connect error:", err.message);
     });
 
     socketRef.current = socket;

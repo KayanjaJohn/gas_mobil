@@ -4,11 +4,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../src/context/AuthContext";
-import { apiRequest } from "../src/services/api";
-import TopBar from "../src/components/TopBar";
-import BottomNav from "../src/components/BottomNav";
-import { COLORS } from "../src/utils/constants";
+import { useAuth } from "../../src/context/AuthContext";
+import { apiRequest } from "../../src/services/api";
+import TopBar from "../../src/components/TopBar";
+import BottomNav from "../../src/components/BottomNav";
+import { COLORS } from "../../src/utils/constants";
 
 interface NotificationItem {
   id: string;
