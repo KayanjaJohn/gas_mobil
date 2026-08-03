@@ -2,9 +2,8 @@ import { useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Socket.IO lives at the BASE url, not /api
 const rawUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
-const SOCKET_URL = rawUrl.replace(/\/api\/?$/, ""); // strip trailing /api
+const SOCKET_URL = rawUrl.replace(/\/api\/?$/, "");
 
 export function useSocket(onNotification?: (data: any) => void) {
   const socketRef = useRef<Socket | null>(null);
@@ -14,7 +13,7 @@ export function useSocket(onNotification?: (data: any) => void) {
     if (!token) return;
 
     const socket = io(SOCKET_URL, {
-      transports: ["polling", "websocket"], // RN needs polling first
+      transports: ["polling", "websocket"],
       auth: { token },
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -34,6 +33,21 @@ export function useSocket(onNotification?: (data: any) => void) {
     socket.on("order_status_changed", (data) => {
       console.log("[Socket] Order status:", data);
       onNotification?.(data);
+    });
+
+    socket.on("product_created", (data) => {
+      console.log("[Socket] Product created:", data);
+      onNotification?.({ type: "product_created", ...data });
+    });
+
+    socket.on("product_updated", (data) => {
+      console.log("[Socket] Product updated:", data);
+      onNotification?.({ type: "product_updated", ...data });
+    });
+
+    socket.on("product_deleted", (data) => {
+      console.log("[Socket] Product deleted:", data);
+      onNotification?.({ type: "product_deleted", ...data });
     });
 
     socket.on("disconnect", (reason) => {

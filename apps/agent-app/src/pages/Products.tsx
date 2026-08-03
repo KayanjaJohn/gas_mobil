@@ -9,8 +9,11 @@ import {
 import { Edit, Delete, Add, Inventory } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { io } from 'socket.io-client';
+import ImageUpload from '../components/ImageUpload';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
 interface Product {
   id: string;
@@ -38,37 +41,28 @@ interface CatalogItem {
 export default function Products() {
   const { token, user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-
-  // Products tab state
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
-
-  // Catalog tab state
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
-
-  // Shared UI state
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [snackbar, setSnackbar] = useState({
-    open: false, message: '', severity: 'success' as 'success' | 'error'
-  });
-
-  // Form state
-  const [form, setForm] = useState({
-    name: '', description: '', price: '', stock: '', type: 'cylinder',
-    weight: '', size: '', imageUrl: '',
-  });
-
-  // Catalog add-to-stock form
-  const [catalogForm, setCatalogForm] = useState({
-    selectedCatalogId: '', price: '', stock: '', imageUrl: '',
-  });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [form, setForm] = useState({ name: '', description: '', price: '', stock: '', type: 'cylinder', weight: '', size: '', imageUrl: '' });
+  const [catalogForm, setCatalogForm] = useState({ selectedCatalogId: '', price: '', stock: '', imageUrl: '' });
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<CatalogItem | null>(null);
 
-  useEffect(() => { fetchProducts(); fetchCatalog(); }, []);
+  useEffect(() => {
+    fetchProducts();
+    fetchCatalog();
+    const socket = io(SOCKET_URL, { transports: ['polling', 'websocket'] });
+    socket.on('product_created', () => fetchProducts());
+    socket.on('product_updated', () => fetchProducts());
+    socket.on('product_deleted', () => fetchProducts());
+    return () => { socket.disconnect(); };
+  }, []);
 
   const fetchProducts = async () => {
     setProductsLoading(true);
@@ -120,14 +114,9 @@ export default function Products() {
   const openEdit = (product: Product) => {
     setEditingProduct(product);
     setForm({
-      name: product.name,
-      description: product.description || '',
-      price: String(product.price),
-      stock: String(product.stock),
-      type: product.type,
-      weight: '',
-      size: '',
-      imageUrl: product.imageUrl || '',
+      name: product.name, description: product.description || '',
+      price: String(product.price), stock: String(product.stock),
+      type: product.type, weight: '', size: '', imageUrl: product.imageUrl || '',
     });
     setOpen(true);
   };
@@ -141,6 +130,8 @@ export default function Products() {
       ...form,
       price: Number(form.price),
       stock: Number(form.stock),
+      weight: form.weight ? Number(form.weight) : undefined,
+      size: form.size || undefined,
       stationId: user?.stationId,
     };
     try {
@@ -176,7 +167,6 @@ export default function Products() {
     }
   };
 
-  // Catalog: open add-to-stock dialog
   const openCatalogAdd = (item: CatalogItem) => {
     setSelectedCatalogItem(item);
     setCatalogForm({
@@ -218,33 +208,24 @@ export default function Products() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 1, fontWeight: 700 }}>
-        Station Products
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="h4" gutterBottom>Station Products</Typography>
+      <Typography variant="subtitle1" color="text.secondary" gutterBottom>
         Products for {user?.station?.name || 'your station'}
       </Typography>
-
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 2 }}>
-        <Tab label={`My Products (${products.length})`} />
+        <Tab label="My Products" />
         <Tab label="Product Catalog" />
       </Tabs>
 
-      {/* TAB 0: My Products */}
       {activeTab === 0 && (
         <>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
-              Add New Product
-            </Button>
-          </Box>
-
+          <Button variant="contained" startIcon={<Add />} onClick={openCreate} sx={{ mb: 2 }}>
+            Add Product
+          </Button>
           {productsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
+            <CircularProgress />
           ) : (
             <TableContainer component={Paper}>
               <Table>
@@ -262,22 +243,10 @@ export default function Products() {
                   {products.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {product.imageUrl && (
-                            <Box
-                              component="img"
-                              src={product.imageUrl}
-                              sx={{ width: 40, height: 40, borderRadius: 1, objectFit: 'cover' }}
-                              onError={(e: any) => { e.target.style.display = 'none'; }}
-                            />
-                          )}
-                          <Box>
-                            <Typography fontWeight={600}>{product.name}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {product.description}
-                            </Typography>
-                          </Box>
-                        </Box>
+                        {product.imageUrl && (
+                          <img src={product.imageUrl} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', marginRight: 8 }} />
+                        )}
+                        {product.name}
                       </TableCell>
                       <TableCell>UGX {Number(product.price).toLocaleString()}</TableCell>
                       <TableCell>{product.stock}</TableCell>
@@ -289,21 +258,15 @@ export default function Products() {
                         />
                       </TableCell>
                       <TableCell>
-                        <IconButton onClick={() => openEdit(product)} size="small">
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton onClick={() => deleteProduct(product.id)} size="small" color="error">
-                          <Delete fontSize="small" />
-                        </IconButton>
+                        <IconButton onClick={() => openEdit(product)}><Edit /></IconButton>
+                        <IconButton onClick={() => deleteProduct(product.id)} color="error"><Delete /></IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
                   {products.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                        <Typography color="text.secondary">
-                          No products at this station. Use the Catalog tab to add from predefined products, or create a new one.
-                        </Typography>
+                      <TableCell colSpan={6} align="center">
+                        No products found. Add products from the catalog or create custom ones.
                       </TableCell>
                     </TableRow>
                   )}
@@ -314,151 +277,92 @@ export default function Products() {
         </>
       )}
 
-      {/* TAB 1: Product Catalog */}
       {activeTab === 1 && (
         <>
           {catalogLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
+            <CircularProgress />
           ) : (
-            <>
-              {/* Cylinders Section */}
-              <Typography variant="h6" sx={{ mb: 2, mt: 1 }}>🔥 Gas Cylinders</Typography>
-              <Grid container spacing={2} sx={{ mb: 4 }}>
-                {cylinders.map((item) => (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id}>
-                    <MuiCard sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <Box sx={{ height: 140, bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {item.imageUrl ? (
-                          <Box component="img" src={item.imageUrl} sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                        ) : (
-                          <Inventory sx={{ fontSize: 48, color: '#bbb' }} />
-                        )}
-                      </Box>
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Typography variant="subtitle1" fontWeight={700}>{item.name}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {item.description || 'No description'}
-                        </Typography>
-                        <Chip label={`UGX ${Number(item.defaultPrice).toLocaleString()}`} size="small" color="primary" />
-                        {item.defaultSize && (
-                          <Chip label={item.defaultSize} size="small" variant="outlined" sx={{ ml: 1 }} />
-                        )}
-                        {item.defaultWeight && (
-                          <Chip label={`${item.defaultWeight}kg`} size="small" variant="outlined" sx={{ ml: 1 }} />
-                        )}
-                      </CardContent>
-                      <Box sx={{ p: 2, pt: 0 }}>
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          startIcon={<Add />}
-                          onClick={() => openCatalogAdd(item)}
-                        >
-                          Add to Stock
+            <Grid container spacing={2}>
+              {cylinders.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>🔥 Gas Cylinders</Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+              )}
+              {cylinders.map((item) => (
+                <Grid item xs={12} md={6} lg={4} key={item.id}>
+                  <MuiCard>
+                    <CardContent>
+                      <Typography variant="h6">{item.name}</Typography>
+                      <Typography color="text.secondary" sx={{ mb: 1 }}>
+                        {item.description || 'No description'}
+                      </Typography>
+                      <Chip label={`UGX ${Number(item.defaultPrice).toLocaleString()}`} color="primary" size="small" sx={{ mr: 1 }} />
+                      {item.defaultSize && <Chip label={item.defaultSize} size="small" sx={{ mr: 1 }} />}
+                      {item.defaultWeight && <Chip label={`${item.defaultWeight}kg`} size="small" />}
+                      <Box sx={{ mt: 2 }}>
+                        <Button size="small" variant="outlined" startIcon={<Inventory />} onClick={() => openCatalogAdd(item)}>
+                          Add to My Stock
                         </Button>
                       </Box>
-                    </MuiCard>
-                  </Grid>
-                ))}
-                {cylinders.length === 0 && (
-                  <Grid size={{ xs: 12 }}>
-                    <Alert severity="info">No cylinder templates in catalog yet.</Alert>
-                  </Grid>
-                )}
-              </Grid>
-
-              <Divider sx={{ my: 2 }} />
-
-              {/* Accessories Section */}
-              <Typography variant="h6" sx={{ mb: 2 }}>🔧 Accessories</Typography>
-              <Grid container spacing={2}>
-                {accessories.map((item) => (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id}>
-                    <MuiCard sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <Box sx={{ height: 140, bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {item.imageUrl ? (
-                          <Box component="img" src={item.imageUrl} sx={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                        ) : (
-                          <Inventory sx={{ fontSize: 48, color: '#bbb' }} />
-                        )}
-                      </Box>
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Typography variant="subtitle1" fontWeight={700}>{item.name}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {item.description || 'No description'}
-                        </Typography>
-                        <Chip label={`UGX ${Number(item.defaultPrice).toLocaleString()}`} size="small" color="primary" />
-                      </CardContent>
-                      <Box sx={{ p: 2, pt: 0 }}>
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          startIcon={<Add />}
-                          onClick={() => openCatalogAdd(item)}
-                        >
-                          Add to Stock
+                    </CardContent>
+                  </MuiCard>
+                </Grid>
+              ))}
+              {accessories.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>🔧 Accessories</Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+              )}
+              {accessories.map((item) => (
+                <Grid item xs={12} md={6} lg={4} key={item.id}>
+                  <MuiCard>
+                    <CardContent>
+                      <Typography variant="h6">{item.name}</Typography>
+                      <Typography color="text.secondary" sx={{ mb: 1 }}>
+                        {item.description || 'No description'}
+                      </Typography>
+                      <Chip label={`UGX ${Number(item.defaultPrice).toLocaleString()}`} color="primary" size="small" />
+                      <Box sx={{ mt: 2 }}>
+                        <Button size="small" variant="outlined" startIcon={<Inventory />} onClick={() => openCatalogAdd(item)}>
+                          Add to My Stock
                         </Button>
                       </Box>
-                    </MuiCard>
-                  </Grid>
-                ))}
-                {accessories.length === 0 && (
-                  <Grid size={{ xs: 12 }}>
-                    <Alert severity="info">No accessory templates in catalog yet.</Alert>
-                  </Grid>
-                )}
-              </Grid>
-            </>
+                    </CardContent>
+                  </MuiCard>
+                </Grid>
+              ))}
+              {catalog.length === 0 && (
+                <Grid item xs={12}>
+                  <Alert severity="info">No catalog items available. Contact admin to add products to the catalog.</Alert>
+                </Grid>
+              )}
+            </Grid>
           )}
         </>
       )}
 
-      {/* Add/Edit Product Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Name" fullWidth value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <ImageUpload
+                value={form.imageUrl}
+                onChange={(url) => setForm({ ...form, imageUrl: url })}
+                token={token}
+              />
             </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Description" fullWidth multiline rows={2} value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <Grid item xs={12}><TextField label="Name" fullWidth value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} required /></Grid>
+            <Grid item xs={12}><TextField label="Description" fullWidth value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} /></Grid>
+            <Grid item xs={6}><TextField label="Price (UGX)" fullWidth type="number" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} required /></Grid>
+            <Grid item xs={6}><TextField label="Stock" fullWidth type="number" value={form.stock} onChange={(e) => setForm({...form, stock: e.target.value})} required /></Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth><InputLabel>Type</InputLabel><Select value={form.type} label="Type" onChange={(e) => setForm({...form, type: e.target.value})}><MenuItem value="cylinder">Cylinder</MenuItem><MenuItem value="accessory">Accessory</MenuItem></Select></FormControl>
             </Grid>
-            <Grid size={{ xs: 6 }}>
-              <TextField label="Price (UGX)" fullWidth type="number" value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })} required />
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <TextField label="Stock" fullWidth type="number" value={form.stock}
-                onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
-                <Select value={form.type} label="Type"
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                  <MenuItem value="cylinder">Cylinder</MenuItem>
-                  <MenuItem value="accessory">Accessory</MenuItem>
-                  <MenuItem value="burner">Burner</MenuItem>
-                  <MenuItem value="regulator">Regulator</MenuItem>
-                  <MenuItem value="hose">Hose</MenuItem>
-                  <MenuItem value="grill">Grill</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 6 }}>
-              <TextField label="Size (e.g. 6kg, 12kg)" fullWidth value={form.size}
-                onChange={(e) => setForm({ ...form, size: e.target.value })} />
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Image URL" fullWidth value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                helperText="Paste image URL or upload via the upload endpoint" />
-            </Grid>
+            <Grid item xs={6}><TextField label="Size (e.g. 6kg, 12kg)" fullWidth value={form.size} onChange={(e) => setForm({...form, size: e.target.value})} /></Grid>
+            <Grid item xs={6}><TextField label="Weight (kg)" fullWidth type="number" value={form.weight} onChange={(e) => setForm({...form, weight: e.target.value})} /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
@@ -469,41 +373,30 @@ export default function Products() {
         </DialogActions>
       </Dialog>
 
-      {/* Catalog Add-to-Stock Dialog */}
-      <Dialog open={catalogDialogOpen} onClose={() => setCatalogDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={catalogDialogOpen} onClose={() => setCatalogDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add "{selectedCatalogItem?.name}" to Stock</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Price (UGX)" fullWidth type="number" value={catalogForm.price}
-                onChange={(e) => setCatalogForm({ ...catalogForm, price: e.target.value })}
-                helperText={`Default: UGX ${Number(selectedCatalogItem?.defaultPrice || 0).toLocaleString()}`} />
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <ImageUpload
+                value={catalogForm.imageUrl}
+                onChange={(url) => setCatalogForm({ ...catalogForm, imageUrl: url })}
+                label="Override Image (optional)"
+                token={token}
+              />
             </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Stock Quantity" fullWidth type="number" value={catalogForm.stock}
-                onChange={(e) => setCatalogForm({ ...catalogForm, stock: e.target.value })} required />
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Image URL" fullWidth value={catalogForm.imageUrl}
-                onChange={(e) => setCatalogForm({ ...catalogForm, imageUrl: e.target.value })}
-                helperText="Override catalog image if needed" />
-            </Grid>
+            <Grid item xs={12}><TextField label="Price Override (UGX)" fullWidth type="number" value={catalogForm.price} onChange={(e) => setCatalogForm({...catalogForm, price: e.target.value})} helperText={`Default: UGX ${Number(selectedCatalogItem?.defaultPrice || 0).toLocaleString()}`} /></Grid>
+            <Grid item xs={12}><TextField label="Stock Quantity" fullWidth type="number" value={catalogForm.stock} onChange={(e) => setCatalogForm({...catalogForm, stock: e.target.value})} required /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCatalogDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCatalogAddToStock}>
-            Add to Stock
-          </Button>
+          <Button variant="contained" onClick={handleCatalogAddToStock}>Add to Stock</Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
   );

@@ -1,31 +1,27 @@
 import { Request, Response } from 'express';
-import AppDataSource  from '../config/database';
+import AppDataSource from '../config/database';
 import { Product } from '../entities/Product';
 import { User } from '../entities/User';
+import { getIO } from '../config/socket';
 
 const productRepository = AppDataSource.getRepository(Product);
 const userRepository = AppDataSource.getRepository(User);
 
-// GET /api/products - Role-based product listing
 export const getProducts = async (req: Request, res: Response) => {
   try {
     const { user } = req as any;
     let query = productRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.station', 'station');
 
-    // AGENT: only see products from their station
     if (user.role === 'agent') {
       const agent = await userRepository.findOne({ where: { id: user.id } });
       if (agent?.stationId) {
         query = query.where('product.stationId = :stationId', { stationId: agent.stationId });
       }
-    }
-    // CUSTOMER: only see available products from active stations
-    else if (user.role === 'customer') {
+    } else if (user.role === 'customer') {
       query = query.where('product.isAvailable = :isAvailable', { isAvailable: true })
         .andWhere('station.isActive = :isActive', { isActive: true });
     }
-    // ADMIN: sees all (no filter)
 
     const products = await query.getMany();
     res.json({ success: true, data: products });
@@ -34,17 +30,14 @@ export const getProducts = async (req: Request, res: Response) => {
   }
 };
 
-// POST /api/products - Create product (Admin/Agent only)
 export const createProduct = async (req: Request, res: Response) => {
   try {
-    const { name, description, price, stock, type, stationId, imageUrl } = req.body;
+    const { name, description, price, stock, type, stationId, imageUrl, weight, size } = req.body;
     const { user } = req as any;
 
-    // Determine stationId based on role
     let finalStationId = stationId;
 
     if (user.role === 'agent') {
-      // Agent MUST use their own station
       const agent = await userRepository.findOne({ where: { id: user.id } });
       if (!agent?.stationId) {
         return res.status(400).json({
@@ -54,7 +47,6 @@ export const createProduct = async (req: Request, res: Response) => {
       }
       finalStationId = agent.stationId;
     } else if (user.role === 'admin') {
-      // Admin must provide stationId or we reject
       if (!finalStationId) {
         return res.status(400).json({
           success: false,
@@ -69,24 +61,27 @@ export const createProduct = async (req: Request, res: Response) => {
     }
 
     const product = productRepository.create({
-      name,
-      description,
-      price,
-      stock,
+      name, description, price, stock,
       type: type || 'cylinder',
       stationId: finalStationId,
       isAvailable: true,
-      imageUrl
+      imageUrl,
+      weight: weight !== undefined ? weight : null,
+      size: size || null,
     });
 
     await productRepository.save(product);
+
+    const io = getIO();
+    io.to(`station_${finalStationId}`).emit('product_created', product);
+    io.emit('product_updated', { type: 'created', product });
+
     res.status(201).json({ success: true, data: product });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// PATCH /api/products/:id/availability - Toggle availability
 export const toggleAvailability = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -102,20 +97,23 @@ export const toggleAvailability = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
 
-    // Agent can only toggle products from their station
     if (user.role === 'agent' && product.stationId !== user.stationId) {
       return res.status(403).json({ success: false, error: 'Access denied: not your station' });
     }
 
     product.isAvailable = isAvailable;
     await productRepository.save(product);
+
+    const io = getIO();
+    io.to(`station_${product.stationId}`).emit('product_updated', product);
+    io.emit('product_updated', { type: 'availability', product });
+
     res.json({ success: true, data: product });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// PUT /api/products/:id - Update product
 export const updateProduct = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -127,20 +125,23 @@ export const updateProduct = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
 
-    // Role-based access check
     if (user.role === 'agent' && product.stationId !== user.stationId) {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
     Object.assign(product, updates);
     await productRepository.save(product);
+
+    const io = getIO();
+    io.to(`station_${product.stationId}`).emit('product_updated', product);
+    io.emit('product_updated', { type: 'updated', product });
+
     res.json({ success: true, data: product });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// DELETE /api/products/:id - Delete product
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -156,6 +157,11 @@ export const deleteProduct = async (req: Request, res: Response) => {
     }
 
     await productRepository.remove(product);
+
+    const io = getIO();
+    io.to(`station_${product.stationId}`).emit('product_deleted', { id: product.id });
+    io.emit('product_deleted', { id: product.id });
+
     res.json({ success: true, message: 'Product deleted' });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
