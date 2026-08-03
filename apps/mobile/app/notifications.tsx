@@ -4,11 +4,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../src/context/AuthContext";
-import { apiRequest } from "../../src/services/api";
-import TopBar from "../../src/components/TopBar";
-import BottomNav from "../../src/components/BottomNav";
-import { COLORS } from "../../src/utils/constants";
+import { useAuth } from "../src/context/AuthContext";
+import { apiRequest } from "../src/services/api";
+import TopBar from "../src/components/TopBar";
+import BottomNav from "../src/components/BottomNav";
+import { COLORS } from "../src/utils/constants";
 
 interface NotificationItem {
   id: string;
@@ -41,10 +41,15 @@ export default function NotificationsScreen() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await apiRequest<{ notifications: NotificationItem[]; meta: { unreadCount: number } }>("get", "/notifications");
+      const res = await apiRequest<{
+        success: boolean;
+        data?: NotificationItem[];
+        meta?: { unreadCount: number };
+      }>("get", "/notifications");
       if (res.success && res.data) {
-        setNotifications(res.data.notifications || []);
-        setUnreadCount(res.data.meta?.unreadCount || 0);
+        // FIX: backend returns array directly in `data`, NOT `data.notifications`
+        setNotifications(Array.isArray(res.data) ? res.data : []);
+        setUnreadCount(res.meta?.unreadCount || 0);
       }
     } catch (err) {
       console.error("[Notifications] Fetch error:", err);
@@ -56,7 +61,6 @@ export default function NotificationsScreen() {
 
   useEffect(() => {
     fetchNotifications();
-    // Poll every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
@@ -99,21 +103,21 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Notifications" />
+      <TopBar title="Notifications" showBack={true} showBell={false} />
 
       {unreadCount > 0 && (
-        <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead} activeOpacity={0.7}>
           <Text style={styles.markAllText}>Mark all as read ({unreadCount})</Text>
         </TouchableOpacity>
       )}
 
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1484FF" />}
       >
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.accent} />
+          <View style={{ paddingTop: 60, alignItems: "center" }}>
+            <ActivityIndicator color="#1484FF" />
+          </View>
         ) : notifications.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🔔</Text>
@@ -125,18 +129,18 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               key={n.id}
               style={[styles.item, !n.isRead && styles.itemUnread]}
+              activeOpacity={0.8}
               onPress={() => {
                 if (!n.isRead) markAsRead(n.id);
                 if (n.orderId) router.push(`/tracking?orderId=${n.orderId}`);
               }}
-              activeOpacity={0.8}
             >
               <View style={styles.iconBox}>
-                <Text style={{ fontSize: 22 }}>{ICONS[n.type] || "🔔"}</Text>
+                <Text style={{ fontSize: 20 }}>{ICONS[n.type] || "🔔"}</Text>
               </View>
               <View style={styles.content}>
                 <Text style={[styles.title, !n.isRead && styles.titleUnread]}>{n.title}</Text>
-                <Text style={styles.message} numberOfLines={2}>{n.message}</Text>
+                <Text style={styles.message}>{n.message}</Text>
                 <Text style={styles.time}>{new Date(n.createdAt).toLocaleString()}</Text>
               </View>
               <TouchableOpacity
@@ -144,7 +148,7 @@ export default function NotificationsScreen() {
                 onPress={() => deleteNotification(n.id)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={{ color: COLORS.muted, fontSize: 18 }}>×</Text>
+                <Text style={{ color: "#8A93A6", fontSize: 18 }}>×</Text>
               </TouchableOpacity>
             </TouchableOpacity>
           ))
@@ -157,20 +161,33 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1, backgroundColor: "#070b14" },
   markAllBtn: { marginHorizontal: 16, marginTop: 12, marginBottom: 4, alignSelf: "flex-end" },
-  markAllText: { color: COLORS.accent, fontSize: 12, fontWeight: "600" },
+  markAllText: { color: "#1484FF", fontSize: 12, fontWeight: "600" },
+
   empty: { alignItems: "center", marginTop: 80 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  emptySub: { color: COLORS.muted, fontSize: 13, marginTop: 4, textAlign: "center" },
-  item: { flexDirection: "row", alignItems: "flex-start", marginHorizontal: 16, marginBottom: 10, backgroundColor: COLORS.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: COLORS.border },
-  itemUnread: { borderColor: COLORS.accent, backgroundColor: "rgba(20,132,255,0.06)" },
-  iconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#0f172a", alignItems: "center", justifyContent: "center", marginRight: 12 },
+  emptySub: { color: "#8A93A6", fontSize: 13, marginTop: 4, textAlign: "center" },
+
+  item: {
+    flexDirection: "row", alignItems: "flex-start",
+    marginHorizontal: 16, marginBottom: 10,
+    backgroundColor: "#101723", borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: "#1F2A3D",
+  },
+  itemUnread: {
+    borderColor: "#1484FF",
+    backgroundColor: "rgba(20,132,255,0.06)",
+  },
+  iconBox: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: "#0f172a", alignItems: "center", justifyContent: "center", marginRight: 12,
+  },
   content: { flex: 1 },
   title: { color: "#fff", fontSize: 14, fontWeight: "600" },
   titleUnread: { fontWeight: "700" },
-  message: { color: COLORS.muted, fontSize: 12, marginTop: 3, lineHeight: 18 },
+  message: { color: "#8A93A6", fontSize: 12, marginTop: 3, lineHeight: 18 },
   time: { color: "#475569", fontSize: 10, marginTop: 6 },
   deleteBtn: { padding: 4, marginLeft: 4 },
 });

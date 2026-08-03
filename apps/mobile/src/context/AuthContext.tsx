@@ -145,12 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   }, []);
 
+
   const updateUser = useCallback(async (data: Partial<User>) => {
-    const res = await apiRequest<{ success: boolean; data: User }>('put', '/auth/profile', data);
-    if (res.success && res.data) {
-      setUser(res.data);
-      await AsyncStorage.setItem('user', JSON.stringify(res.data));
+    const res = await apiRequest<{ success: boolean; data: User; error?: string }>(
+      "put", "/auth/profile", data
+    );
+    if (!res.success || !res.data) {
+      throw new Error(res.error || "Failed to update profile");
     }
+    setUser(res.data);
+    await AsyncStorage.setItem("user", JSON.stringify(res.data));
   }, []);
 
   const logout = useCallback(async () => {

@@ -1,158 +1,113 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { COLORS } from '../utils/constants';
+import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useRouter, usePathname } from "expo-router";
+import { useAuth } from "../context/AuthContext";
+import { apiRequest } from "../services/api";
 
-interface Props {
+interface TopBarProps {
   title?: string;
   showBack?: boolean;
-  onBack?: () => void;
-  right?: React.ReactNode;
+  showBell?: boolean;
 }
 
-export default function TopBar({ title, showBack = false, onBack, right }: Props) {
+export default function TopBar({ title, showBack = true, showBell = true }: TopBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  /* Fetch unread count on mount and when screen focuses */
+  useEffect(() => {
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000); // poll every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUnread = async () => {
+    try {
+      const res = await apiRequest<{
+        success: boolean;
+        meta?: { unreadCount: number };
+      }>("get", "/notifications?page=1&limit=1");
+      if (res.success && res.meta) {
+        setUnreadCount(res.meta.unreadCount || 0);
+      }
+    } catch (e) {
+      // silently fail — don't block UI
+    }
+  };
+
+  const isHome = pathname === "/(tabs)" || pathname === "/";
 
   return (
-    <View style={styles.container}>
-      {showBack ? (
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={onBack || (() => router.back())}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.brand}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>🔥</Text>
-          </View>
-          <View>
-            <View style={styles.locRow}>
-              <Text style={styles.locIcon}>📍</Text>
-              <Text style={styles.locText}>Kampala, Uganda</Text>
+    <View style={styles.bar}>
+      <View style={styles.side}>
+        {showBack && !isHome && (
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+        )}
+        {title ? (
+          <Text style={styles.title}>{title}</Text>
+        ) : (
+          <View style={styles.brand}>
+            <View style={styles.flameLogo}>
+              <Text style={{ fontSize: 20 }}>🔥</Text>
             </View>
-            <Text style={styles.brandTitle}>
-              Gasmobil <Text style={styles.accent}>Uganda</Text>
-            </Text>
+            <View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Text style={{ fontSize: 11, color: "#8A93A6" }}>📍 Kampala, Uganda</Text>
+              </View>
+              <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff", marginTop: 1 }}>
+                Gasmobil <Text style={{ color: "#1484FF" }}>Uganda</Text>
+              </Text>
+            </View>
           </View>
-        </View>
-      )}
-      {title && <Text style={styles.title}>{title}</Text>}
-      {right ? (
-        right
-      ) : !showBack ? (
+        )}
+      </View>
+
+      {showBell && (
         <TouchableOpacity
           style={styles.bell}
-          onPress={() => {}}
+          onPress={() => router.push("/(tabs)/notifications")}
           activeOpacity={0.7}
         >
-          <Text style={styles.bellIcon}>🔔</Text>
-          <View style={styles.dot} />
+          <Text style={{ fontSize: 16, color: "#fff" }}>🔔</Text>
+          {unreadCount > 0 && <View style={styles.dot} />}
         </TouchableOpacity>
-      ) : null}
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 8,
+  bar: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 18, paddingTop: 18, paddingBottom: 8,
+    backgroundColor: "transparent",
   },
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logo: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'linear-gradient(160deg,#0d2647,#0a1830)',
-    backgroundColor: '#0a1830',
-    borderWidth: 1,
-    borderColor: '#16223a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: COLORS.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-  },
-  logoText: {
-    fontSize: 20,
-  },
-  locRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  locIcon: {
-    fontSize: 10,
-  },
-  locText: {
-    fontSize: 11,
-    color: COLORS.muted,
-  },
-  brandTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: -0.2,
-    marginTop: 2,
-  },
-  accent: {
-    color: COLORS.accent,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    flex: 1,
-    textAlign: 'center',
-  },
+  side: { flexDirection: "row", alignItems: "center", gap: 12 },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1a2236',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: "#1a2236", alignItems: "center", justifyContent: "center",
   },
-  backIcon: {
-    color: '#fff',
-    fontSize: 18,
+  backIcon: { color: "#fff", fontSize: 24, fontWeight: "300", lineHeight: 26 },
+  title: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  brand: { flexDirection: "row", alignItems: "center", gap: 10 },
+  flameLogo: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: "#0d2647", borderWidth: 1, borderColor: "#16223a",
+    alignItems: "center", justifyContent: "center",
   },
   bell: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#121a28',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  bellIcon: {
-    color: '#fff',
-    fontSize: 16,
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: "#121a28", borderWidth: 1, borderColor: "#1F2A3D",
+    alignItems: "center", justifyContent: "center",
+    position: "relative",
   },
   dot: {
-    position: 'absolute',
-    top: 9,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.danger,
-    borderWidth: 1,
-    borderColor: '#121a28',
+    position: "absolute", top: 9, right: 10,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: "#ff4d4d", borderWidth: 1, borderColor: "#121a28",
   },
 });
