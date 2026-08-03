@@ -21,10 +21,23 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate before upload
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Only JPG, PNG, and WebP images are allowed');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File too large. Max 5MB.');
+      return;
+    }
+
+    // Local preview
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
 
+    // Upload
     setLoading(true);
     try {
       const formData = new FormData();
@@ -38,17 +51,15 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
       });
 
       if (res.data.success && res.data.data?.imageUrl) {
-        const fullUrl = res.data.data.imageUrl.startsWith('http')
-          ? res.data.data.imageUrl
-          : `${API_URL.replace('/api', '')}${res.data.data.imageUrl}`;
-        onChange(fullUrl);
-        setPreview(fullUrl);
+        onChange(res.data.data.imageUrl);
+        setPreview(res.data.data.imageUrl);
       } else {
-        throw new Error('Upload failed');
+        throw new Error(res.data.error || 'Upload failed');
       }
     } catch (err: any) {
       console.error('Upload error:', err);
-      alert(err.response?.data?.error || 'Failed to upload image');
+      const msg = err.response?.data?.error || err.message || 'Failed to upload image';
+      alert(msg);
       setPreview(value);
     } finally {
       setLoading(false);

@@ -1,4 +1,3 @@
-//import { env } from './config/env';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -6,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import path from 'path';
+import fs from 'fs';
 import AppDataSource from './config/database';
 import { initializeSocket } from './config/socket';
 import authRoutes from './routes/auth';
@@ -33,6 +33,13 @@ const httpServer = createServer(app);
 initializeSocket(httpServer);
 
 const PORT = process.env.PORT || 5000;
+
+// ── Ensure uploads directory exists ──────────
+const uploadsDir = path.join(__dirname, "../uploads/products");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log("[Server] Created uploads directory:", uploadsDir);
+}
 
 // ── Security ─────────────────
 app.use(helmet());
@@ -66,12 +73,13 @@ app.use('/api', apiLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ── Static Files ─────────────────
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 // ── Health Check ─────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ── API Routes ─────────────────
 app.use('/api/auth', authRoutes);
@@ -85,6 +93,7 @@ app.use('/api/delivery', authMiddleware, deliveryRoutes);
 app.use('/api/payments', authMiddleware, paymentRoutes);
 app.use('/api/wallet', authMiddleware, walletRoutes);
 app.use('/api/catalog', authMiddleware, catalogRoutes);
+// Upload route: authMiddleware handles JWT, upload route handles multer
 app.use('/api/upload', authMiddleware, uploadRoutes);
 app.use('/api/notifications', authMiddleware, notificationRoutes);
 
@@ -93,7 +102,7 @@ app.use(errorHandler);
 
 // ── 404 Handler ────────────────
 app.use((req, res) => {
-  res.status(404).json({ success: false, error: 'Route not found' });
+  res.status(404).json({ success: false, error: 'Route not found', path: req.path, method: req.method });
 });
 
 // ── Start Server ───────────────
