@@ -59,6 +59,7 @@ export const initializeSocket = (server: HttpServer) => {
       socket.join(`driver_${userId}`);
     }
 
+    // CRITICAL FIX: Both admin AND agent join admins room for system-wide notifications
     if (['admin', 'agent'].includes(userRole)) {
       socket.join('admins');
     }
@@ -148,4 +149,9 @@ export const broadcastToAdmins = (event: string, data: any) => {
 export const broadcastToDrivers = (event: string, data: any) => {
   if (!io) return;
   io.to('drivers').emit(event, data);
+};
+
+export const broadcastToStation = (stationId: string, event: string, data: any) => {
+  if (!io) return;
+  io.to(`station_${stationId}`).emit(event, data);
 };

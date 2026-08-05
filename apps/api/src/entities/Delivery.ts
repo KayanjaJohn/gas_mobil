@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Order } from './Order';
 
 export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'in_transit' | 'nearby' | 'delivered' | 'failed';
@@ -42,6 +42,22 @@ export class Delivery {
   @Column({ type: 'decimal', precision: 2, scale: 1, nullable: true })
   declare rating: number | null;
 
+  // NEW: Timestamp tracking for driver status updates
+  @Column({ type: 'timestamp', nullable: true })
+  declare pickedUpAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  declare deliveredAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  declare startedAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  declare notes: string | null;
+
   @CreateDateColumn()
   declare createdAt: Date;
+
+  @UpdateDateColumn()
+  declare updatedAt: Date;
 }

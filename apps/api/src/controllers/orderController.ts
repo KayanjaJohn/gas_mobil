@@ -6,50 +6,13 @@ import { Product } from "../entities/Product";
 import { User } from "../entities/User";
 import { Station } from "../entities/Station";
 import { Delivery } from "../entities/Delivery";
-import { Notification } from "../entities/Notification";
-import { getIO, broadcastToUser, broadcastToAdmins } from "../config/socket";
+import { createSystemNotification } from "../services/notificationService";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const productRepository = AppDataSource.getRepository(Product);
 const userRepository = AppDataSource.getRepository(User);
 const stationRepository = AppDataSource.getRepository(Station);
 const deliveryRepository = AppDataSource.getRepository(Delivery);
-const notificationRepo = AppDataSource.getRepository(Notification);
-
-// Helper: Create persistent notification
-const createNotification = async (
-  userId: string,
-  type: Notification["type"],
-  orderId: string | null,
-  title: string,
-  message: string,
-  data?: any
-) => {
-  try {
-    const notif = notificationRepo.create({
-      userId,
-      type,
-      orderId,
-      title,
-      message,
-      data,
-      isRead: false,
-    });
-    await notificationRepo.save(notif);
-
-    // Socket broadcast
-    broadcastToUser(userId, "notification", {
-      id: notif.id,
-      type,
-      orderId,
-      title,
-      message,
-      createdAt: notif.createdAt,
-    });
-  } catch (err) {
-    console.error("[Notification] Failed to create:", err);
-  }
-};
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -63,11 +26,30 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const { items, deliveryAddress, deliveryLatitude, deliveryLongitude, paymentMethod, notes } = req.body;
+    const { items, deliveryAddress, deliveryCity, deliveryLatitude, deliveryLongitude, paymentMethod, notes } = req.body;
     const { user } = req as any;
 
     if (user.role !== "customer") {
       return res.status(403).json({ success: false, error: "Only customers can place orders" });
+    }
+
+    // ── CRITICAL: Enforce real GPS location ──
+    if (!deliveryLatitude || !deliveryLongitude) {
+      return res.status(400).json({
+        success: false,
+        error: "Device GPS location is required. Please enable location services in the app and retry."
+      });
+    }
+
+    const lat = parseFloat(deliveryLatitude);
+    const lng = parseFloat(deliveryLongitude);
+
+    // Validate coordinates are within Uganda bounds (approximate)
+    if (lat < -1.5 || lat > 4.5 || lng < 29.5 || lng > 35.0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid location coordinates. Location must be within Uganda."
+      });
     }
 
     let totalAmount = 0;
@@ -103,9 +85,9 @@ export const createOrder = async (req: Request, res: Response) => {
     let nearestStation = stations[0];
     let minDistance = Infinity;
 
-    if (deliveryLatitude && deliveryLongitude) {
-      for (const station of stations) {
-        const dist = getDistance(deliveryLatitude, deliveryLongitude, station.latitude, station.longitude);
+    for (const station of stations) {
+      if (station.latitude && station.longitude) {
+        const dist = getDistance(lat, lng, station.latitude, station.longitude);
         if (dist < minDistance) {
           minDistance = dist;
           nearestStation = station;
@@ -113,12 +95,8 @@ export const createOrder = async (req: Request, res: Response) => {
       }
     }
 
-    // Use customer saved address if not provided
-    const customer = await userRepository.findOne({ where: { id: user.id } });
-    const finalAddress = deliveryAddress || customer?.address || "";
-    const finalCity = req.body.deliveryCity || customer?.city || "";
-    const finalLat = deliveryLatitude || customer?.latitude || null;
-    const finalLng = deliveryLongitude || customer?.longitude || null;
+    const finalAddress = deliveryAddress || "";
+    const finalCity = deliveryCity || "";
 
     const order = orderRepository.create({
       userId: user.id,
@@ -126,8 +104,9 @@ export const createOrder = async (req: Request, res: Response) => {
       totalAmount,
       deliveryAddress: finalAddress,
       deliveryCity: finalCity,
-      deliveryLatitude: finalLat,
-      deliveryLongitude: finalLng,
+      deliveryLatitude: lat,
+      deliveryLongitude: lng,
+      locationAccuracy: req.body.accuracy || null,
       paymentMethod: paymentMethod || "cash",
       paymentStatus: paymentMethod === "wallet" ? "paid" : "pending",
       status: "pending",
@@ -145,40 +124,23 @@ export const createOrder = async (req: Request, res: Response) => {
       }
     }
 
-    // Notify customer
-    await createNotification(
-      user.id,
-      "order_placed",
-      order.id,
-      "Order Placed",
-      `Your order #${order.id.slice(0, 8).toUpperCase()} has been placed successfully.`,
-      { orderId: order.id, totalAmount }
-    );
-
-    // Notify admins/agents at the station
-    const agents = await userRepository.find({ where: { role: "agent", stationId: nearestStation.id } });
-    for (const agent of agents) {
-      await createNotification(
-        agent.id,
-        "order_placed",
-        order.id,
-        "New Order Received",
-        `New order #${order.id.slice(0, 8).toUpperCase()} from ${user.name} — UGX ${totalAmount.toLocaleString()}`,
-        { orderId: order.id, totalAmount, customerName: user.name }
-      );
-    }
-
-    // Socket broadcast to station agents
-    broadcastToAdmins("new_order", {
+    // ── Notify ALL stakeholders ──
+    await createSystemNotification({
+      type: "order_placed",
       orderId: order.id,
       stationId: nearestStation.id,
-      customerName: user.name,
-      totalAmount,
-      status: "pending",
+      title: "New Order Received",
+      message: `Order #${order.id.slice(0, 8).toUpperCase()} from ${user.name} — UGX ${totalAmount.toLocaleString()}`,
+      data: { orderId: order.id, totalAmount, customerName: user.name, address: finalAddress },
+      notifyAdmin: true,
+      notifyAgent: true,
+      notifyCustomer: true,
+      userId: user.id,
     });
 
     res.status(201).json({ success: true, data: order });
   } catch (error: any) {
+    console.error("[createOrder]", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -271,15 +233,18 @@ export const cancelOrder = async (req: Request, res: Response) => {
       }
     }
 
-    // Notify customer of cancellation
-    await createNotification(
-      order.userId,
-      "cancelled",
-      order.id,
-      "Order Cancelled",
-      `Your order #${order.id.slice(0, 8).toUpperCase()} has been cancelled.`,
-      { orderId: order.id, reason }
-    );
+    await createSystemNotification({
+      type: "cancelled",
+      orderId: order.id,
+      stationId: order.stationId,
+      title: "Order Cancelled",
+      message: `Order #${order.id.slice(0, 8).toUpperCase()} has been cancelled. Reason: ${reason || "No reason provided"}`,
+      data: { orderId: order.id, reason, cancelledBy: user.role },
+      notifyAdmin: true,
+      notifyAgent: true,
+      notifyCustomer: true,
+      userId: order.userId,
+    });
 
     res.json({ success: true, data: order });
   } catch (error: any) {
@@ -309,32 +274,57 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     order.status = status;
     await orderRepository.save(order);
 
-    // Notify customer on status change
-    const statusMessages: Record<string, { title: string; message: string; type: Notification["type"] }> = {
-      confirmed: { title: "Order Confirmed", message: `Your order #${id.slice(0, 8).toUpperCase()} has been confirmed.`, type: "order_confirmed" },
-      driver_assigned: { title: "Driver Assigned", message: `A driver has been assigned to your order #${id.slice(0, 8).toUpperCase()}.`, type: "driver_assigned" },
-      picked_up: { title: "Order Picked Up", message: `Your order #${id.slice(0, 8).toUpperCase()} has been picked up.`, type: "picked_up" },
-      in_transit: { title: "On The Way", message: `Your order #${id.slice(0, 8).toUpperCase()} is on the way!`, type: "in_transit" },
-      delivered: { title: "Delivered", message: `Your order #${id.slice(0, 8).toUpperCase()} has been delivered.`, type: "delivered" },
+    const statusMessages: Record<string, { title: string; message: string; type: any }> = {
+      confirmed: {
+        title: "Order Confirmed",
+        message: `Your order #${id.slice(0, 8).toUpperCase()} has been confirmed and is being prepared.`,
+        type: "order_confirmed",
+      },
+      driver_assigned: {
+        title: "Driver Assigned",
+        message: `A driver has been assigned to your order #${id.slice(0, 8).toUpperCase()}.`,
+        type: "driver_assigned",
+      },
+      picked_up: {
+        title: "Order Picked Up",
+        message: `Your order #${id.slice(0, 8).toUpperCase()} has been picked up by the driver.`,
+        type: "picked_up",
+      },
+      in_transit: {
+        title: "On The Way",
+        message: `Your order #${id.slice(0, 8).toUpperCase()} is on the way!`,
+        type: "in_transit",
+      },
+      nearby: {
+        title: "Driver Nearby",
+        message: `Your driver is approaching your location.`,
+        type: "nearby",
+      },
+      delivered: {
+        title: "Delivered",
+        message: `Your order #${id.slice(0, 8).toUpperCase()} has been delivered. Please confirm receipt.`,
+        type: "delivered",
+      },
+      completed: {
+        title: "Order Completed",
+        message: `Your order #${id.slice(0, 8).toUpperCase()} is complete. Thank you for using GasMobil!`,
+        type: "delivered",
+      },
     };
 
     const msg = statusMessages[status];
     if (msg) {
-      await createNotification(
-        order.userId,
-        msg.type,
-        order.id,
-        msg.title,
-        msg.message,
-        { orderId: order.id, status }
-      );
-
-      // Also broadcast via socket for real-time updates
-      broadcastToUser(order.userId, "order_status_changed", {
+      await createSystemNotification({
+        type: msg.type,
         orderId: order.id,
-        status,
+        stationId: order.stationId,
         title: msg.title,
         message: msg.message,
+        data: { orderId: order.id, status, oldStatus, updatedBy: user.role },
+        notifyAdmin: true,
+        notifyAgent: true,
+        notifyCustomer: true,
+        userId: order.userId,
       });
     }
 
