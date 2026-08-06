@@ -7,6 +7,7 @@ import Drivers from './pages/Drivers';
 import Customers from './pages/Customers';
 import Stations from './pages/Stations';
 import Reports from './pages/Reports';
+import NotificationPage from './pages/NotificationPage';
 import Layout from './components/Layout';
 import { AuthProvider } from './context/AuthContext';
 
@@ -15,8 +16,7 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/products" element={<Products />} />
@@ -24,8 +24,9 @@ function App() {
           <Route path="/customers" element={<Customers />} />
           <Route path="/stations" element={<Stations />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/notifications" element={<NotificationPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AuthProvider>
   );
