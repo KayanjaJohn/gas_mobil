@@ -1,7 +1,7 @@
 import AppDataSource from '../config/database';
 import { Notification, NotificationType } from '../entities/Notification';
 import { User } from '../entities/User';
-import { broadcastToUser, broadcastToAdmins } from '../config/socket';
+import { broadcastToUser, broadcastToAdmins, broadcastToStation } from '../config/socket';
 
 const notificationRepo = AppDataSource.getRepository(Notification);
 const userRepo = AppDataSource.getRepository(User);
@@ -23,6 +23,16 @@ export interface NotifyPayload {
 export async function createSystemNotification(payload: NotifyPayload) {
   const notificationsToSave: Notification[] = [];
   const targetUserIds = new Set<string>();
+  const socketPayloads: Array<{ userId: string; event: string; data: any }> = [];
+
+  const basePayload = {
+    type: payload.type,
+    orderId: payload.orderId || null,
+    title: payload.title,
+    message: payload.message,
+    data: payload.data,
+    isRead: false,
+  };
 
   // 1. ALL admins receive EVERY activity when notifyAdmin is true
   if (payload.notifyAdmin) {
@@ -32,17 +42,15 @@ export async function createSystemNotification(payload: NotifyPayload) {
         targetUserIds.add(admin.id);
         notificationsToSave.push(
           notificationRepo.create({
+            ...basePayload,
             userId: admin.id,
-            type: payload.type,
-            orderId: payload.orderId || null,
             title: `[ADMIN] ${payload.title}`,
-            message: payload.message,
             data: { ...payload.data, scope: 'admin' },
-            isRead: false,
           })
         );
       }
     }
+    // Admin socket broadcast (no ID needed — just an alert)
     broadcastToAdmins('admin_notification', {
       type: payload.type,
       title: payload.title,
@@ -63,13 +71,10 @@ export async function createSystemNotification(payload: NotifyPayload) {
         targetUserIds.add(agent.id);
         notificationsToSave.push(
           notificationRepo.create({
+            ...basePayload,
             userId: agent.id,
-            type: payload.type,
-            orderId: payload.orderId || null,
             title: `[STATION] ${payload.title}`,
-            message: payload.message,
             data: { ...payload.data, scope: 'agent', stationId: payload.stationId },
-            isRead: false,
           })
         );
       }
@@ -82,22 +87,11 @@ export async function createSystemNotification(payload: NotifyPayload) {
       targetUserIds.add(payload.userId);
       notificationsToSave.push(
         notificationRepo.create({
+          ...basePayload,
           userId: payload.userId,
-          type: payload.type,
-          orderId: payload.orderId || null,
-          title: payload.title,
-          message: payload.message,
           data: { ...payload.data, scope: 'customer' },
-          isRead: false,
         })
       );
-      broadcastToUser(payload.userId, 'notification', {
-        type: payload.type,
-        title: payload.title,
-        message: payload.message,
-        orderId: payload.orderId,
-        data: payload.data,
-      });
     }
   }
 
@@ -107,28 +101,36 @@ export async function createSystemNotification(payload: NotifyPayload) {
       targetUserIds.add(payload.userId);
       notificationsToSave.push(
         notificationRepo.create({
+          ...basePayload,
           userId: payload.userId,
-          type: payload.type,
-          orderId: payload.orderId || null,
-          title: payload.title,
-          message: payload.message,
           data: { ...payload.data, scope: 'driver' },
-          isRead: false,
         })
       );
-      broadcastToUser(payload.userId, 'notification', {
-        type: payload.type,
-        title: payload.title,
-        message: payload.message,
-        orderId: payload.orderId,
-        data: payload.data,
+    }
+  }
+
+  // ── CRITICAL FIX: Save FIRST, then emit with REAL IDs ──
+  let savedNotifications: Notification[] = [];
+  if (notificationsToSave.length > 0) {
+    savedNotifications = await notificationRepo.save(notificationsToSave);
+  }
+
+  // Emit to individual users with their real DB notification IDs
+  for (const notif of savedNotifications) {
+    const scope = notif.data?.scope;
+    if (scope === 'customer' || scope === 'driver') {
+      broadcastToUser(notif.userId, 'notification', {
+        id: notif.id,                 // ← REAL ID from DB
+        type: notif.type,
+        title: notif.title,
+        message: notif.message,
+        orderId: notif.orderId,
+        data: notif.data,
+        isRead: false,
+        createdAt: notif.createdAt,
       });
     }
   }
 
-  if (notificationsToSave.length > 0) {
-    await notificationRepo.save(notificationsToSave);
-  }
-
-  return { sentCount: notificationsToSave.length, recipients: Array.from(targetUserIds) };
+  return { sentCount: savedNotifications.length, recipients: Array.from(targetUserIds) };
 }
