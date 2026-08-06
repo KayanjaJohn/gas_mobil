@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const MAX_NOTIFICATIONS = 200;
 
 export interface Notification {
   id: string;
@@ -20,7 +21,7 @@ export interface NotificationFilters {
   dateRange: 'today' | 'week' | 'month' | 'all';
 }
 
-export function useAgentNotifications(token: string | null) {
+export function useAgentNotifications(token: string | null, stationId?: string | null) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,6 @@ export function useAgentNotifications(token: string | null) {
   const socketRef = useRef<Socket | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize notification sound
   useEffect(() => {
     audioRef.current = new Audio('/notification-sound.mp3');
   }, []);
@@ -65,9 +65,7 @@ export function useAgentNotifications(token: string | null) {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err: any) {
       console.error('markAsRead error:', err);
@@ -97,9 +95,7 @@ export function useAgentNotifications(token: string | null) {
       });
       setNotifications((prev) => {
         const removed = prev.find((n) => n.id === id);
-        if (removed && !removed.isRead) {
-          setUnreadCount((c) => Math.max(0, c - 1));
-        }
+        if (removed && !removed.isRead) setUnreadCount((c) => Math.max(0, c - 1));
         return prev.filter((n) => n.id !== id);
       });
     } catch (err: any) {
@@ -107,7 +103,6 @@ export function useAgentNotifications(token: string | null) {
     }
   }, [token]);
 
-  // Socket.IO for real-time notifications
   useEffect(() => {
     if (!token) return;
 
@@ -122,86 +117,60 @@ export function useAgentNotifications(token: string | null) {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[AdminSocket] Connected');
+      console.log('[AgentSocket] Connected');
+      // ── FIX: Join station room so agent gets station-scoped broadcasts ──
+      if (stationId) {
+        socket.emit('join_station', stationId);
+        console.log('[AgentSocket] Joined station room:', stationId);
+      }
+      fetchNotifications();
     });
 
-    socket.on('admin_notification', (payload) => {
-      const newNotif: Notification = {
-        id: payload.id || `admin_${Date.now()}`,
-        type: payload.type,
-        title: payload.title,
-        message: payload.message,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        orderId: payload.orderId,
-        data: payload.data,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-      audioRef.current?.play().catch(() => {});
-    });
+    const handleSocketNotification = (payload: any, source: string) => {
+      console.log(`[AgentSocket] ${source} received:`, payload.title || payload.type);
 
-    socket.on('notification', (payload) => {
-      const newNotif: Notification = {
-        id: payload.id || `notif_${Date.now()}`,
-        type: payload.type,
-        title: payload.title,
-        message: payload.message,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        orderId: payload.orderId,
-        data: payload.data,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-      audioRef.current?.play().catch(() => {});
-    });
+      if (payload.id && typeof payload.id === 'string' && payload.id.length === 36) {
+        const newNotif: Notification = {
+          id: payload.id,
+          type: payload.type || 'system_announcement',
+          title: payload.title || 'Notification',
+          message: payload.message || '',
+          isRead: false,
+          createdAt: payload.createdAt || new Date().toISOString(),
+          orderId: payload.orderId,
+          data: payload.data,
+        };
+        setNotifications((prev) => {
+          const next = [newNotif, ...prev];
+          return next.slice(0, MAX_NOTIFICATIONS);
+        });
+        setUnreadCount((prev) => prev + 1);
+        audioRef.current?.play().catch(() => {});
+      } else {
+        fetchNotifications();
+      }
+    };
 
-    socket.on('new_order', (payload) => {
-      const newNotif: Notification = {
-        id: `order_${Date.now()}`,
-        type: 'order_placed',
-        title: 'New Order',
-        message: `New order #${payload.orderId?.slice(0, 8).toUpperCase()} from ${payload.customerName}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        orderId: payload.orderId,
-        data: payload,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-      audioRef.current?.play().catch(() => {});
-    });
-
-    socket.on('driver_status_changed', (payload) => {
-      const newNotif: Notification = {
-        id: `driver_${Date.now()}`,
-        type: 'driver_status_changed',
-        title: 'Driver Update',
-        message: `${payload.driverName} is now ${payload.status}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        data: payload,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-    });
+    socket.on('admin_notification', (payload) => handleSocketNotification(payload, 'admin_notification'));
+    socket.on('notification', (payload) => handleSocketNotification(payload, 'notification'));
+    socket.on('new_order', (payload) => handleSocketNotification(payload, 'new_order'));
+    socket.on('driver_status_changed', (payload) => handleSocketNotification(payload, 'driver_status_changed'));
 
     socket.on('disconnect', () => {
-      console.log('[AdminSocket] Disconnected');
+      console.log('[AgentSocket] Disconnected');
     });
 
     return () => {
+      if (stationId) socket.emit('leave_station', stationId);
       socket.disconnect();
+      socketRef.current = null;
     };
-  }, [token]);
+  }, [token, stationId, fetchNotifications]);
 
-  // Initial fetch
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Filtered notifications
   const filteredNotifications = notifications.filter((n) => {
     if (filters.status === 'unread' && n.isRead) return false;
     if (filters.status === 'read' && !n.isRead) return false;
@@ -209,16 +178,9 @@ export function useAgentNotifications(token: string | null) {
     if (filters.dateRange !== 'all') {
       const date = new Date(n.createdAt);
       const now = new Date();
-      if (filters.dateRange === 'today') {
-        return date.toDateString() === now.toDateString();
-      }
-      if (filters.dateRange === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return date >= weekAgo;
-      }
-      if (filters.dateRange === 'month') {
-        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-      }
+      if (filters.dateRange === 'today') return date.toDateString() === now.toDateString();
+      if (filters.dateRange === 'week') return date >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      if (filters.dateRange === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     }
     return true;
   });
