@@ -8,6 +8,7 @@ import OrderDetailScreen from './src/screens/OrderDetailScreen';
 import DeliveryScreen from './src/screens/DeliveryScreen';
 import EarningsScreen from './src/screens/EarningsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,21 +17,16 @@ function AppNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0B1120', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#F59E0B" />
-        <Text style={{ color: '#94A3B8', marginTop: 16 }}>Loading...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B1120' }}>
+        <ActivityIndicator color="#F59E0B" />
+        <Text style={{ color: '#94A3B8', marginTop: 12 }}>Loading...</Text>
       </View>
     );
   }
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#0B1120' },
-        }}
-      >
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
@@ -40,6 +36,8 @@ function AppNavigator() {
             <Stack.Screen name="Delivery" component={DeliveryScreen} />
             <Stack.Screen name="Earnings" component={EarningsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            {/* ── NEW: Notifications screen ── */}
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
           </>
         )}
       </Stack.Navigator>
