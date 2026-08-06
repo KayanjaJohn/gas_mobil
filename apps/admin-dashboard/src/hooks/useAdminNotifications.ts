@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const MAX_NOTIFICATIONS = 200; // Memory cap
 
 export interface Notification {
   id: string;
@@ -107,7 +108,7 @@ export function useAdminNotifications(token: string | null) {
     }
   }, [token]);
 
-  // Socket.IO for real-time notifications
+  // ── Socket.IO for real-time notifications ──
   useEffect(() => {
     if (!token) return;
 
@@ -123,69 +124,41 @@ export function useAdminNotifications(token: string | null) {
 
     socket.on('connect', () => {
       console.log('[AdminSocket] Connected');
+      fetchNotifications(); // Sync on reconnect
     });
 
-    socket.on('admin_notification', (payload) => {
-      const newNotif: Notification = {
-        id: payload.id || `admin_${Date.now()}`,
-        type: payload.type,
-        title: payload.title,
-        message: payload.message,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        orderId: payload.orderId,
-        data: payload.data,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-      audioRef.current?.play().catch(() => {});
-    });
+    // ── CRITICAL FIX: Handle events with real IDs or refetch ──
+    const handleSocketNotification = (payload: any, source: string) => {
+      console.log(`[AdminSocket] ${source} received:`, payload.title || payload.type);
 
-    socket.on('notification', (payload) => {
-      const newNotif: Notification = {
-        id: payload.id || `notif_${Date.now()}`,
-        type: payload.type,
-        title: payload.title,
-        message: payload.message,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        orderId: payload.orderId,
-        data: payload.data,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-      audioRef.current?.play().catch(() => {});
-    });
+      if (payload.id && typeof payload.id === 'string' && payload.id.length === 36) {
+        // Real DB ID — can safely add
+        const newNotif: Notification = {
+          id: payload.id,
+          type: payload.type || 'system_announcement',
+          title: payload.title || 'Notification',
+          message: payload.message || '',
+          isRead: false,
+          createdAt: payload.createdAt || new Date().toISOString(),
+          orderId: payload.orderId,
+          data: payload.data,
+        };
+        setNotifications((prev) => {
+          const next = [newNotif, ...prev];
+          return next.slice(0, MAX_NOTIFICATIONS);
+        });
+        setUnreadCount((prev) => prev + 1);
+        audioRef.current?.play().catch(() => {});
+      } else {
+        // No real ID — refetch to get proper records
+        fetchNotifications();
+      }
+    };
 
-    socket.on('new_order', (payload) => {
-      const newNotif: Notification = {
-        id: `order_${Date.now()}`,
-        type: 'order_placed',
-        title: 'New Order',
-        message: `New order #${payload.orderId?.slice(0, 8).toUpperCase()} from ${payload.customerName}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        orderId: payload.orderId,
-        data: payload,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-      audioRef.current?.play().catch(() => {});
-    });
-
-    socket.on('driver_status_changed', (payload) => {
-      const newNotif: Notification = {
-        id: `driver_${Date.now()}`,
-        type: 'driver_status_changed',
-        title: 'Driver Update',
-        message: `${payload.driverName} is now ${payload.status}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        data: payload,
-      };
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
-    });
+    socket.on('admin_notification', (payload) => handleSocketNotification(payload, 'admin_notification'));
+    socket.on('notification', (payload) => handleSocketNotification(payload, 'notification'));
+    socket.on('new_order', (payload) => handleSocketNotification(payload, 'new_order'));
+    socket.on('driver_status_changed', (payload) => handleSocketNotification(payload, 'driver_status_changed'));
 
     socket.on('disconnect', () => {
       console.log('[AdminSocket] Disconnected');
@@ -193,8 +166,9 @@ export function useAdminNotifications(token: string | null) {
 
     return () => {
       socket.disconnect();
+      socketRef.current = null;
     };
-  }, [token]);
+  }, [token, fetchNotifications]);
 
   // Initial fetch
   useEffect(() => {
