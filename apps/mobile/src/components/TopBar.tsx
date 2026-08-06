@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter, usePathname } from "expo-router";
 import { COLORS } from "../utils/constants";
-import { apiRequest } from "../services/api";
+import { useNotificationStore } from "../store/useNotificationStore";
+import { useSocketNotifications } from "../hooks/useSocketNotifications";
 
 interface Props {
   title?: string;
@@ -14,33 +15,26 @@ interface Props {
 export default function TopBar({ title, showBack = false, onBack, right }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const [unreadCount, setUnreadCount] = useState(0);
-
   const isHome = pathname === "/(tabs)" || pathname === "/";
 
-  useEffect(() => {
-    fetchUnread();
-    const id = setInterval(fetchUnread, 30000);
-    return () => clearInterval(id);
-  }, []);
+  // ── FIX: Use shared Zustand store instead of local fetch loop ──
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const fetchNotifications = useNotificationStore((s) => s.fetchNotifications);
+  const { isConnected } = useSocketNotifications();
 
-  const fetchUnread = async () => {
-    try {
-      const res = await apiRequest<{ success: boolean; meta?: { unreadCount: number } }>(
-        "get", "/notifications?page=1&limit=1"
-      );
-      if (res.success && res.meta) setUnreadCount(res.meta.unreadCount || 0);
-    } catch {
-      // silent
-    }
-  };
+  // Fetch once on mount; socket events and notifications screen handle the rest
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   return (
     <View style={styles.container}>
       <View style={styles.left}>
         {showBack ? (
-          <TouchableOpacity style={styles.backBtn} onPress={onBack || (() => router.back())} activeOpacity={0.7}>
-            <Text style={styles.backIcon}>←</Text>
+          <TouchableOpacity onPress={onBack || (() => router.back())} activeOpacity={0.7}>
+            <View style={styles.backBtn}>
+              <Text style={styles.backIcon}>←</Text>
+            </View>
           </TouchableOpacity>
         ) : (
           <View style={styles.brand}>
@@ -53,24 +47,26 @@ export default function TopBar({ title, showBack = false, onBack, right }: Props
                 <Text style={styles.locText}>Kampala, Uganda</Text>
               </View>
               <Text style={styles.brandTitle}>
-                Gasmobil <Text style={styles.accent}>Uganda</Text>
+                Gas<Text style={styles.accent}>mobil</Text> Uganda
               </Text>
             </View>
           </View>
         )}
-        {title && <Text style={styles.title}>{title}</Text>}
       </View>
+
+      {title && <Text style={styles.title}>{title}</Text>}
 
       {right ? (
         right
       ) : !showBack ? (
         <TouchableOpacity
-          style={styles.bell}
           onPress={() => router.push("/(tabs)/notifications")}
           activeOpacity={0.7}
         >
-          <Text style={styles.bellIcon}>🔔</Text>
-          {unreadCount > 0 && <View style={styles.dot} />}
+          <View style={styles.bell}>
+            <Text style={styles.bellIcon}>🔔</Text>
+            {unreadCount > 0 && <View style={styles.dot} />}
+          </View>
         </TouchableOpacity>
       ) : null}
     </View>
