@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useDriverNotifications } from '../hooks/useDriverNotifications';
 import api from '../services/api';
 
 interface Order {
@@ -25,8 +26,12 @@ interface Stats {
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
+  const { unreadCount } = useDriverNotifications();
+
   const [orders, setOrders] = useState<Order[]>([]);
-  const [stats, setStats] = useState<Stats>({ todayOrders: 0, todayCompleted: 0, todayEarnings: 0, totalDeliveries: 0 });
+  const [stats, setStats] = useState<Stats>({
+    todayOrders: 0, todayCompleted: 0, todayEarnings: 0, totalDeliveries: 0
+  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -62,14 +67,32 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      {/* ── HEADER WITH NOTIFICATION BELL ── */}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0] || 'Driver'}</Text>
           <Text style={styles.subtitle}>{user?.station?.name || 'GasMobil Driver'}</Text>
         </View>
-        <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile' as never)}>
-          <Text style={styles.profileText}>{user?.name?.charAt(0)?.toUpperCase() || 'D'}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            style={styles.bellBtn}
+            onPress={() => navigation.navigate('Notifications' as never)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 18 }}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.profileBtn}
+            onPress={() => navigation.navigate('Profile' as never)}
+          >
+            <Text style={styles.profileText}>{user?.name?.charAt(0)?.toUpperCase() || 'D'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -107,7 +130,7 @@ export default function HomeScreen() {
         {/* Pending Orders */}
         <Text style={styles.sectionTitle}>Pending Orders ({pendingOrders.length})</Text>
         {loading ? (
-          <ActivityIndicator color="#F59E0B" style={{ marginTop: 20 }} />
+          <ActivityIndicator style={{ marginTop: 20 }} color="#F59E0B" />
         ) : pendingOrders.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>No pending orders</Text>
@@ -118,6 +141,7 @@ export default function HomeScreen() {
               key={order.id}
               style={styles.orderCard}
               onPress={() => navigation.navigate('OrderDetail' as never, { orderId: order.id } as never)}
+              activeOpacity={0.8}
             >
               <View style={styles.orderHeader}>
                 <Text style={styles.orderId}>Order #{order.id.slice(0, 8)}</Text>
@@ -155,6 +179,18 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 20, fontWeight: '700', color: '#fff' },
   subtitle: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
+  bellBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#1E293B',
+    borderWidth: 1, borderColor: '#334155', alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute', top: -2, right: -2,
+    minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#dc2626', borderWidth: 2, borderColor: '#0B1120',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   profileBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#F59E0B',
     alignItems: 'center', justifyContent: 'center',
