@@ -7,6 +7,8 @@ import { OrderItem } from '../entities/OrderItem';
 import { Delivery } from '../entities/Delivery';
 import { Wallet } from '../entities/Wallet';
 import { Transaction } from '../entities/Transaction';
+import { Notification } from '../entities/Notification';
+import { ProductCatalog } from '../entities/ProductCatalog';
 
 const AppDataSource = new DataSource({
   type: 'mysql',
@@ -17,7 +19,7 @@ const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'gas_mobil',
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
-  entities: [User, Station, Product, Order, OrderItem, Delivery, Wallet, Transaction],
+  entities: [User, Station, Product, Order, OrderItem, Delivery, Wallet, Transaction, Notification, ProductCatalog],
   migrations: ['src/migrations/*.ts'],
   migrationsRun: true,
   subscribers: [],

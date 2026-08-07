@@ -121,59 +121,117 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 	}
 };
 
-// POST /api/admin/drivers - create drivers for specific stations
-export const createAgentDriver = async (req: Request, res: Response) => {
+
+
+// POST /api/admin/drivers - Create driver by admin
+export const createDriver = async (req: Request, res: Response) => {
   try {
-	const stationId = await getAgentStationId(req);
-	if (!stationId)
-	  return res.status(400).json({ success: false, error: "Agent has no station" });
+    const { user } = req as any;
+    if (user.role !== "admin") {
+      return res.status(403).json({ success: false, error: "Admin access only" });
+    }
 
-	const { name, email, phone, password, vehicleNumber, vehicleType } = req.body;
-	const repo = userRepo();
+    const { name, email, phone, password, stationId, vehicleNumber, vehicleType } = req.body;
 
-	const existing = await repo.findOne({
-	  where: [{ email }, { phone }],
-	} as any);
-	if (existing)
-	  return res.status(400).json({ success: false, error: "Driver already exists" });
+    if (!name || !email || !phone || !password || !stationId) {
+      return res.status(400).json({
+        success: false,
+        error: "Name, email, phone, password, and stationId are required",
+      });
+    }
 
-	const hashed = await bcrypt.hash(password || "Driver@123", 12);
+    const existing = await userRepository.findOne({ where: [{ email }, { phone }] });
+    if (existing) {
+      return res.status(400).json({ success: false, error: "Driver already exists" });
+    }
 
-	const driver = repo.create({
-	  name,
-	  email,
-	  phone,
-	  password: hashed,
-	  role: "driver",
-	  stationId,
-	  vehicleNumber,
-	  vehicleType,
-	  driverStatus: "offline",
-	  isActive: true,
-	} as any);
+    const station = await stationRepository.findOne({ where: { id: stationId } });
+    if (!station) {
+      return res.status(404).json({ success: false, error: "Station not found" });
+    }
 
-	const result: any = await repo.save(driver);
-	const saved = Array.isArray(result) ? result[0] : result;
+    const hashedPassword = await bcryptjs.hash(password, 12);
 
-	res.status(201).json({
-	  success: true,
-	  driver: {
-		id: saved.id,
-		name: saved.name,
-		email: saved.email,
-		phone: saved.phone,
-		role: saved.role,
-		vehicleNumber: saved.vehicleNumber,
-		vehicleType: saved.vehicleType,
-		stationId: saved.stationId,
-	  },
-	});
-  } catch (error) {
-	console.error("createAgentDriver error:", error);
-	res.status(500).json({ success: false, error: "Server error" });
+    const driver = userRepository.create({
+      name,
+      email,
+      phone,
+      password: hashedPassword,
+      role: "driver",
+      stationId,
+      vehicleNumber,
+      vehicleType,
+      driverStatus: "offline",
+      isActive: true,
+    });
+
+    await userRepository.save(driver);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: driver.id,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+        role: driver.role,
+        vehicleNumber: driver.vehicleNumber,
+        vehicleType: driver.vehicleType,
+        stationId: driver.stationId,
+      },
+      message: "Driver created successfully",
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 };
- 
+
+// POST /api/admin/orders/:id/cancel - Admin cancels order
+export const cancelOrder = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+    if (user.role !== "admin") {
+      return res.status(403).json({ success: false, error: "Admin access only" });
+    }
+
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const order = await orderRepository.findOne({
+      where: { id },
+      relations: ["items", "items.product"],
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, error: "Order not found" });
+    }
+
+    if (!["pending", "confirmed", "driver_assigned"].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Order cannot be cancelled at this stage",
+      });
+    }
+
+    order.status = "cancelled";
+    order.cancellationReason = reason || "Cancelled by admin";
+    await orderRepository.save(order);
+
+    // Restore stock
+    for (const item of order.items) {
+      const product = await productRepository.findOne({ where: { id: item.productId } });
+      if (product) {
+        product.stock += item.quantity;
+        await productRepository.save(product);
+      }
+    }
+
+    res.json({ success: true, data: order, message: "Order cancelled" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}; 
+
 // POST /api/admin/orders/:id/assign
 export const assignDriverToOrder = async (req: Request, res: Response) => {
 	try {

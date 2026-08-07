@@ -72,5 +72,15 @@ export const initializeSocket = (io: Server) => {
         });
       }
     });
+    
+    socket.on('join_station', (stationId: string) => {
+      socket.join(`station_${stationId}`);
+      console.log(`[Socket] ${userName} joined station room: ${stationId}`);
+    });
+
+    socket.on('leave_station', (stationId: string) => {
+      socket.leave(`station_${stationId}`);
+      console.log(`[Socket] ${userName} left station room: ${stationId}`);
+    });
   });
 };

@@ -18,7 +18,6 @@ export const initializeSocket = (server: HttpServer) => {
         const allowedOrigins = process.env.NODE_ENV === 'production'
           ? (process.env.ALLOWED_ORIGINS?.split(',') || [])
           : ['http://localhost:8081', 'http://localhost:19006', 'http://localhost:3000'];
-
         if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
@@ -31,18 +30,14 @@ export const initializeSocket = (server: HttpServer) => {
     pingInterval: 25000,
   });
 
-  // Authentication middleware
   io.use((socket, next) => {
     const token = socket.handshake.auth.token || socket.handshake.query.token;
-
     if (!token) {
       return next(new Error('Authentication required'));
     }
-
     try {
       const jwtSecret = process.env.JWT_SECRET;
       if (!jwtSecret) throw new Error('JWT_SECRET not configured');
-
       const decoded = jwt.verify(token as string, jwtSecret) as DecodedToken;
       socket.data.userId = decoded.userId;
       socket.data.userRole = decoded.role;
@@ -57,85 +52,70 @@ export const initializeSocket = (server: HttpServer) => {
     const { userId, userRole, userName } = socket.data;
     console.log(`[Socket] ${userName} (${userRole}) connected: ${socket.id}`);
 
-    // Join user-specific room for notifications
     socket.join(`user_${userId}`);
 
-    // Driver joins driver room
     if (userRole === 'driver') {
       socket.join('drivers');
       socket.join(`driver_${userId}`);
     }
 
-    // Admin/Agent joins admin room
     if (['admin', 'agent'].includes(userRole)) {
       socket.join('admins');
     }
 
-    // Customer joins order room for tracking
+    socket.on('join_station', (stationId: string) => {
+      socket.join(`station_${stationId}`);
+      console.log(`[Socket] ${userName} joined station room: ${stationId}`);
+    });
+
+    socket.on('leave_station', (stationId: string) => {
+      socket.leave(`station_${stationId}`);
+      console.log(`[Socket] ${userName} left station room: ${stationId}`);
+    });
+
     socket.on('join_order', (orderId: string) => {
       socket.join(`order_${orderId}`);
       console.log(`[Socket] ${userName} joined order room: ${orderId}`);
     });
 
-    // Driver leaves order room after delivery
     socket.on('leave_order', (orderId: string) => {
       socket.leave(`order_${orderId}`);
       console.log(`[Socket] ${userName} left order room: ${orderId}`);
     });
 
-    // Driver updates location
     socket.on('driver_location_update', (data: {
-      orderId: string;
-      latitude: number;
-      longitude: number;
-      accuracy?: number;
-      speed?: number;
-      heading?: number;
+      orderId: string; latitude: number; longitude: number;
+      accuracy?: number; speed?: number; heading?: number;
     }) => {
       if (userRole !== 'driver') {
         socket.emit('error', { message: 'Only drivers can update location' });
         return;
       }
-
       const locationData = {
-        ...data,
-        driverId: userId,
-        driverName: userName,
+        ...data, driverId: userId, driverName: userName,
         timestamp: new Date().toISOString(),
       };
-
-      // Broadcast to order room (customer + admin watching this order)
       io.to(`order_${data.orderId}`).emit('location_update', locationData);
-
-      // Also broadcast to driver's own room (for admin dashboard)
       io.to(`driver_${userId}`).emit('location_confirmed', {
-        orderId: data.orderId,
-        received: true,
+        orderId: data.orderId, received: true,
       });
     });
 
-    // Driver status change
     socket.on('driver_status_change', (data: {
       status: 'online' | 'offline' | 'busy' | 'on_break';
     }) => {
       if (userRole !== 'driver') return;
-
       io.to('admins').emit('driver_status_changed', {
-        driverId: userId,
-        driverName: userName,
-        status: data.status,
-        timestamp: new Date().toISOString(),
+        driverId: userId, driverName: userName,
+        status: data.status, timestamp: new Date().toISOString(),
       });
     });
 
-    // Disconnect handler
     socket.on('disconnect', () => {
       console.log(`[Socket] ${userName} disconnected: ${socket.id}`);
-
       if (userRole === 'driver') {
         io.to('admins').emit('driver_offline', {
-          driverId: userId,
-          driverName: userName,
+          driverId: userId, driverName: userName,
           timestamp: new Date().toISOString(),
         });
       }
@@ -150,7 +130,6 @@ export const getIO = () => {
   return io;
 };
 
-// Helper functions for broadcasting from controllers
 export const broadcastToOrder = (orderId: string, event: string, data: any) => {
   if (!io) return;
   io.to(`order_${orderId}`).emit(event, data);
