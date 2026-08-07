@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import TopBar from "../src/components/TopBar";
@@ -8,6 +8,8 @@ import BottomNav from "../src/components/BottomNav";
 import { useCartStore } from "../src/store/useCartStore";
 import { useProducts } from "../src/hooks/useProducts";
 import { COLORS } from "../src/utils/constants";
+
+const API_BASE = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
 export default function AccessoriesScreen() {
   const router = useRouter();
@@ -20,28 +22,33 @@ export default function AccessoriesScreen() {
   const getCartQty = (productId: string) =>
     cartItems.find((i) => i.product.id === productId)?.quantity || 0;
 
+  const getImageUrl = (imageUrl: string | null) => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    return `${API_BASE}${imageUrl}`;
+  };
+
   return (
     <View style={styles.container}>
-      <TopBar title="Accessories" showBack />
+      <TopBar showBack onBack={() => router.back()} />
+
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Upgrade your setup</Text>
+          <Text style={styles.headerTitle}>🔧 Accessories</Text>
           <Text style={styles.headerSub}>Burners, regulators, hosepipes and more</Text>
         </View>
 
-        {loading && <ActivityIndicator color={COLORS.accent} style={{ marginTop: 40 }} />}
+        {loading && <ActivityIndicator style={{ marginTop: 20 }} color={COLORS.accent} />}
         {error ? (
-          <Text style={{ color: COLORS.danger, textAlign: "center", marginTop: 20 }}>
-            {error}
-          </Text>
+          <View style={styles.center}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
         ) : null}
 
         {!loading && accessories.length === 0 && (
-          <View style={{ alignItems: "center", marginTop: 60 }}>
-            <Text style={{ fontSize: 40 }}>🔧</Text>
-            <Text style={{ color: COLORS.muted, marginTop: 12 }}>
-              No accessories available
-            </Text>
+          <View style={styles.center}>
+            <Text style={styles.emptyIcon}>🔧</Text>
+            <Text style={styles.emptyTitle}>No accessories available</Text>
           </View>
         )}
 
@@ -49,46 +56,52 @@ export default function AccessoriesScreen() {
           {accessories.map((product) => {
             const inCart = getCartQty(product.id);
             const outOfStock = product.stock <= 0;
+            const imgUrl = getImageUrl(product.imageUrl);
+
             return (
               <View
                 key={product.id}
                 style={[styles.item, outOfStock && styles.itemDisabled]}
               >
-                <View style={styles.img}>
-                  <Text style={{ fontSize: 24 }}>
-                    {outOfStock ? "❌" : "🔧"}
-                  </Text>
+                {/* ── FIX: Show actual product image ── */}
+                <View style={styles.imgWrap}>
+                  {imgUrl ? (
+                    <Image
+                      source={{ uri: imgUrl }}
+                      style={styles.img}
+                      resizeMode="cover"
+                      onError={(e) => {
+                        console.warn('[Accessories] Image load error:', imgUrl, e.nativeEvent.error);
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.imgFallback}>
+                      <Text style={{ fontSize: 20 }}>{outOfStock ? "❌" : "🔧"}</Text>
+                    </View>
+                  )}
                 </View>
+
                 <View style={styles.info}>
                   <Text style={styles.name}>{product.name}</Text>
-                  <Text style={styles.desc}>
-                    {product.description || "No description"}
-                  </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-                    <Text style={styles.price}>
-                      UGX {product.price.toLocaleString("en-UG")}
-                    </Text>
-                    {outOfStock ? (
-                      <Text style={styles.naBadge}>N/A</Text>
-                    ) : (
-                      <Text style={styles.stockBadge}>
-                        Stock: {product.stock}
-                      </Text>
-                    )}
-                  </View>
+                  <Text style={styles.desc}>{product.description || "No description"}</Text>
+                  <Text style={styles.price}>UGX {product.price.toLocaleString("en-UG")}</Text>
+                  {outOfStock ? (
+                    <Text style={styles.naBadge}>Out of stock</Text>
+                  ) : (
+                    <Text style={styles.stockBadge}>Stock: {product.stock}</Text>
+                  )}
                   {inCart > 0 && (
                     <Text style={styles.inCart}>In cart: {inCart}</Text>
                   )}
                 </View>
+
                 <TouchableOpacity
                   style={[styles.addBtn, outOfStock && styles.addBtnDisabled]}
                   onPress={() => !outOfStock && addItem(product)}
                   activeOpacity={0.85}
                   disabled={outOfStock}
                 >
-                  <Text style={styles.addText}>
-                    {outOfStock ? "N/A" : "+ Add"}
-                  </Text>
+                  <Text style={styles.addText}>{outOfStock ? "N/A" : "+ Add"}</Text>
                 </TouchableOpacity>
               </View>
             );
@@ -107,6 +120,7 @@ export default function AccessoriesScreen() {
           </Text>
         </TouchableOpacity>
       )}
+
       <BottomNav />
     </View>
   );
@@ -117,6 +131,10 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, marginTop: 8, marginBottom: 12 },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
   headerSub: { color: COLORS.muted, fontSize: 12, marginTop: 4 },
+  center: { alignItems: "center", marginTop: 40 },
+  errorText: { color: COLORS.danger, fontSize: 14 },
+  emptyIcon: { fontSize: 48, marginBottom: 8 },
+  emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
   list: { paddingHorizontal: 16, gap: 10 },
   item: {
     flexDirection: "row", alignItems: "center", gap: 12,
@@ -124,19 +142,23 @@ const styles = StyleSheet.create({
     borderRadius: 14, padding: 12,
   },
   itemDisabled: { opacity: 0.6, borderColor: "#3a1a1a" },
-  img: {
-    width: 50, height: 50, borderRadius: 10, backgroundColor: "#0a1120",
-    alignItems: "center", justifyContent: "center",
+  imgWrap: {
+    width: 56, height: 56, borderRadius: 12, overflow: "hidden",
+    backgroundColor: "#0a1120",
+  },
+  img: { width: 56, height: 56 },
+  imgFallback: {
+    width: 56, height: 56, alignItems: "center", justifyContent: "center",
   },
   info: { flex: 1 },
   name: { color: "#fff", fontSize: 13, fontWeight: "600" },
   desc: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
-  price: { color: COLORS.accent, fontSize: 12, fontWeight: "700" },
-  stockBadge: { color: COLORS.success, fontSize: 10, fontWeight: "600" },
+  price: { color: COLORS.accent, fontSize: 12, fontWeight: "700", marginTop: 4 },
+  stockBadge: { color: COLORS.success, fontSize: 10, fontWeight: "600", marginTop: 2 },
   naBadge: {
     color: COLORS.danger, fontSize: 10, fontWeight: "700",
     backgroundColor: "rgba(255,77,77,0.15)", paddingHorizontal: 6,
-    paddingVertical: 2, borderRadius: 4,
+    paddingVertical: 2, borderRadius: 4, marginTop: 2, alignSelf: "flex-start",
   },
   inCart: { color: COLORS.warn, fontSize: 10, marginTop: 2 },
   addBtn: {
