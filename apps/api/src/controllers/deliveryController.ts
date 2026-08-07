@@ -3,7 +3,8 @@ import AppDataSource from '../config/database';
 import { Delivery } from '../entities/Delivery';
 import { Order } from '../entities/Order';
 import { User } from '../entities/User';
-import { broadcastToOrder, broadcastToUser, broadcastToAdmins } from '../config/socket';
+import { broadcastToOrder, broadcastToAdmins } from '../config/socket';
+import { updateDeliveryStatusUnified } from '../services/deliveryService';
 
 const deliveryRepository = AppDataSource.getRepository(Delivery);
 const orderRepository = AppDataSource.getRepository(Order);
@@ -107,11 +108,8 @@ export const updateDeliveryLocation = async (req: Request, res: Response) => {
   }
 };
 
+// ── USE SHARED SERVICE ──
 export const updateDeliveryStatus = async (req: Request, res: Response) => {
-  const queryRunner = AppDataSource.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
-
   try {
     const { id } = req.params;
     const { status, deliveryPhoto, customerSignature, rating } = req.body;
@@ -121,98 +119,32 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: 'Only drivers can update delivery status' });
     }
 
-    const delivery = await queryRunner.manager.findOne(Delivery, {
+    const delivery = await deliveryRepository.findOne({
       where: { id },
-      relations: ['order', 'order.user'],
+      relations: ['order'],
     });
 
     if (!delivery) {
       return res.status(404).json({ success: false, error: 'Delivery not found' });
     }
 
-    if (delivery.driverId !== user.id) {
-      return res.status(403).json({ success: false, error: 'Not your delivery' });
-    }
-
-    const validTransitions: Record<string, string[]> = {
-      'pending': ['picked_up'],
-      'picked_up': ['in_transit'],
-      'in_transit': ['nearby', 'delivered'],
-      'nearby': ['delivered'],
-    };
-
-    if (validTransitions[delivery.status] && !validTransitions[delivery.status].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        error: `Cannot transition from ${delivery.status} to ${status}`,
-      });
-    }
-
-    delivery.status = status as any;
-    if (deliveryPhoto) delivery.deliveryPhoto = deliveryPhoto;
-    if (customerSignature) delivery.customerSignature = customerSignature;
-    if (rating) delivery.rating = rating;
-
-    const order = delivery.order;
-    const statusMap: Record<string, string> = {
-      'picked_up': 'picked_up',
-      'in_transit': 'in_transit',
-      'nearby': 'nearby',
-      'delivered': 'delivered',
-    };
-
-    if (statusMap[status]) {
-      order.status = statusMap[status] as any;
-    }
-
-    if (status === 'delivered') {
-      order.status = 'completed' as any;
-      if (order.paymentMethod === 'cash') {
-        order.paymentStatus = 'paid' as any;
-      }
-
-      const driver = await queryRunner.manager.findOne(User, { where: { id: user.id } });
-      if (driver) {
-        driver.driverStatus = 'online';
-        await queryRunner.manager.save(driver);
-      }
-
-      broadcastToUser(order.userId, 'order_delivered', {
-        orderId: order.id,
-        message: 'Your order has been delivered!',
-        deliveryPhoto,
-        rating,
-      });
-    } else {
-      broadcastToUser(order.userId, 'order_status_update', {
-        orderId: order.id,
-        status: order.status,
-        deliveryStatus: status,
-        message: `Your order is now ${status.replace('_', ' ')}`,
-      });
-    }
-
-    broadcastToAdmins('delivery_status_update', {
-      orderId: order.id,
+    const result = await updateDeliveryStatusUnified({
+      deliveryId: id,
+      status,
       driverId: user.id,
       driverName: delivery.driverName,
-      status,
-      timestamp: new Date().toISOString(),
+      vehicleNumber: delivery.vehicleNumber,
+      deliveryPhoto: deliveryPhoto || null,
+      customerSignature: customerSignature || null,
+      rating: rating !== undefined ? Number(rating) : null,
     });
-
-    await queryRunner.manager.save(delivery);
-    await queryRunner.manager.save(order);
-    await queryRunner.commitTransaction();
 
     res.json({
       success: true,
-      data: { delivery, order },
+      data: result,
       message: `Delivery status updated to ${status}`,
     });
   } catch (error: any) {
-    await queryRunner.rollbackTransaction();
-    res.status(500).json({ success: false, error: error.message });
-  } finally {
-    await queryRunner.release();
+    res.status(400).json({ success: false, error: error.message });
   }
 };

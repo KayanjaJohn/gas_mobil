@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   initializeSocket,
   joinOrderRoom,
@@ -6,7 +6,6 @@ import {
   onDriverLocationUpdate,
   onOrderStatusUpdate,
   removeAllListeners,
-  disconnectSocket,
 } from '../services/socketService';
 
 interface DriverLocation {
@@ -29,6 +28,7 @@ export const useOrderTracking = (orderId: string | null) => {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
   const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef<any>(null);
 
   useEffect(() => {
     if (!orderId) {
@@ -40,17 +40,18 @@ export const useOrderTracking = (orderId: string | null) => {
 
     const setupSocket = async () => {
       const socket = await initializeSocket();
+      socketRef.current = socket;
       if (socket) {
         console.log('[Tracking] Socket connected, joining room:', orderId);
         setIsConnected(true);
         joinOrderRoom(orderId);
 
-        onDriverLocationUpdate((data) => {
+        onDriverLocationUpdate((data: any) => {
           console.log('[Tracking] Driver location update:', data);
-          setDriverLocation(data.location);
+          setDriverLocation(data.location || data);
         });
 
-        onOrderStatusUpdate((data) => {
+        onOrderStatusUpdate((data: any) => {
           console.log('[Tracking] Order status update:', data);
           setOrderStatus(data);
         });
@@ -67,8 +68,11 @@ export const useOrderTracking = (orderId: string | null) => {
         leaveOrderRoom(orderId);
       }
       removeAllListeners();
-      disconnectSocket();
+      // ── CRITICAL FIX: Do NOT disconnectSocket() here ──
+      // The socket is shared across the app for notifications.
+      // Only leave the room and remove listeners.
       setIsConnected(false);
+      socketRef.current = null;
     };
   }, [orderId]);
 

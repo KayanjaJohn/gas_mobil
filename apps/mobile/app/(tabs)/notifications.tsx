@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, RefreshControl,
-  ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, RefreshControl, ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";
 import { apiRequest } from "../../src/services/api";
+import { useSocketNotifications } from "../../src/hooks/useSocketNotifications";
 import TopBar from "../../src/components/TopBar";
 import BottomNav from "../../src/components/BottomNav";
 import { COLORS } from "../../src/utils/constants";
@@ -26,18 +26,28 @@ const ICONS: Record<string, string> = {
   driver_assigned: "🚚",
   picked_up: "📦",
   in_transit: "🚛",
+  nearby: "📍",
   delivered: "🏠",
   cancelled: "❌",
   payment_received: "💰",
+  payment_failed: "💳",
+  wallet_debited: "💸",
+  wallet_credited: "💵",
+  driver_status_changed: "🚗",
+  system_announcement: "📢",
+  refund_processed: "↩️",
 };
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { isConnected } = useSocketNotifications();
+
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -45,9 +55,8 @@ export default function NotificationsScreen() {
         success: boolean;
         data?: NotificationItem[];
         meta?: { unreadCount: number };
-      }>("get", "/notifications");
+      }>("get", "/notifications?page=1&limit=50");
       if (res.success && res.data) {
-        // FIX: backend returns array directly in `data`, NOT `data.notifications`
         setNotifications(Array.isArray(res.data) ? res.data : []);
         setUnreadCount(res.meta?.unreadCount || 0);
       }
@@ -59,40 +68,75 @@ export default function NotificationsScreen() {
     }
   }, []);
 
+  // ── SOCKET-AWARE POLLING ──
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+
+    const setupPolling = () => {
+      // Clear any existing interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+
+      // Only poll HTTP if socket is NOT connected
+      // Socket events will trigger fetchNotifications() via useSocketNotifications
+      if (!isConnected()) {
+        intervalRef.current = setInterval(fetchNotifications, 30000);
+      }
+    };
+
+    setupPolling();
+
+    // Re-check every 10s in case socket state changes
+    const checkInterval = setInterval(setupPolling, 10000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      clearInterval(checkInterval);
+    };
+  }, [fetchNotifications, isConnected]);
 
   const markAsRead = async (id: string) => {
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+
     try {
       await apiRequest("patch", `/notifications/${id}/read`);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
     } catch (err) {
       console.error("[Notifications] Mark read error:", err);
+      // Revert on failure
+      fetchNotifications();
     }
   };
 
   const markAllAsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+
     try {
       await apiRequest("patch", "/notifications/read-all");
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
     } catch (err) {
       console.error("[Notifications] Mark all read error:", err);
+      fetchNotifications();
     }
   };
 
   const deleteNotification = async (id: string) => {
+    const removed = notifications.find((n) => n.id === id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (removed && !removed.isRead) {
+      setUnreadCount((c) => Math.max(0, c - 1));
+    }
+
     try {
       await apiRequest("delete", `/notifications/${id}`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
       console.error("[Notifications] Delete error:", err);
+      fetchNotifications();
     }
   };
 
@@ -103,21 +147,20 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Notifications" showBack={true} showBell={false} />
-
-      {unreadCount > 0 && (
-        <TouchableOpacity style={styles.markAllBtn} onPress={markAllAsRead} activeOpacity={0.7}>
-          <Text style={styles.markAllText}>Mark all as read ({unreadCount})</Text>
-        </TouchableOpacity>
-      )}
+      <TopBar title="Notifications" showBack onBack={() => router.back()} />
 
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1484FF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
+            <Text style={styles.markAllText}>Mark all as read ({unreadCount})</Text>
+          </TouchableOpacity>
+        )}
+
         {loading ? (
-          <View style={{ paddingTop: 60, alignItems: "center" }}>
-            <ActivityIndicator color="#1484FF" />
-          </View>
+          <ActivityIndicator style={{ marginTop: 60 }} color={COLORS.accent} />
         ) : notifications.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🔔</Text>
@@ -128,12 +171,12 @@ export default function NotificationsScreen() {
           notifications.map((n) => (
             <TouchableOpacity
               key={n.id}
-              style={[styles.item, !n.isRead && styles.itemUnread]}
               activeOpacity={0.8}
               onPress={() => {
                 if (!n.isRead) markAsRead(n.id);
                 if (n.orderId) router.push(`/tracking?orderId=${n.orderId}`);
               }}
+              style={[styles.item, !n.isRead && styles.itemUnread]}
             >
               <View style={styles.iconBox}>
                 <Text style={{ fontSize: 20 }}>{ICONS[n.type] || "🔔"}</Text>
@@ -144,11 +187,10 @@ export default function NotificationsScreen() {
                 <Text style={styles.time}>{new Date(n.createdAt).toLocaleString()}</Text>
               </View>
               <TouchableOpacity
-                style={styles.deleteBtn}
                 onPress={() => deleteNotification(n.id)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={{ color: "#8A93A6", fontSize: 18 }}>×</Text>
+                <Text style={{ color: COLORS.muted, fontSize: 18 }}>×</Text>
               </TouchableOpacity>
             </TouchableOpacity>
           ))
@@ -164,12 +206,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#070b14" },
   markAllBtn: { marginHorizontal: 16, marginTop: 12, marginBottom: 4, alignSelf: "flex-end" },
   markAllText: { color: "#1484FF", fontSize: 12, fontWeight: "600" },
-
   empty: { alignItems: "center", marginTop: 80 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
   emptySub: { color: "#8A93A6", fontSize: 13, marginTop: 4, textAlign: "center" },
-
   item: {
     flexDirection: "row", alignItems: "flex-start",
     marginHorizontal: 16, marginBottom: 10,
@@ -189,5 +229,4 @@ const styles = StyleSheet.create({
   titleUnread: { fontWeight: "700" },
   message: { color: "#8A93A6", fontSize: 12, marginTop: 3, lineHeight: 18 },
   time: { color: "#475569", fontSize: 10, marginTop: 6 },
-  deleteBtn: { padding: 4, marginLeft: 4 },
 });

@@ -1,11 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import { User } from './User';
 import { Station } from './Station';
 import { OrderItem } from './OrderItem';
 import { Delivery } from './Delivery';
 
 export type OrderStatus = 'pending' | 'confirmed' | 'driver_assigned' | 'picked_up' | 'in_transit' | 'nearby' | 'delivered' | 'completed' | 'cancelled' | 'failed' | 'refunded';
-export type PaymentMethod = 'cash' | 'wallet' | 'momo' | 'airtel';
+export type PaymentMethod = 'cash' | 'wallet' | 'momo' | 'airtel' | 'card';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 @Entity('orders')
@@ -14,6 +14,7 @@ export class Order {
   declare id: string;
 
   @Column({ type: 'varchar', nullable: false })
+  @Index()
   declare userId: string;
 
   @ManyToOne(() => User)
@@ -21,6 +22,7 @@ export class Order {
   declare user: User;
 
   @Column({ type: 'varchar', nullable: false })
+  @Index()
   declare stationId: string;
 
   @ManyToOne(() => Station)
@@ -42,10 +44,13 @@ export class Order {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   declare deliveryLongitude: number | null;
 
+  @Column({ type: 'decimal', precision: 8, scale: 2, nullable: true })
+  declare locationAccuracy: number | null;
+
   @Column({ type: 'enum', enum: ['pending', 'confirmed', 'driver_assigned', 'picked_up', 'in_transit', 'nearby', 'delivered', 'completed', 'cancelled', 'failed', 'refunded'], default: 'pending' })
   declare status: OrderStatus;
 
-  @Column({ type: 'enum', enum: ['cash', 'wallet', 'momo', 'airtel'], default: 'cash' })
+  @Column({ type: 'enum', enum: ['cash', 'wallet', 'momo', 'airtel', 'card'], default: 'cash' })
   declare paymentMethod: PaymentMethod;
 
   @Column({ type: 'enum', enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' })

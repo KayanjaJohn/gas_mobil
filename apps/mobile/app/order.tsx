@@ -1,193 +1,448 @@
-import React from "react";
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
-} from "react-native";
-import { useRouter } from "expo-router";
-import TopBar from "../src/components/TopBar";
-import BottomNav from "../src/components/BottomNav";
-import { useOrderStore } from "../src/store/useOrderStore";
-import { useProducts } from "../src/hooks/useProducts";
-import { COLORS } from "../src/utils/constants";
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+  SafeAreaView,
+  StatusBar,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useLocation } from '../src/hooks/useLocation';
+import { apiRequest } from '../src/services/api';
+import { useAuthStore } from '../src/store/useAuthStore';
+
+const PAYMENT_METHODS = [
+  { id: 'momo', label: 'MTN Mobile Money', icon: 'cellphone', color: '#FFCC00' },
+  { id: 'airtel', label: 'Airtel Money', icon: 'cellphone', color: '#E4002B' },
+  { id: 'wallet', label: 'GasMobil Wallet', icon: 'wallet', color: '#2196F3' },
+  { id: 'card', label: 'Credit / Debit Card', icon: 'credit-card', color: '#4CAF50' },
+  { id: 'cash', label: 'Cash on Delivery', icon: 'cash', color: '#9E9E9E' },
+];
+
+const CYLINDER_SIZES = [
+  { id: '6kg', label: '6kg Cylinder', price: 35000 },
+  { id: '12kg', label: '12kg Cylinder', price: 65000 },
+  { id: '45kg', label: '45kg Cylinder', price: 180000 },
+];
+
+const ORDER_TYPES = [
+  { id: 'swap', label: 'Swap Refill', desc: 'Exchange empty cylinder for full one' },
+  { id: 'new', label: 'Buy New Kit', desc: 'New cylinder + regulator + hose' },
+];
 
 export default function OrderScreen() {
   const router = useRouter();
-  const { orderType, size, setOrderType, setSize } = useOrderStore();
-  const { cylinders, loading } = useProducts();
+  const { user } = useAuthStore();
+  const { location, loading: locLoading, error: locError, getCurrentLocation, clearLocation } = useLocation();
 
-  const sizeMap = new Map<string, typeof cylinders>();
-  cylinders.forEach((p) => {
-    const s = p.size || "Unknown";
-    if (!sizeMap.has(s)) sizeMap.set(s, []);
-    sizeMap.get(s)!.push(p);
-  });
+  const [orderType, setOrderType] = useState('swap');
+  const [cylinderSize, setCylinderSize] = useState('12kg');
+  const [quantity, setQuantity] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState('momo');
+  const [notes, setNotes] = useState('');
+  const [placing, setPlacing] = useState(false);
 
-  const sizes = Array.from(sizeMap.keys()).sort();
+  const selectedSize = CYLINDER_SIZES.find((s) => s.id === cylinderSize);
+  const totalAmount = (selectedSize?.price || 0) * quantity;
 
-  const cheapestPrice = (s: string) => {
-    const list = sizeMap.get(s) || [];
-    if (list.length === 0) return null;
-    return Math.min(...list.map((p) => p.price));
-  };
+  // ── CRITICAL: Fetch location on screen focus ──
+  const handleGetLocation = useCallback(async () => {
+    const gps = await getCurrentLocation({ showAlerts: true });
+    if (!gps) {
+      Alert.alert(
+        'Location Required',
+        'We need your exact GPS location to deliver gas safely. Please enable location services and try again.',
+        [
+          { text: 'Retry', onPress: handleGetLocation },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  }, [getCurrentLocation]);
 
-  const totalStock = (s: string) => {
-    return (sizeMap.get(s) || []).reduce((sum, p) => sum + p.stock, 0);
+  const handlePlaceOrder = async () => {
+    // ── BLOCK 1: Must have real GPS coordinates ──
+    if (!location) {
+      Alert.alert(
+        'Location Missing',
+        'Please tap "Use My Location" to capture your delivery address before placing the order.',
+        [{ text: 'Get Location', onPress: handleGetLocation }]
+      );
+      return;
+    }
+
+    // ── BLOCK 2: Validate within Uganda ──
+    if (location.latitude < -1.5 || location.latitude > 4.5 || location.longitude < 29.5 || location.longitude > 35.0) {
+      Alert.alert('Invalid Location', 'Your location appears to be outside Uganda. Please check your GPS and try again.');
+      return;
+    }
+
+    setPlacing(true);
+    try {
+      const payload = {
+        items: [
+          {
+            productId: cylinderSize,
+            quantity,
+            type: orderType,
+          },
+        ],
+        deliveryAddress: location.address,
+        deliveryCity: location.city,
+        deliveryLatitude: location.latitude,
+        deliveryLongitude: location.longitude,
+        accuracy: location.accuracy,
+        paymentMethod,
+        notes: notes || `${ORDER_TYPES.find((t) => t.id === orderType)?.label} — ${cylinderSize}`,
+      };
+
+      console.log('[Order] Payload:', JSON.stringify(payload, null, 2));
+
+      const res = await apiRequest('post', '/orders', payload);
+
+      if (res.success) {
+        Alert.alert(
+          'Order Placed!',
+          `Order #${res.data.id.slice(0, 8).toUpperCase()} placed successfully.\n\nDelivering to: ${location.address}`,
+          [
+            {
+              text: 'Track Order',
+              onPress: () => router.push(`/tracking/${res.data.id}` as any),
+            },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+        clearLocation();
+        setNotes('');
+      } else {
+        Alert.alert('Order Failed', res.error || 'Something went wrong. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('[Order] Place order error:', err);
+      const msg = err.response?.data?.error || err.message || 'Network error. Please check your connection and try again.';
+      Alert.alert('Order Failed', msg);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <TopBar title="Order Gas" showBack onBack={() => router.push("/(tabs)")} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <View style={styles.stepper}>
-          {[0, 1, 2].map((i) => (
-            <View key={i} style={[styles.step, i === 0 && styles.stepActive]} />
-          ))}
-        </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <Text style={styles.headerTitle}>Place Order</Text>
 
-        <Text style={styles.label}>What do you need?</Text>
-        <View style={styles.chooseRow}>
-          {[
-            { key: "swap" as const, icon: "🔄", title: "Swap Refill", desc: "Exchange empty for full" },
-            { key: "buy" as const, icon: "🛍️", title: "Buy Full Kit", desc: "First-time purchase" },
-          ].map((opt) => (
+        {/* ── LOCATION SECTION (CRITICAL) ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery Location</Text>
+
+          {!location ? (
             <TouchableOpacity
-              key={opt.key}
-              style={[styles.chooseCard, orderType === opt.key && styles.chooseCardActive]}
-              onPress={() => setOrderType(opt.key)}
-              activeOpacity={0.8}
+              style={[styles.locationCard, locError && styles.locationCardError]}
+              onPress={handleGetLocation}
+              disabled={locLoading}
             >
-              <Text style={styles.chooseIcon}>{opt.icon}</Text>
-              <Text style={styles.chooseTitle}>{opt.title}</Text>
-              <Text style={styles.chooseDesc}>{opt.desc}</Text>
+              {locLoading ? (
+                <ActivityIndicator size="small" color="#2196F3" />
+              ) : (
+                <>
+                  <Icon name="map-marker" size={28} color={locError ? '#F44336' : '#2196F3'} />
+                  <Text style={[styles.locationText, locError && styles.locationTextError]}>
+                    {locError || 'Tap to use your current location'}
+                  </Text>
+                  <Icon name="chevron-right" size={20} color="#999" />
+                </>
+              )}
             </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Select size</Text>
-        {loading && <ActivityIndicator color={COLORS.accent} style={{ marginTop: 20 }} />}
-
-        <View style={styles.sizes}>
-          {sizes.map((s) => {
-            const price = cheapestPrice(s);
-            const stock = totalStock(s);
-            const outOfStock = stock <= 0;
-            return (
-              <TouchableOpacity
-                key={s}
-                style={[
-                  styles.sizeCard,
-                  size === s && styles.sizeCardActive,
-                  outOfStock && styles.sizeCardDisabled,
-                ]}
-                onPress={() => !outOfStock && setSize(s)}
-                activeOpacity={0.8}
-                disabled={outOfStock}
-              >
-                {s === "6kg" && !outOfStock && (
-                  <View style={styles.popBadge}>
-                    <Text style={styles.popText}>POPULAR</Text>
-                  </View>
-                )}
-                <View>
-                  <Text style={[styles.sizeTitle, outOfStock && { color: COLORS.muted }]}>
-                    {s}
-                  </Text>
-                  <Text style={styles.sizeSub}>
-                    {orderType === "swap" ? "Refill" : "Full Kit"}
-                  </Text>
-                  {outOfStock && (
-                    <Text style={{ color: COLORS.danger, fontSize: 11, marginTop: 2 }}>
-                      N/A — Out of stock
-                    </Text>
-                  )}
-                </View>
-                <Text style={[styles.sizePrice, outOfStock && { color: COLORS.muted }]}>
-                  {price !== null ? `UGX ${price.toLocaleString("en-UG")}` : "—"}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-
-          {!loading && sizes.length === 0 && (
-            <View style={{ alignItems: "center", marginTop: 40 }}>
-              <Text style={{ fontSize: 40 }}>⛽</Text>
-              <Text style={{ color: COLORS.muted, marginTop: 12 }}>
-                No cylinders available
+          ) : (
+            <View style={styles.locationCardActive}>
+              <View style={styles.locationHeader}>
+                <Icon name="map-marker-check" size={24} color="#4CAF50" />
+                <Text style={styles.locationActiveTitle}>Location Confirmed</Text>
+                <TouchableOpacity onPress={handleGetLocation} style={styles.refreshBtn}>
+                  <Icon name="refresh" size={16} color="#2196F3" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.locationAddress}>{location.address}</Text>
+              <Text style={styles.locationCoords}>
+                {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                {location.accuracy ? ` (±${Math.round(location.accuracy)}m)` : ''}
               </Text>
             </View>
           )}
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.continueBtn,
-            (!size || totalStock(size) <= 0) && { opacity: 0.4 },
-          ]}
-          onPress={() => router.push("/order-loc")}
-          activeOpacity={0.85}
-          disabled={!size || totalStock(size) <= 0}
-        >
-          <Text style={styles.continueText}>Continue →</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        {/* Order Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Type</Text>
+          <View style={styles.typeRow}>
+            {ORDER_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.id}
+                style={[styles.typeCard, orderType === type.id && styles.typeCardActive]}
+                onPress={() => setOrderType(type.id)}
+              >
+                <Icon
+                  name={type.id === 'swap' ? 'swap-horizontal' : 'package-variant'}
+                  size={24}
+                  color={orderType === type.id ? '#fff' : '#666'}
+                />
+                <Text style={[styles.typeLabel, orderType === type.id && styles.typeLabelActive]}>
+                  {type.label}
+                </Text>
+                <Text style={[styles.typeDesc, orderType === type.id && styles.typeDescActive]}>
+                  {type.desc}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
-      <BottomNav />
-    </View>
+        {/* Cylinder Size */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Cylinder Size</Text>
+          <View style={styles.sizeRow}>
+            {CYLINDER_SIZES.map((size) => (
+              <TouchableOpacity
+                key={size.id}
+                style={[styles.sizeCard, cylinderSize === size.id && styles.sizeCardActive]}
+                onPress={() => setCylinderSize(size.id)}
+              >
+                <Text style={[styles.sizeLabel, cylinderSize === size.id && styles.sizeLabelActive]}>
+                  {size.label}
+                </Text>
+                <Text style={[styles.sizePrice, cylinderSize === size.id && styles.sizePriceActive]}>
+                  UGX {size.price.toLocaleString()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Quantity */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quantity</Text>
+          <View style={styles.qtyRow}>
+            <TouchableOpacity
+              style={styles.qtyBtn}
+              onPress={() => setQuantity((q) => Math.max(1, q - 1))}
+            >
+              <Icon name="minus" size={20} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.qtyText}>{quantity}</Text>
+            <TouchableOpacity
+              style={styles.qtyBtn}
+              onPress={() => setQuantity((q) => Math.min(5, q + 1))}
+            >
+              <Icon name="plus" size={20} color="#333" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Payment Method */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Payment Method</Text>
+          {PAYMENT_METHODS.map((method) => (
+            <TouchableOpacity
+              key={method.id}
+              style={[styles.payCard, paymentMethod === method.id && styles.payCardActive]}
+              onPress={() => setPaymentMethod(method.id)}
+            >
+              <View style={[styles.payIcon, { backgroundColor: method.color + '15' }]}>
+                <Icon name={method.icon} size={22} color={method.color} />
+              </View>
+              <Text style={[styles.payLabel, paymentMethod === method.id && styles.payLabelActive]}>
+                {method.label}
+              </Text>
+              {paymentMethod === method.id && (
+                <Icon name="check-circle" size={22} color="#4CAF50" />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Notes */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery Notes (Optional)</Text>
+          <TextInput
+            style={styles.notesInput}
+            placeholder="E.g., Gate code, landmark, preferred delivery time..."
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={3}
+            value={notes}
+            onChangeText={setNotes}
+          />
+        </View>
+
+        {/* Total & Place Order */}
+        <View style={styles.footer}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalAmount}>UGX {totalAmount.toLocaleString()}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.placeBtn,
+              (!location || placing) && styles.placeBtnDisabled,
+            ]}
+            onPress={handlePlaceOrder}
+            disabled={!location || placing}
+          >
+            {placing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Icon name="check-circle" size={20} color="#fff" style={styles.placeIcon} />
+                <Text style={styles.placeText}>
+                  {location ? 'Place Order' : 'Get Location First'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
-  stepper: {
-    flexDirection: "row", gap: 6, marginHorizontal: 16,
-    marginBottom: 16, marginTop: 8,
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  scroll: { padding: 16, paddingBottom: 40 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#1a1a1a', marginBottom: 20 },
+
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 12 },
+
+  // Location
+  locationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+    gap: 12,
   },
-  step: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "#1E2A44" },
-  stepActive: { backgroundColor: COLORS.accent },
-  label: {
-    fontSize: 13, color: COLORS.text, marginHorizontal: 16,
-    marginTop: 18, marginBottom: 10, fontWeight: "600",
+  locationCardError: { borderColor: '#F44336', borderStyle: 'solid' },
+  locationCardActive: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
   },
-  chooseRow: { flexDirection: "row", gap: 10, paddingHorizontal: 16 },
-  chooseCard: {
-    flex: 1, backgroundColor: COLORS.card, borderWidth: 1,
-    borderColor: COLORS.border, borderRadius: 14, padding: 14,
+  locationText: { flex: 1, fontSize: 14, color: '#666', fontWeight: '500' },
+  locationTextError: { color: '#F44336' },
+  locationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
+  locationActiveTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#2E7D32' },
+  refreshBtn: { padding: 4 },
+  locationAddress: { fontSize: 15, fontWeight: '600', color: '#1a1a1a', marginBottom: 4 },
+  locationCoords: { fontSize: 12, color: '#666' },
+
+  // Order Type
+  typeRow: { flexDirection: 'row', gap: 12 },
+  typeCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
   },
-  chooseCardActive: {
-    borderColor: COLORS.accent,
-    backgroundColor: "rgba(20,132,255,0.08)",
-  },
-  chooseIcon: { fontSize: 18, color: COLORS.accent, marginBottom: 6 },
-  chooseTitle: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  chooseDesc: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
-  sizes: { paddingHorizontal: 16, gap: 10 },
+  typeCardActive: { backgroundColor: '#2196F3', borderColor: '#2196F3' },
+  typeLabel: { fontSize: 14, fontWeight: '700', color: '#333', marginTop: 8 },
+  typeLabelActive: { color: '#fff' },
+  typeDesc: { fontSize: 11, color: '#999', marginTop: 4, textAlign: 'center' },
+  typeDescActive: { color: '#E3F2FD' },
+
+  // Size
+  sizeRow: { flexDirection: 'row', gap: 10 },
   sizeCard: {
-    position: "relative", backgroundColor: COLORS.card,
-    borderWidth: 1, borderColor: COLORS.border, borderRadius: 14,
-    padding: 16, flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center",
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
   },
-  sizeCardActive: {
-    borderColor: COLORS.accent,
-    backgroundColor: "rgba(20,132,255,0.08)",
+  sizeCardActive: { borderColor: '#2196F3', backgroundColor: '#E3F2FD' },
+  sizeLabel: { fontSize: 13, fontWeight: '600', color: '#333' },
+  sizeLabelActive: { color: '#1565C0' },
+  sizePrice: { fontSize: 12, color: '#666', marginTop: 4 },
+  sizePriceActive: { color: '#2196F3', fontWeight: '700' },
+
+  // Quantity
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  qtyBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
-  sizeCardDisabled: { opacity: 0.5, borderColor: "#3a1a1a" },
-  popBadge: {
-    position: "absolute", top: -8, right: 14,
-    backgroundColor: COLORS.accent, paddingHorizontal: 8,
-    paddingVertical: 3, borderRadius: 6,
+  qtyText: { fontSize: 20, fontWeight: '700', color: '#333', minWidth: 30, textAlign: 'center' },
+
+  // Payment
+  payCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
   },
-  popText: { color: "#fff", fontSize: 9, fontWeight: "700" },
-  sizeTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
-  sizeSub: { color: COLORS.muted, fontSize: 12 },
-  sizePrice: { color: COLORS.accent, fontWeight: "700", fontSize: 14 },
-  continueBtn: {
-    marginHorizontal: 16, marginTop: 18, marginBottom: 100,
-    backgroundColor: COLORS.accent, borderRadius: 999,
-    paddingVertical: 14, alignItems: "center",
-    shadowColor: COLORS.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35, shadowRadius: 22,
+  payCardActive: { borderColor: '#2196F3', backgroundColor: '#E3F2FD' },
+  payIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  payLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: '#333' },
+  payLabelActive: { color: '#1565C0' },
+
+  // Notes
+  notesInput: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
-  continueText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+
+  // Footer
+  footer: { marginTop: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#e0e0e0' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  totalLabel: { fontSize: 16, color: '#666' },
+  totalAmount: { fontSize: 24, fontWeight: '800', color: '#1a1a1a' },
+  placeBtn: {
+    backgroundColor: '#2196F3',
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  placeBtnDisabled: { backgroundColor: '#ccc' },
+  placeIcon: { marginRight: 4 },
+  placeText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

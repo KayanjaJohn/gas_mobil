@@ -11,6 +11,10 @@ interface DecodedToken {
 
 let io: SocketServer;
 
+// ── Rate limiting map: driverId → last location update timestamp ──
+const driverLocationRateLimit = new Map<string, number>();
+const LOCATION_UPDATE_MIN_INTERVAL_MS = 3000; // Max 1 update per 3 seconds per driver
+
 export const initializeSocket = (server: HttpServer) => {
   io = new SocketServer(server, {
     cors: {
@@ -83,6 +87,7 @@ export const initializeSocket = (server: HttpServer) => {
       console.log(`[Socket] ${userName} left order room: ${orderId}`);
     });
 
+    // ── RATE-LIMITED driver location update ──
     socket.on('driver_location_update', (data: {
       orderId: string; latitude: number; longitude: number;
       accuracy?: number; speed?: number; heading?: number;
@@ -91,13 +96,26 @@ export const initializeSocket = (server: HttpServer) => {
         socket.emit('error', { message: 'Only drivers can update location' });
         return;
       }
+
+      const now = Date.now();
+      const lastUpdate = driverLocationRateLimit.get(userId) || 0;
+      if (now - lastUpdate < LOCATION_UPDATE_MIN_INTERVAL_MS) {
+        // Silently drop — too frequent
+        return;
+      }
+      driverLocationRateLimit.set(userId, now);
+
       const locationData = {
-        ...data, driverId: userId, driverName: userName,
+        ...data,
+        driverId: userId,
+        driverName: userName,
         timestamp: new Date().toISOString(),
       };
+
       io.to(`order_${data.orderId}`).emit('location_update', locationData);
       io.to(`driver_${userId}`).emit('location_confirmed', {
-        orderId: data.orderId, received: true,
+        orderId: data.orderId,
+        received: true,
       });
     });
 
@@ -106,16 +124,20 @@ export const initializeSocket = (server: HttpServer) => {
     }) => {
       if (userRole !== 'driver') return;
       io.to('admins').emit('driver_status_changed', {
-        driverId: userId, driverName: userName,
-        status: data.status, timestamp: new Date().toISOString(),
+        driverId: userId,
+        driverName: userName,
+        status: data.status,
+        timestamp: new Date().toISOString(),
       });
     });
 
     socket.on('disconnect', () => {
       console.log(`[Socket] ${userName} disconnected: ${socket.id}`);
       if (userRole === 'driver') {
+        driverLocationRateLimit.delete(userId); // Clean up rate limiter
         io.to('admins').emit('driver_offline', {
-          driverId: userId, driverName: userName,
+          driverId: userId,
+          driverName: userName,
           timestamp: new Date().toISOString(),
         });
       }
@@ -148,4 +170,9 @@ export const broadcastToAdmins = (event: string, data: any) => {
 export const broadcastToDrivers = (event: string, data: any) => {
   if (!io) return;
   io.to('drivers').emit(event, data);
+};
+
+export const broadcastToStation = (stationId: string, event: string, data: any) => {
+  if (!io) return;
+  io.to(`station_${stationId}`).emit(event, data);
 };

@@ -4,7 +4,7 @@ import {
   Paper, Typography, Switch, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Grid, Box, Alert, Snackbar, CircularProgress,
   FormControl, InputLabel, Select, MenuItem, IconButton, Tabs, Tab,
-  Chip, Card as MuiCard, CardContent,
+  Chip, Card as MuiCard, CardContent, Avatar,
 } from '@mui/material';
 import { Delete, Edit, Add, Inventory } from '@mui/icons-material';
 import axios from 'axios';
@@ -14,17 +14,30 @@ import ImageUpload from '../components/ImageUpload';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface Product {
-  id: string; name: string; description: string; price: number;
-  stock: number; type: string; isAvailable: boolean; stationId?: string;
-  weight?: string; size?: string; imageUrl?: string;
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  stock: number;
+  type: string;
+  isAvailable: boolean;
+  stationId?: string;
+  imageUrl?: string | null;
+  weight?: number | null;
+  size?: string | null;
   station?: { name: string };
 }
 
 interface CatalogItem {
-  id: string; name: string; description: string | null;
-  defaultPrice: number; defaultWeight: number | null;
-  defaultSize: string | null; category: 'cylinder' | 'accessory';
-  imageUrl: string | null; isActive: boolean;
+  id: string;
+  name: string;
+  description: string | null;
+  defaultPrice: number;
+  defaultWeight: number | null;
+  defaultSize: string | null;
+  category: 'cylinder' | 'accessory';
+  imageUrl: string | null;
+  isActive: boolean;
 }
 
 interface Station { id: string; name: string; address: string; }
@@ -88,16 +101,30 @@ export default function Products() {
     if (!form.name || !form.price || !form.stock || !form.stationId) {
       setSnackbar({ open: true, message: 'Please fill all required fields', severity: 'error' }); return;
     }
+    const payload: any = {
+      name: form.name,
+      description: form.description || undefined,
+      price: Number(form.price),
+      stock: Number(form.stock),
+      type: form.type || 'cylinder',
+      stationId: form.stationId,
+      weight: form.weight ? Number(form.weight) : undefined,
+      size: form.size || undefined,
+    };
+    if (form.imageUrl && form.imageUrl.trim() !== '') {
+      payload.imageUrl = form.imageUrl.trim();
+    }
+
     try {
-      const data = { ...form, price: Number(form.price), stock: Number(form.stock), weight: form.weight || undefined, size: form.size || undefined };
       if (editing) {
-        await axios.put(`${API_URL}/products/${editing.id}`, data, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.put(`${API_URL}/products/${editing.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
         setSnackbar({ open: true, message: 'Product updated', severity: 'success' });
       } else {
-        await axios.post(`${API_URL}/products`, data, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.post(`${API_URL}/products`, payload, { headers: { Authorization: `Bearer ${token}` } });
         setSnackbar({ open: true, message: 'Product created', severity: 'success' });
       }
-      setOpen(false); setEditing(null); setForm({ name: '', description: '', price: '', stock: '', type: 'cylinder', stationId: '', weight: '', size: '', imageUrl: '' });
+      setOpen(false); setEditing(null);
+      setForm({ name: '', description: '', price: '', stock: '', type: 'cylinder', stationId: '', weight: '', size: '', imageUrl: '' });
       fetchProducts();
     } catch (err: any) { setSnackbar({ open: true, message: err.response?.data?.error || 'Failed to save', severity: 'error' }); }
   };
@@ -108,9 +135,13 @@ export default function Products() {
     }
     try {
       await axios.post(`${API_URL}/catalog`, {
-        ...catalogForm,
+        name: catalogForm.name,
+        description: catalogForm.description || undefined,
         defaultPrice: Number(catalogForm.defaultPrice),
         defaultWeight: catalogForm.defaultWeight ? Number(catalogForm.defaultWeight) : undefined,
+        defaultSize: catalogForm.defaultSize || undefined,
+        category: catalogForm.category,
+        imageUrl: catalogForm.imageUrl || undefined,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setSnackbar({ open: true, message: 'Catalog item created', severity: 'success' });
       setCatalogOpen(false);
@@ -124,12 +155,16 @@ export default function Products() {
       setSnackbar({ open: true, message: 'Station and stock are required', severity: 'error' }); return;
     }
     try {
-      await axios.post(`${API_URL}/catalog/${selectedCatalog?.id}/add-to-station`, {
+      const payload: any = {
         stationId: stationForm.stationId,
         price: stationForm.price ? Number(stationForm.price) : undefined,
         stock: Number(stationForm.stock),
-        imageUrl: stationForm.imageUrl || undefined,
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      };
+      if (stationForm.imageUrl && stationForm.imageUrl.trim() !== '') {
+        payload.imageUrl = stationForm.imageUrl.trim();
+      }
+      await axios.post(`${API_URL}/catalog/${selectedCatalog?.id}/add-to-station`, payload,
+        { headers: { Authorization: `Bearer ${token}` } });
       setSnackbar({ open: true, message: 'Added to station stock!', severity: 'success' });
       setAddToStationOpen(false);
       setStationForm({ stationId: '', price: '', stock: '', imageUrl: '' });
@@ -151,7 +186,7 @@ export default function Products() {
     setForm({
       name: product.name, description: product.description || '', price: String(product.price),
       stock: String(product.stock), type: product.type, stationId: product.stationId || '',
-      weight: product.weight || '', size: product.size || '', imageUrl: product.imageUrl || ''
+      weight: product.weight ? String(product.weight) : '', size: product.size || '', imageUrl: product.imageUrl || ''
     });
     setOpen(true);
   };
@@ -161,44 +196,80 @@ export default function Products() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>Products & Catalog</Typography>
+      <Typography variant="h4" fontWeight={700} gutterBottom>Products & Catalog</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 2 }}>
-        <Tab label="All Station Products" />
-        <Tab label="Global Catalog" />
+        <Tab label="Products" />
+        <Tab label="Catalog" />
       </Tabs>
 
       {activeTab === 0 && (
         <>
-          <Button variant="contained" startIcon={<Add />} onClick={() => { setEditing(null); setForm({ name: '', description: '', price: '', stock: '', type: 'cylinder', stationId: '', weight: '', size: '', imageUrl: '' }); setOpen(true); }} sx={{ mb: 2 }}>
-            Add Product
-          </Button>
-          {loading ? <CircularProgress /> : (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <Button variant="contained" startIcon={<Add />} onClick={() => { setEditing(null); setForm({ name: '', description: '', price: '', stock: '', type: 'cylinder', stationId: '', weight: '', size: '', imageUrl: '' }); setOpen(true); }}>
+              Add Product
+            </Button>
+          </Box>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+          ) : (
             <TableContainer component={Paper}>
               <Table>
-                <TableHead><TableRow>
-                  <TableCell>Image</TableCell><TableCell>Name</TableCell><TableCell>Price</TableCell>
-                  <TableCell>Stock</TableCell><TableCell>Type</TableCell><TableCell>Station</TableCell>
-                  <TableCell>Available</TableCell><TableCell>Actions</TableCell>
-                </TableRow></TableHead>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Image</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Price</TableCell>
+                    <TableCell>Stock</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell>Station</TableCell>
+                    <TableCell>Available</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
                 <TableBody>
                   {products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>{product.imageUrl ? <img src={product.imageUrl} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} /> : '—'}</TableCell>
-                      <TableCell>{product.name}{product.size ? <Chip size="small" label={product.size} sx={{ ml: 1 }} /> : null}</TableCell>
+                    <TableRow key={product.id} hover>
+                      <TableCell>
+                        {product.imageUrl ? (
+                          <Avatar
+                            src={product.imageUrl}
+                            alt={product.name}
+                            variant="rounded"
+                            sx={{ width: 48, height: 48 }}
+                            imgProps={{ onError: (e: any) => { e.target.src = ''; } }}
+                          />
+                        ) : (
+                          <Avatar variant="rounded" sx={{ width: 48, height: 48, bgcolor: 'grey.200' }}>
+                            <Inventory sx={{ color: 'grey.500' }} />
+                          </Avatar>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight={600}>{product.name}</Typography>
+                        {product.size && <Chip label={product.size} size="small" sx={{ mt: 0.5 }} />}
+                      </TableCell>
                       <TableCell>UGX {Number(product.price).toLocaleString()}</TableCell>
                       <TableCell>{product.stock}</TableCell>
                       <TableCell>{product.type}</TableCell>
                       <TableCell>{product.station?.name || product.stationId || 'N/A'}</TableCell>
-                      <TableCell><Switch checked={product.isAvailable} onChange={() => toggleAvailability(product.id, product.isAvailable)} /></TableCell>
+                      <TableCell>
+                        <Switch checked={product.isAvailable} onChange={() => toggleAvailability(product.id, product.isAvailable)} />
+                      </TableCell>
                       <TableCell>
                         <IconButton onClick={() => startEdit(product)}><Edit /></IconButton>
                         <IconButton onClick={() => deleteProduct(product.id)} color="error"><Delete /></IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {products.length === 0 && <TableRow><TableCell colSpan={8} align="center">No products found</TableCell></TableRow>}
+                  {products.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                        <Typography color="text.secondary">No products found</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -208,23 +279,26 @@ export default function Products() {
 
       {activeTab === 1 && (
         <>
-          <Button variant="contained" startIcon={<Add />} onClick={() => setCatalogOpen(true)} sx={{ mb: 2 }}>
-            Add Catalog Template
-          </Button>
-          {catalogLoading ? <CircularProgress /> : (
-            <Grid container spacing={2}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <Button variant="contained" startIcon={<Add />} onClick={() => { setCatalogForm({ name: '', description: '', defaultPrice: '', defaultWeight: '', defaultSize: '', category: 'cylinder', imageUrl: '' }); setCatalogOpen(true); }}>
+              Add Catalog Item
+            </Button>
+          </Box>
+          {catalogLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+          ) : (
+            <Grid container spacing={3}>
               {cylinders.length > 0 && <Grid item xs={12}><Typography variant="h6">🔥 Gas Cylinders</Typography></Grid>}
               {cylinders.map((item) => (
-                <Grid item xs={12} md={6} lg={4} key={item.id}>
+                <Grid item xs={12} sm={6} md={4} key={item.id}>
                   <MuiCard>
                     <CardContent>
                       <Typography variant="h6">{item.name}</Typography>
-                      <Typography color="text.secondary" sx={{ mb: 1 }}>{item.description || 'No description'}</Typography>
-                      <Chip label={`UGX ${Number(item.defaultPrice).toLocaleString()}`} color="primary" size="small" sx={{ mr: 1 }} />
-                      {item.defaultSize && <Chip label={item.defaultSize} size="small" sx={{ mr: 1 }} />}
+                      <Typography variant="body2" color="text.secondary">{item.description || 'No description'}</Typography>
+                      {item.defaultSize && <Chip label={item.defaultSize} size="small" sx={{ mr: 0.5 }} />}
                       {item.defaultWeight && <Chip label={`${item.defaultWeight}kg`} size="small" />}
                       <Box sx={{ mt: 2 }}>
-                        <Button size="small" variant="outlined" startIcon={<Inventory />} onClick={() => { setSelectedCatalog(item); setStationForm({ stationId: '', price: String(item.defaultPrice), stock: '', imageUrl: item.imageUrl || '' }); setAddToStationOpen(true); }}>
+                        <Button variant="outlined" size="small" onClick={() => { setSelectedCatalog(item); setStationForm({ stationId: '', price: '', stock: '', imageUrl: item.imageUrl || '' }); setAddToStationOpen(true); }}>
                           Add to Station
                         </Button>
                       </Box>
@@ -234,14 +308,13 @@ export default function Products() {
               ))}
               {accessories.length > 0 && <Grid item xs={12}><Typography variant="h6">🔧 Accessories</Typography></Grid>}
               {accessories.map((item) => (
-                <Grid item xs={12} md={6} lg={4} key={item.id}>
+                <Grid item xs={12} sm={6} md={4} key={item.id}>
                   <MuiCard>
                     <CardContent>
                       <Typography variant="h6">{item.name}</Typography>
-                      <Typography color="text.secondary" sx={{ mb: 1 }}>{item.description || 'No description'}</Typography>
-                      <Chip label={`UGX ${Number(item.defaultPrice).toLocaleString()}`} color="primary" size="small" />
+                      <Typography variant="body2" color="text.secondary">{item.description || 'No description'}</Typography>
                       <Box sx={{ mt: 2 }}>
-                        <Button size="small" variant="outlined" startIcon={<Inventory />} onClick={() => { setSelectedCatalog(item); setStationForm({ stationId: '', price: String(item.defaultPrice), stock: '', imageUrl: item.imageUrl || '' }); setAddToStationOpen(true); }}>
+                        <Button variant="outlined" size="small" onClick={() => { setSelectedCatalog(item); setStationForm({ stationId: '', price: '', stock: '', imageUrl: item.imageUrl || '' }); setAddToStationOpen(true); }}>
                           Add to Station
                         </Button>
                       </Box>
@@ -249,7 +322,13 @@ export default function Products() {
                   </MuiCard>
                 </Grid>
               ))}
-              {catalog.length === 0 && <Grid item xs={12}><Alert severity="info">No catalog items yet. Run the seed script to populate templates.</Alert></Grid>}
+              {catalog.length === 0 && (
+                <Grid item xs={12}>
+                  <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
+                    No catalog items yet. Run the seed script to populate templates.
+                  </Typography>
+                </Grid>
+              )}
             </Grid>
           )}
         </>
@@ -259,77 +338,81 @@ export default function Products() {
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editing ? 'Edit Product' : 'Add New Product'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <ImageUpload
-                value={form.imageUrl}
-                onChange={(url) => setForm({ ...form, imageUrl: url })}
-                token={token}
-              />
-            </Grid>
-            <Grid item xs={12}><TextField label="Name" fullWidth value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} required /></Grid>
-            <Grid item xs={12}><TextField label="Description" fullWidth value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} /></Grid>
-            <Grid item xs={6}><TextField label="Price (UGX)" fullWidth type="number" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} required /></Grid>
-            <Grid item xs={6}><TextField label="Stock" fullWidth type="number" value={form.stock} onChange={(e) => setForm({...form, stock: e.target.value})} required /></Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth><InputLabel>Type</InputLabel><Select value={form.type} label="Type" onChange={(e) => setForm({...form, type: e.target.value})}><MenuItem value="cylinder">Cylinder</MenuItem><MenuItem value="accessory">Accessory</MenuItem></Select></FormControl>
-            </Grid>
-            <Grid item xs={6}><TextField label="Size" fullWidth value={form.size} onChange={(e) => setForm({...form, size: e.target.value})} /></Grid>
-            <Grid item xs={6}><TextField label="Weight (kg)" fullWidth type="number" value={form.weight} onChange={(e) => setForm({...form, weight: e.target.value})} /></Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth><InputLabel>Station</InputLabel><Select value={form.stationId} label="Station" onChange={(e) => setForm({...form, stationId: e.target.value})} required>{stations.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}</Select></FormControl>
-            </Grid>
-          </Grid>
+          <Box sx={{ mt: 1 }}>
+            <ImageUpload value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} token={token} />
+          </Box>
+          <TextField label="Name" fullWidth margin="dense" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} required />
+          <TextField label="Description" fullWidth margin="dense" value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} multiline rows={2} />
+          <TextField label="Price (UGX)" fullWidth margin="dense" type="number" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} required />
+          <TextField label="Stock" fullWidth margin="dense" type="number" value={form.stock} onChange={(e) => setForm({...form, stock: e.target.value})} required />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Type</InputLabel>
+            <Select value={form.type} label="Type" onChange={(e) => setForm({...form, type: e.target.value})}>
+              <MenuItem value="cylinder">Cylinder</MenuItem>
+              <MenuItem value="accessory">Accessory</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField label="Size (e.g. 6kg, 12kg)" fullWidth margin="dense" value={form.size} onChange={(e) => setForm({...form, size: e.target.value})} />
+          <TextField label="Weight (kg)" fullWidth margin="dense" type="number" value={form.weight} onChange={(e) => setForm({...form, weight: e.target.value})} />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Station</InputLabel>
+            <Select value={form.stationId} label="Station" onChange={(e) => setForm({...form, stationId: e.target.value})} required>
+              {stations.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+            </Select>
+          </FormControl>
         </DialogContent>
-        <DialogActions><Button onClick={() => setOpen(false)}>Cancel</Button><Button variant="contained" onClick={saveProduct}>{editing ? 'Update' : 'Create'}</Button></DialogActions>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={saveProduct}>{editing ? 'Update' : 'Create'}</Button>
+        </DialogActions>
       </Dialog>
 
       {/* Catalog Dialog */}
       <Dialog open={catalogOpen} onClose={() => setCatalogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add Catalog Template</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <ImageUpload
-                value={catalogForm.imageUrl}
-                onChange={(url) => setCatalogForm({ ...catalogForm, imageUrl: url })}
-                token={token}
-              />
-            </Grid>
-            <Grid item xs={12}><TextField label="Name" fullWidth value={catalogForm.name} onChange={(e) => setCatalogForm({...catalogForm, name: e.target.value})} required /></Grid>
-            <Grid item xs={12}><TextField label="Description" fullWidth value={catalogForm.description} onChange={(e) => setCatalogForm({...catalogForm, description: e.target.value})} /></Grid>
-            <Grid item xs={6}><TextField label="Default Price (UGX)" fullWidth type="number" value={catalogForm.defaultPrice} onChange={(e) => setCatalogForm({...catalogForm, defaultPrice: e.target.value})} required /></Grid>
-            <Grid item xs={6}><TextField label="Default Weight (kg)" fullWidth type="number" value={catalogForm.defaultWeight} onChange={(e) => setCatalogForm({...catalogForm, defaultWeight: e.target.value})} /></Grid>
-            <Grid item xs={6}><TextField label="Default Size" fullWidth value={catalogForm.defaultSize} onChange={(e) => setCatalogForm({...catalogForm, defaultSize: e.target.value})} /></Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth><InputLabel>Category</InputLabel><Select value={catalogForm.category} label="Category" onChange={(e) => setCatalogForm({...catalogForm, category: e.target.value as any})}><MenuItem value="cylinder">Cylinder</MenuItem><MenuItem value="accessory">Accessory</MenuItem></Select></FormControl>
-            </Grid>
-          </Grid>
+          <Box sx={{ mt: 1 }}>
+            <ImageUpload value={catalogForm.imageUrl} onChange={(url) => setCatalogForm({ ...catalogForm, imageUrl: url })} label="Catalog Image" token={token} />
+          </Box>
+          <TextField label="Name" fullWidth margin="dense" value={catalogForm.name} onChange={(e) => setCatalogForm({...catalogForm, name: e.target.value})} required />
+          <TextField label="Description" fullWidth margin="dense" value={catalogForm.description} onChange={(e) => setCatalogForm({...catalogForm, description: e.target.value})} />
+          <TextField label="Default Price (UGX)" fullWidth margin="dense" type="number" value={catalogForm.defaultPrice} onChange={(e) => setCatalogForm({...catalogForm, defaultPrice: e.target.value})} required />
+          <TextField label="Default Weight (kg)" fullWidth margin="dense" type="number" value={catalogForm.defaultWeight} onChange={(e) => setCatalogForm({...catalogForm, defaultWeight: e.target.value})} />
+          <TextField label="Default Size" fullWidth margin="dense" value={catalogForm.defaultSize} onChange={(e) => setCatalogForm({...catalogForm, defaultSize: e.target.value})} />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Category</InputLabel>
+            <Select value={catalogForm.category} label="Category" onChange={(e) => setCatalogForm({...catalogForm, category: e.target.value})}>
+              <MenuItem value="cylinder">Cylinder</MenuItem>
+              <MenuItem value="accessory">Accessory</MenuItem>
+            </Select>
+          </FormControl>
         </DialogContent>
-        <DialogActions><Button onClick={() => setCatalogOpen(false)}>Cancel</Button><Button variant="contained" onClick={saveCatalogItem}>Create</Button></DialogActions>
+        <DialogActions>
+          <Button onClick={() => setCatalogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={saveCatalogItem}>Create</Button>
+        </DialogActions>
       </Dialog>
 
       {/* Add to Station Dialog */}
       <Dialog open={addToStationOpen} onClose={() => setAddToStationOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Add "{selectedCatalog?.name}" to Station</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <ImageUpload
-                value={stationForm.imageUrl}
-                onChange={(url) => setStationForm({ ...stationForm, imageUrl: url })}
-                label="Override Image (optional)"
-                token={token}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth><InputLabel>Station</InputLabel><Select value={stationForm.stationId} label="Station" onChange={(e) => setStationForm({...stationForm, stationId: e.target.value})} required>{stations.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}</Select></FormControl>
-            </Grid>
-            <Grid item xs={12}><TextField label="Price Override (UGX)" fullWidth type="number" value={stationForm.price} onChange={(e) => setStationForm({...stationForm, price: e.target.value})} helperText={`Default: UGX ${Number(selectedCatalog?.defaultPrice || 0).toLocaleString()}`} /></Grid>
-            <Grid item xs={12}><TextField label="Stock Quantity" fullWidth type="number" value={stationForm.stock} onChange={(e) => setStationForm({...stationForm, stock: e.target.value})} required /></Grid>
-          </Grid>
+          <Box sx={{ mt: 1 }}>
+            <ImageUpload value={stationForm.imageUrl} onChange={(url) => setStationForm({ ...stationForm, imageUrl: url })} label="Override Image (optional)" token={token} />
+          </Box>
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Station</InputLabel>
+            <Select value={stationForm.stationId} label="Station" onChange={(e) => setStationForm({...stationForm, stationId: e.target.value})} required>
+              {stations.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <TextField label="Price Override (UGX)" fullWidth margin="dense" type="number" value={stationForm.price} onChange={(e) => setStationForm({...stationForm, price: e.target.value})} helperText={`Default: UGX ${Number(selectedCatalog?.defaultPrice || 0).toLocaleString()}`} />
+          <TextField label="Stock Quantity" fullWidth margin="dense" type="number" value={stationForm.stock} onChange={(e) => setStationForm({...stationForm, stock: e.target.value})} required />
         </DialogContent>
-        <DialogActions><Button onClick={() => setAddToStationOpen(false)}>Cancel</Button><Button variant="contained" onClick={addCatalogToStation}>Add to Stock</Button></DialogActions>
+        <DialogActions>
+          <Button onClick={() => setAddToStationOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={addCatalogToStation}>Add</Button>
+        </DialogActions>
       </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
