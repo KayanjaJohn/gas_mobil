@@ -6,11 +6,11 @@ export default {
     slug: "gas-mobil-app",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
-    scheme: "gasmobil",  // ← ADDED
+    icon: "../../assets/icon.png",
+    scheme: "gasmobil",
     userInterfaceStyle: "dark",
     splash: {
-      image: "./assets/splash.png",
+      image: "../../assets/splash.png",
       resizeMode: "contain",
       backgroundColor: "#070b14",
     },
@@ -21,13 +21,13 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "../../assets/icon.png",
         backgroundColor: "#070b14",
       },
       package: "com.gasmobil.app",
     },
     web: {
-      favicon: "./assets/favicon.png",
+      favicon: "../../assets/icon.png",
     },
     extra: {
       apiUrl: process.env.EXPO_PUBLIC_API_URL,

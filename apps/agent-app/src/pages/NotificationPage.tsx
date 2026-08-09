@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAgentNotifications } from '../src/hooks/useAAgentNotifications';
+import { useAgentNotifications } from '../hooks/useAgentNotifications';
 
 const NOTIFICATION_TYPES = [
   { value: 'all', label: 'All Types', color: '#6b7280' },

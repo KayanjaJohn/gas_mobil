@@ -33,7 +33,8 @@ export const register = async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ success: false, error: "User already exists" });
+      console.log(`[REGISTER] Rejected: email=${email} or phone=${phone} already exists`);
+      return res.status(409).json({ success: false, error: "User already exists with this email or phone" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -56,6 +57,8 @@ export const register = async (req: Request, res: Response) => {
 
     const accessToken = generateToken(user.id, user.email, user.name, user.role);
     const refreshToken = generateRefreshToken(user.id);
+
+    console.log(`[REGISTER] Success: user=${user.email} id=${user.id}`);
 
     res.status(201).json({
       success: true,
@@ -82,7 +85,10 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { emailOrPhone, password } = req.body;
 
+    console.log(`[LOGIN] Attempt: identifier=${emailOrPhone}`);
+
     if (!password || !emailOrPhone) {
+      console.log("[LOGIN] Rejected: missing fields");
       return res.status(400).json({
         success: false,
         error: "Email/phone and password are required",
@@ -95,12 +101,14 @@ export const login = async (req: Request, res: Response) => {
     const user = await userRepository.findOne({ where });
 
     if (!user) {
-      return res.status(401).json({ success: false, error: "Invalid credentials" });
+      console.log(`[LOGIN] Rejected: user not found for identifier=${emailOrPhone}`);
+      return res.status(401).json({ success: false, error: "Invalid credentials — user not found" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ success: false, error: "Invalid credentials" });
+      console.log(`[LOGIN] Rejected: wrong password for user=${user.email}`);
+      return res.status(401).json({ success: false, error: "Invalid credentials — wrong password" });
     }
 
     const accessToken = generateToken(user.id, user.email, user.name, user.role);
@@ -113,6 +121,8 @@ export const login = async (req: Request, res: Response) => {
       phone: user.phone,
       role: user.role,
     };
+
+    console.log(`[LOGIN] Success: user=${user.email}`);
 
     res.json({
       success: true,

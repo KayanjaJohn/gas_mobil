@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAdminNotifications } from '../hooks/useAgentNotifications';
+import { useAgentNotifications } from '../hooks/useAgentNotifications';
 
 interface NotificationBellProps {
   token: string;
@@ -8,7 +8,7 @@ interface NotificationBellProps {
 
 export default function NotificationBell({ token, userRole }: NotificationBellProps) {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
-    useAdminNotifications(token);
+    useAgentNotifications(token);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

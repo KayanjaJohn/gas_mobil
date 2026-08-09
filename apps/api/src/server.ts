@@ -51,22 +51,30 @@ app.use(cors({
 }));
 
 // ── Rate Limiting ──────────────
+// Trust proxy headers (required when behind Nginx, CloudFlare, AWS ALB, etc.)
+// so rate limits apply per real user IP, not the proxy's IP
+app.set('trust proxy', 1);
+
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, error: 'Too many attempts. Please try again later.' },
+  windowMs: 15 * 60 * 1000,   // 15 minutes
+  max: 20,                     // 20 attempts per window (was 5 — too aggressive)
+  skipSuccessfulRequests: true, // Successful login/register don't count against limit
+  message: { success: false, error: 'Too many attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
+  windowMs: 60 * 1000,         // 1 minute
+  max: 100,                    // 100 requests per minute
   message: { success: false, error: 'Too many requests. Please slow down.' },
 });
 
+// Apply auth limiter ONLY to login and register endpoints
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+
+// Apply general API limiter to all /api routes
 app.use('/api', apiLimiter);
 
 // ── Body Parsing ───────────────
