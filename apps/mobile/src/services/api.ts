@@ -26,14 +26,47 @@ api.interceptors.request.use(
   }
 );
 
+/**
+ * HIGH FIX: Only clear auth on 401 from auth endpoints OR when refresh fails.
+ * Attempts token refresh before logging user out.
+ */
 api.interceptors.response.use(
   function resSuccess(response) {
     return response;
   },
   async function resError(error) {
-    if (error.response && error.response.status === 401) {
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || "";
+
+    if (status === 401) {
+      // Don't clear on login/register 401s
+      if (requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register")) {
+        return Promise.reject(error);
+      }
+
+      // Try refresh token first
+      try {
+        const refreshToken = await AsyncStorage.getItem("refresh_token");
+        if (refreshToken && !requestUrl.includes("/auth/refresh")) {
+          const refreshRes = await axios.post(`${API_URL}/auth/refresh`, {
+            refreshToken,
+          });
+          if (refreshRes.data?.success && refreshRes.data?.data?.accessToken) {
+            const newToken = refreshRes.data.data.accessToken;
+            await AsyncStorage.setItem("access_token", newToken);
+            // Retry original request
+            error.config.headers.Authorization = "Bearer " + newToken;
+            return api.request(error.config);
+          }
+        }
+      } catch (refreshErr) {
+        console.error("[API] Token refresh failed:", refreshErr);
+      }
+
+      // Refresh failed or no refresh token — clear auth
       await AsyncStorage.multiRemove(["access_token", "refresh_token", "user"]);
     }
+
     return Promise.reject(error);
   }
 );
