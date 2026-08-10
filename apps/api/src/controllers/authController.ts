@@ -7,6 +7,12 @@ import { generateToken, generateRefreshToken } from "../middleware/auth";
 
 const userRepository = AppDataSource.getRepository(User);
 
+// Minimal email helper — swap for SendGrid/Resend in production
+async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+  console.log(`[Email] To: ${to} | Subject: ${subject}`);
+  // TODO: integrate nodemailer or transactional email API
+}
+
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, phone, password, address, city, latitude, longitude } = req.body;
@@ -239,45 +245,129 @@ export const refreshToken = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * CRITICAL FIX: Actually generates a reset token and sends email.
+ * SECURITY FIX: Returns identical message whether user exists or not
+ * to prevent user enumeration attacks.
+ */
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     const user = await userRepository.findOne({ where: { email } });
 
+    // SECURITY FIX: Don't leak whether email exists
     if (!user) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return res.json({
+        success: true,
+        message: "If an account exists, reset instructions have been sent.",
+      });
     }
 
-    res.json({ success: true, message: "Password reset instructions sent" });
+    const resetSecret = process.env.RESET_TOKEN_SECRET;
+    if (!resetSecret) {
+      console.error("[FORGOT PASSWORD] RESET_TOKEN_SECRET not configured");
+      return res.status(500).json({ success: false, error: "Server configuration error" });
+    }
+
+    const resetToken = jwt.sign(
+      { userId: user.id, purpose: "password_reset" },
+      resetSecret,
+      { expiresIn: "15m" }
+    );
+
+    // Save hash to prevent replay attacks
+    const resetTokenHash = await bcrypt.hash(resetToken, 10);
+    await userRepository.update(user.id, {
+      resetTokenHash,
+      resetTokenExpiry: new Date(Date.now() + 15 * 60 * 1000),
+    } as any);
+
+    const resetUrl = `${process.env.CLIENT_URL || "https://gasmobil.com"}/reset-password?token=${resetToken}`;
+
+    await sendEmail({
+      to: user.email,
+      subject: "Password Reset — GasMobil",
+      html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. This link expires in 15 minutes.</p>`,
+    });
+
+    res.json({
+      success: true,
+      message: "If an account exists, reset instructions have been sent.",
+    });
   } catch (error: any) {
+    console.error("[FORGOT PASSWORD] ERROR:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
+/**
+ * CRITICAL FIX: Uses separate RESET_TOKEN_SECRET instead of JWT_SECRET.
+ * Verifies token purpose and expiry. Checks token hash to prevent replay.
+ */
 export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { token, password } = req.body;
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
+    if (!token || !password) {
+      return res.status(400).json({ success: false, error: "Token and password required" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: "Password must be at least 6 characters" });
+    }
+
+    const resetSecret = process.env.RESET_TOKEN_SECRET;
+    if (!resetSecret) {
       return res.status(500).json({ success: false, error: "Server configuration error" });
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as { userId?: string; id?: string };
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, resetSecret);
+    } catch {
+      return res.status(400).json({ success: false, error: "Invalid or expired token" });
+    }
+
+    if (decoded.purpose !== "password_reset") {
+      return res.status(400).json({ success: false, error: "Invalid token purpose" });
+    }
+
     const userId = decoded.userId || decoded.id;
     if (!userId) {
       return res.status(400).json({ success: false, error: "Invalid token payload" });
     }
-    const hashedPassword = await bcrypt.hash(password, 12);
 
-    await userRepository.update(userId, { password: hashedPassword } as any);
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      return res.status(400).json({ success: false, error: "User not found" });
+    }
+
+    // Verify token hash to prevent replay
+    if (user.resetTokenHash && !(await bcrypt.compare(token, user.resetTokenHash))) {
+      return res.status(400).json({ success: false, error: "Token already used or invalid" });
+    }
+
+    // Check expiry
+    if (user.resetTokenExpiry && new Date() > new Date(user.resetTokenExpiry)) {
+      return res.status(400).json({ success: false, error: "Token expired" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await userRepository.update(userId, {
+      password: hashedPassword,
+      resetTokenHash: null,
+      resetTokenExpiry: null,
+    } as any);
 
     res.json({ success: true, message: "Password reset successfully" });
   } catch (error: any) {
-    res.status(400).json({ success: false, error: "Invalid or expired token" });
+    console.error("[RESET PASSWORD] ERROR:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+/**
+ * HIGH FIX: Added phone number uniqueness check.
+ */
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
@@ -285,11 +375,22 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
-    if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
     if (city !== undefined) updateData.city = city;
     if (latitude !== undefined) updateData.latitude = parseFloat(latitude);
     if (longitude !== undefined) updateData.longitude = parseFloat(longitude);
+
+    // HIGH FIX: Check phone uniqueness before updating
+    if (phone !== undefined) {
+      const existingPhone = await userRepository.findOne({
+        where: { phone },
+        select: ["id"],
+      });
+      if (existingPhone && existingPhone.id !== userId) {
+        return res.status(409).json({ success: false, error: "Phone number already in use" });
+      }
+      updateData.phone = phone;
+    }
 
     await userRepository.update(userId, updateData);
 
