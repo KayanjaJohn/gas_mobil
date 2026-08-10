@@ -1,10 +1,10 @@
-import { Request, Response } from 'express';
-import AppDataSource from '../config/database';
-import { Order } from '../entities/Order';
-import { User } from '../entities/User';
-import { Delivery } from '../entities/Delivery';
-import { broadcastToAdmins } from '../config/socket';
-import { updateDeliveryStatusUnified } from '../services/deliveryService';
+import { Request, Response } from "express";
+import AppDataSource from "../config/database";
+import { Order } from "../entities/Order";
+import { User } from "../entities/User";
+import { Delivery } from "../entities/Delivery";
+import { broadcastToAdmins } from "../config/socket";
+import { updateDeliveryStatusUnified } from "../services/deliveryService";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const userRepository = AppDataSource.getRepository(User);
@@ -13,21 +13,21 @@ const deliveryRepository = AppDataSource.getRepository(Delivery);
 export const getDriverOrders = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    if (user.role !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Driver access only' });
+    if (user.role !== "driver") {
+      return res.status(403).json({ success: false, error: "Driver access only" });
     }
 
-    const orders = await orderRepository.createQueryBuilder('order')
-      .leftJoinAndSelect('order.items', 'items')
-      .leftJoinAndSelect('items.product', 'product')
-      .leftJoinAndSelect('order.user', 'user')
-      .leftJoinAndSelect('order.station', 'station')
-      .leftJoinAndSelect('order.deliveries', 'deliveries')
-      .where('deliveries.driverId = :driverId', { driverId: user.id })
-      .andWhere('order.status IN (:...statuses)', {
-        statuses: ['driver_assigned', 'picked_up', 'in_transit', 'nearby']
+    const orders = await orderRepository.createQueryBuilder("order")
+      .leftJoinAndSelect("order.items", "items")
+      .leftJoinAndSelect("items.product", "product")
+      .leftJoinAndSelect("order.user", "user")
+      .leftJoinAndSelect("order.station", "station")
+      .leftJoinAndSelect("order.deliveries", "deliveries")
+      .where("deliveries.driverId = :driverId", { driverId: user.id })
+      .andWhere("order.status IN (:...statuses)", {
+        statuses: ["driver_assigned", "picked_up", "in_transit", "nearby"],
       })
-      .orderBy('order.createdAt', 'DESC')
+      .orderBy("order.createdAt", "DESC")
       .getMany();
 
     res.json({ success: true, data: orders });
@@ -36,6 +36,10 @@ export const getDriverOrders = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * CRITICAL FIX: Replaced manual status update with updateDeliveryStatusUnified()
+ * to ensure transaction safety, status validation, and notifications.
+ */
 export const acceptOrder = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
@@ -43,26 +47,29 @@ export const acceptOrder = async (req: Request, res: Response) => {
 
     const order = await orderRepository.findOne({
       where: { id: orderId },
-      relations: ['deliveries']
+      relations: ["deliveries"],
     });
 
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: "Order not found" });
     }
 
     const delivery = order.deliveries?.find((d: Delivery) => d.driverId === user.id);
     if (!delivery) {
-      return res.status(403).json({ success: false, error: 'Order not assigned to you' });
+      return res.status(403).json({ success: false, error: "Order not assigned to you" });
     }
 
-    order.status = 'picked_up';
-    delivery.status = 'picked_up';
-    await orderRepository.save(order);
-    await deliveryRepository.save(delivery);
+    const result = await updateDeliveryStatusUnified({
+      deliveryId: delivery.id,
+      status: "picked_up",
+      driverId: user.id,
+      driverName: delivery.driverName || user.name,
+      vehicleNumber: delivery.vehicleNumber || user.vehicleNumber,
+    });
 
-    res.json({ success: true, data: order });
+    res.json({ success: true, data: result.order });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: error.message });
   }
 };
 
@@ -71,13 +78,13 @@ export const updateDriverStatus = async (req: Request, res: Response) => {
     const { status, latitude, longitude } = req.body;
     const user = (req as any).user;
 
-    if (user.role !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Driver access only' });
+    if (user.role !== "driver") {
+      return res.status(403).json({ success: false, error: "Driver access only" });
     }
 
     const driver = await userRepository.findOne({ where: { id: user.id } });
     if (!driver) {
-      return res.status(404).json({ success: false, error: 'Driver not found' });
+      return res.status(404).json({ success: false, error: "Driver not found" });
     }
 
     driver.driverStatus = status;
@@ -87,7 +94,7 @@ export const updateDriverStatus = async (req: Request, res: Response) => {
 
     await userRepository.save(driver);
 
-    broadcastToAdmins('driver_status_changed', {
+    broadcastToAdmins("driver_status_changed", {
       driverId: driver.id,
       driverName: driver.name,
       status,
@@ -106,11 +113,11 @@ export const getDriverProfile = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const driver = await userRepository.findOne({
       where: { id: user.id },
-      relations: ['station']
+      relations: ["station"],
     });
 
     if (!driver) {
-      return res.status(404).json({ success: false, error: 'Driver not found' });
+      return res.status(404).json({ success: false, error: "Driver not found" });
     }
 
     res.json({
@@ -125,32 +132,31 @@ export const getDriverProfile = async (req: Request, res: Response) => {
         vehicleType: driver.vehicleType,
         currentLatitude: driver.currentLatitude,
         currentLongitude: driver.currentLongitude,
-        station: driver.station
-      }
+        station: driver.station,
+      },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// ── USE SHARED SERVICE ──
 export const updateDeliveryStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status, deliveryPhoto, customerSignature, deliveryNotes, rating } = req.body;
     const user = (req as any).user;
 
-    if (user.role !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Driver access only' });
+    if (user.role !== "driver") {
+      return res.status(403).json({ success: false, error: "Driver access only" });
     }
 
     const delivery = await deliveryRepository.findOne({
       where: { id },
-      relations: ['order']
+      relations: ["order"],
     });
 
     if (!delivery) {
-      return res.status(404).json({ success: false, error: 'Delivery not found' });
+      return res.status(404).json({ success: false, error: "Delivery not found" });
     }
 
     const result = await updateDeliveryStatusUnified({
@@ -178,8 +184,8 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 export const getDriverStats = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    if (user.role !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Driver access only' });
+    if (user.role !== "driver") {
+      return res.status(403).json({ success: false, error: "Driver access only" });
     }
 
     const today = new Date();
@@ -187,16 +193,17 @@ export const getDriverStats = async (req: Request, res: Response) => {
 
     const deliveries = await deliveryRepository.find({
       where: { driverId: user.id },
-      relations: ['order']
+      relations: ["order"],
     });
 
-    const todayOrders = deliveries.filter(d =>
-      d.order && new Date(d.order.createdAt) >= today
+    const todayOrders = deliveries.filter(
+      (d) => d.order && new Date(d.order.createdAt) >= today
     );
 
-    const todayCompleted = todayOrders.filter(d => d.status === 'delivered');
-    const totalEarnings = todayCompleted.reduce((sum, d) =>
-      sum + Number(d.order?.totalAmount || 0) * 0.1, 0
+    const todayCompleted = todayOrders.filter((d) => d.status === "delivered");
+    const totalEarnings = todayCompleted.reduce(
+      (sum, d) => sum + Number(d.order?.totalAmount || 0) * 0.1,
+      0
     );
 
     res.json({
@@ -205,8 +212,8 @@ export const getDriverStats = async (req: Request, res: Response) => {
         todayOrders: todayOrders.length,
         todayCompleted: todayCompleted.length,
         todayEarnings: Math.round(totalEarnings),
-        totalDeliveries: deliveries.filter(d => d.status === 'delivered').length,
-      }
+        totalDeliveries: deliveries.filter((d) => d.status === "delivered").length,
+      },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -216,23 +223,23 @@ export const getDriverStats = async (req: Request, res: Response) => {
 export const getDriverEarnings = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    if (user.role !== 'driver') {
-      return res.status(403).json({ success: false, error: 'Driver access only' });
+    if (user.role !== "driver") {
+      return res.status(403).json({ success: false, error: "Driver access only" });
     }
 
     const deliveries = await deliveryRepository.find({
-      where: { driverId: user.id, status: 'delivered' },
-      relations: ['order'],
-      order: { createdAt: 'DESC' }
+      where: { driverId: user.id, status: "delivered" },
+      relations: ["order"],
+      order: { createdAt: "DESC" },
     });
 
-    const earnings = deliveries.map(d => ({
+    const earnings = deliveries.map((d) => ({
       id: d.id,
       orderId: d.orderId,
       date: d.createdAt,
       amount: Math.round(Number(d.order?.totalAmount || 0) * 0.1),
-      status: 'paid' as const,
-      customerName: d.order?.user?.name || 'N/A',
+      status: "paid" as const,
+      customerName: d.order?.user?.name || "N/A",
     }));
 
     const totalEarnings = earnings.reduce((sum, e) => sum + e.amount, 0);
