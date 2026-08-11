@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, RefreshControl, ActivityIndicator,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";
@@ -47,7 +53,7 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -68,27 +74,26 @@ export default function NotificationsScreen() {
     }
   }, []);
 
-  // ── SOCKET-AWARE POLLING ──
+  /**
+   * HIGH FIX: isConnected is now a stable boolean from useSocketNotifications.
+   * The dependency array is safe because isConnected is a primitive value,
+   * not a function reference.
+   */
   useEffect(() => {
     fetchNotifications();
 
     const setupPolling = () => {
-      // Clear any existing interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-
-      // Only poll HTTP if socket is NOT connected
-      // Socket events will trigger fetchNotifications() via useSocketNotifications
-      if (!isConnected()) {
+      if (!isConnected) {
         intervalRef.current = setInterval(fetchNotifications, 30000);
       }
     };
 
     setupPolling();
 
-    // Re-check every 10s in case socket state changes
     const checkInterval = setInterval(setupPolling, 10000);
 
     return () => {
@@ -98,7 +103,6 @@ export default function NotificationsScreen() {
   }, [fetchNotifications, isConnected]);
 
   const markAsRead = async (id: string) => {
-    // Optimistic update
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
@@ -108,7 +112,6 @@ export default function NotificationsScreen() {
       await apiRequest("patch", `/notifications/${id}/read`);
     } catch (err) {
       console.error("[Notifications] Mark read error:", err);
-      // Revert on failure
       fetchNotifications();
     }
   };
@@ -150,28 +153,33 @@ export default function NotificationsScreen() {
       <TopBar title="Notifications" showBack onBack={() => router.back()} />
 
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1484FF" />
+        }
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
-            <Text style={styles.markAllText}>Mark all as read ({unreadCount})</Text>
+            <Text style={styles.markAllText}>
+              Mark all as read ({unreadCount})
+            </Text>
           </TouchableOpacity>
         )}
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 60 }} color={COLORS.accent} />
+          <ActivityIndicator style={{ marginTop: 60 }} color="#1484FF" />
         ) : notifications.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🔔</Text>
             <Text style={styles.emptyTitle}>No notifications yet</Text>
-            <Text style={styles.emptySub}>You'll see updates about your orders here.</Text>
+            <Text style={styles.emptySub}>
+              You'll see updates about your orders here.
+            </Text>
           </View>
         ) : (
           notifications.map((n) => (
             <TouchableOpacity
               key={n.id}
-              activeOpacity={0.8}
               onPress={() => {
                 if (!n.isRead) markAsRead(n.id);
                 if (n.orderId) router.push(`/tracking?orderId=${n.orderId}`);
@@ -179,18 +187,22 @@ export default function NotificationsScreen() {
               style={[styles.item, !n.isRead && styles.itemUnread]}
             >
               <View style={styles.iconBox}>
-                <Text style={{ fontSize: 20 }}>{ICONS[n.type] || "🔔"}</Text>
+                <Text>{ICONS[n.type] || "🔔"}</Text>
               </View>
               <View style={styles.content}>
-                <Text style={[styles.title, !n.isRead && styles.titleUnread]}>{n.title}</Text>
+                <Text style={[styles.title, !n.isRead && styles.titleUnread]}>
+                  {n.title}
+                </Text>
                 <Text style={styles.message}>{n.message}</Text>
-                <Text style={styles.time}>{new Date(n.createdAt).toLocaleString()}</Text>
+                <Text style={styles.time}>
+                  {new Date(n.createdAt).toLocaleString()}
+                </Text>
               </View>
               <TouchableOpacity
                 onPress={() => deleteNotification(n.id)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={{ color: COLORS.muted, fontSize: 18 }}>×</Text>
+                <Text style={{ color: "#8A93A6", fontSize: 18 }}>×</Text>
               </TouchableOpacity>
             </TouchableOpacity>
           ))
@@ -211,18 +223,28 @@ const styles = StyleSheet.create({
   emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
   emptySub: { color: "#8A93A6", fontSize: 13, marginTop: 4, textAlign: "center" },
   item: {
-    flexDirection: "row", alignItems: "flex-start",
-    marginHorizontal: 16, marginBottom: 10,
-    backgroundColor: "#101723", borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: "#1F2A3D",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginHorizontal: 16,
+    marginBottom: 10,
+    backgroundColor: "#101723",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#1F2A3D",
   },
   itemUnread: {
     borderColor: "#1484FF",
     backgroundColor: "rgba(20,132,255,0.06)",
   },
   iconBox: {
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: "#0f172a", alignItems: "center", justifyContent: "center", marginRight: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#0f172a",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   content: { flex: 1 },
   title: { color: "#fff", fontSize: 14, fontWeight: "600" },

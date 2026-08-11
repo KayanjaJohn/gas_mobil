@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, MenuItem, Select, FormControl, InputLabel,
+  DialogActions, FormControl, InputLabel, Select, MenuItem,
   CircularProgress, Alert,
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
@@ -141,25 +141,23 @@ export default function Orders() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: "#fff" }}>
-        Orders
-      </Typography>
+      <Typography variant="h4" fontWeight={700} sx={{ mb: 3 }}>Orders</Typography>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2, bgcolor: "rgba(239,68,68,0.1)", color: "#EF4444" }}>
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
           {error}
         </Alert>
       )}
 
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress sx={{ color: "#F59E0B" }} />
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+          <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} sx={{ bgcolor: "#1E293B", border: "1px solid #334155" }}>
+        <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow sx={{ "& th": { color: "#94A3B8", fontWeight: 600, borderBottom: "1px solid #334155" } }}>
+              <TableRow>
                 <TableCell>Order ID</TableCell>
                 <TableCell>Customer</TableCell>
                 <TableCell>Station</TableCell>
@@ -172,65 +170,44 @@ export default function Orders() {
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: "center", color: "#94A3B8", py: 4 }}>
-                    No orders found
+                  <TableCell colSpan={7} align="center">
+                    <Typography color="text.secondary" sx={{ py: 4 }}>
+                      No orders found
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
                 orders.map((order) => (
-                  <TableRow key={order.id} sx={{ "& td": { color: "#E2E8F0", borderBottom: "1px solid #334155" } }}>
-                    <TableCell sx={{ fontFamily: "monospace", fontSize: 13 }}>
-                      #{order.id.slice(0, 8)}
-                    </TableCell>
+                  <TableRow key={order.id}>
+                    <TableCell>#{order.id.slice(0, 8)}</TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {order.user?.name || "Unknown"}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "#94A3B8" }}>
+                      {order.user?.name || "Unknown"}
+                      <br />
+                      <Typography variant="caption" color="text.secondary">
                         {order.user?.phone || "No phone"}
                       </Typography>
                     </TableCell>
                     <TableCell>{order.station?.name || "-"}</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#F59E0B" }}>
-                      UGX {order.totalAmount?.toLocaleString()}
-                    </TableCell>
+                    <TableCell>UGX {order.totalAmount?.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Chip
-                        label={order.status.replace("_", " ")}
-                        color={getStatusColor(order.status) as any}
-                        size="small"
-                        sx={{ textTransform: "capitalize", fontWeight: 600 }}
-                      />
+                      <Chip label={order.status} color={getStatusColor(order.status) as any} size="small" />
                     </TableCell>
+                    <TableCell>{getDriverInfo(order)}</TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ color: order.deliveries?.[0]?.driverName ? "#22C55E" : "#94A3B8" }}>
-                        {getDriverInfo(order)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", gap: 1 }}>
-                        {order.status === "pending" && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={() => { setSelectedOrder(order); setDialogOpen(true); }}
-                            sx={{ bgcolor: "#F59E0B", color: "#fff", fontSize: 12 }}
-                          >
-                            Assign Driver
-                          </Button>
-                        )}
-                        {order.status !== "cancelled" && order.status !== "delivered" && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            onClick={() => handleCancel(order.id)}
-                            sx={{ fontSize: 12 }}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                      </Box>
+                      {order.status === "pending" && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => { setSelectedOrder(order); setSelectedDriver(""); setDialogOpen(true); }}
+                        >
+                          Assign
+                        </Button>
+                      )}
+                      {order.status !== "cancelled" && order.status !== "delivered" && (
+                        <Button size="small" color="error" onClick={() => handleCancel(order.id)} sx={{ ml: 1 }}>
+                          Cancel
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -243,26 +220,25 @@ export default function Orders() {
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} PaperProps={{ sx: { bgcolor: "#1E293B", color: "#fff" } }}>
         <DialogTitle>Assign Driver</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth sx={{ mt: 1 }}>
+          <FormControl fullWidth sx={{ mt: 2, minWidth: 300 }}>
             <InputLabel sx={{ color: "#94A3B8" }}>Select Driver</InputLabel>
             <Select
               value={selectedDriver}
               onChange={(e) => setSelectedDriver(e.target.value)}
-              sx={{ color: "#fff", ".MuiOutlinedInput-notchedOutline": { borderColor: "#334155" } }}
+              label="Select Driver"
+              sx={{ color: "#fff", "& .MuiOutlinedInput-notchedOutline": { borderColor: "#475569" } }}
             >
-              {drivers.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.name} ({d.phone})
+              {drivers.map((driver) => (
+                <MenuItem key={driver.id} value={driver.id}>
+                  {driver.name} ({driver.phone}) — {driver.status}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} sx={{ color: "#94A3B8" }}>
-            Cancel
-          </Button>
-          <Button onClick={handleAssign} variant="contained" sx={{ bgcolor: "#F59E0B", color: "#fff" }}>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleAssign} disabled={!selectedDriver}>
             Assign
           </Button>
         </DialogActions>

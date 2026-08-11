@@ -18,63 +18,55 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * CRITICAL FIX: Wrapped order creation + stock decrement in a database transaction
+ * to prevent race conditions and overselling.
+ */
 export const createOrder = async (req: Request, res: Response) => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
   try {
-    const { items, deliveryAddress, deliveryCity, deliveryLatitude, deliveryLongitude, paymentMethod, notes } = req.body;
+    const {
+      items,
+      deliveryAddress,
+      deliveryCity,
+      deliveryLatitude,
+      deliveryLongitude,
+      paymentMethod,
+      notes,
+    } = req.body;
     const { user } = req as any;
 
     if (user.role !== "customer") {
       return res.status(403).json({ success: false, error: "Only customers can place orders" });
     }
 
-    // ── CRITICAL: Enforce real GPS location ──
     if (!deliveryLatitude || !deliveryLongitude) {
       return res.status(400).json({
         success: false,
-        error: "Device GPS location is required. Please enable location services in the app and retry."
+        error: "Device GPS location is required. Please enable location services in the app and retry.",
       });
     }
 
     const lat = parseFloat(deliveryLatitude);
     const lng = parseFloat(deliveryLongitude);
 
-    // Validate coordinates are within Uganda bounds (approximate)
     if (lat < -1.5 || lat > 4.5 || lng < 29.5 || lng > 35.0) {
       return res.status(400).json({
         success: false,
-        error: "Invalid location coordinates. Location must be within Uganda."
+        error: "Invalid location coordinates. Location must be within Uganda.",
       });
-    }
-
-    let totalAmount = 0;
-    const orderItems: OrderItem[] = [];
-
-    for (const item of items) {
-      const product = await productRepository.findOne({ where: { id: item.productId } });
-      if (!product) {
-        return res.status(400).json({ success: false, error: `Product ${item.productId} not found` });
-      }
-      if (!product.isAvailable) {
-        return res.status(400).json({ success: false, error: `${product.name} is not available` });
-      }
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ success: false, error: `Insufficient stock for ${product.name}` });
-      }
-
-      totalAmount += product.price * item.quantity;
-
-      const orderItem = new OrderItem();
-      orderItem.productId = product.id;
-      orderItem.quantity = item.quantity;
-      orderItem.price = product.price;
-      orderItem.subtotal = product.price * item.quantity;
-      orderItems.push(orderItem);
     }
 
     const stations = await stationRepository.find({ where: { isActive: true } });
@@ -95,15 +87,43 @@ export const createOrder = async (req: Request, res: Response) => {
       }
     }
 
-    const finalAddress = deliveryAddress || "";
-    const finalCity = deliveryCity || "";
+    let totalAmount = 0;
+    const orderItems: OrderItem[] = [];
 
-    const order = orderRepository.create({
+    for (const item of items) {
+      const product = await queryRunner.manager.findOne(Product, {
+        where: { id: item.productId },
+      });
+      if (!product) {
+        throw new Error(`Product ${item.productId} not found`);
+      }
+      if (!product.isAvailable) {
+        throw new Error(`${product.name} is not available`);
+      }
+      if (product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${product.name}`);
+      }
+
+      totalAmount += product.price * item.quantity;
+
+      const orderItem = new OrderItem();
+      orderItem.productId = product.id;
+      orderItem.quantity = item.quantity;
+      orderItem.price = product.price;
+      orderItem.subtotal = product.price * item.quantity;
+      orderItems.push(orderItem);
+
+      // CRITICAL FIX: Decrement stock inside transaction
+      product.stock -= item.quantity;
+      await queryRunner.manager.save(product);
+    }
+
+    const order = queryRunner.manager.create(Order, {
       userId: user.id,
       stationId: nearestStation.id,
       totalAmount,
-      deliveryAddress: finalAddress,
-      deliveryCity: finalCity,
+      deliveryAddress: deliveryAddress || "",
+      deliveryCity: deliveryCity || "",
       deliveryLatitude: lat,
       deliveryLongitude: lng,
       locationAccuracy: req.body.accuracy || null,
@@ -114,24 +134,16 @@ export const createOrder = async (req: Request, res: Response) => {
       items: orderItems,
     });
 
-    await orderRepository.save(order);
+    await queryRunner.manager.save(order);
+    await queryRunner.commitTransaction();
 
-    for (const item of items) {
-      const product = await productRepository.findOne({ where: { id: item.productId } });
-      if (product) {
-        product.stock -= item.quantity;
-        await productRepository.save(product);
-      }
-    }
-
-    // ── Notify ALL stakeholders ──
     await createSystemNotification({
       type: "order_placed",
       orderId: order.id,
       stationId: nearestStation.id,
       title: "New Order Received",
       message: `Order #${order.id.slice(0, 8).toUpperCase()} from ${user.name} — UGX ${totalAmount.toLocaleString()}`,
-      data: { orderId: order.id, totalAmount, customerName: user.name, address: finalAddress },
+      data: { orderId: order.id, totalAmount, customerName: user.name, address: deliveryAddress || "" },
       notifyAdmin: true,
       notifyAgent: true,
       notifyCustomer: true,
@@ -140,15 +152,19 @@ export const createOrder = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, data: order });
   } catch (error: any) {
+    await queryRunner.rollbackTransaction();
     console.error("[createOrder]", error);
     res.status(500).json({ success: false, error: error.message });
+  } finally {
+    await queryRunner.release();
   }
 };
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const { user } = req as any;
-    let query = orderRepository.createQueryBuilder("order")
+    let query = orderRepository
+      .createQueryBuilder("order")
       .leftJoinAndSelect("order.items", "items")
       .leftJoinAndSelect("items.product", "product")
       .leftJoinAndSelect("order.user", "user")
@@ -199,12 +215,16 @@ export const getOrderById = async (req: Request, res: Response) => {
 };
 
 export const cancelOrder = async (req: Request, res: Response) => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
   try {
     const { id } = req.params;
     const { reason } = req.body;
     const { user } = req as any;
 
-    const order = await orderRepository.findOne({
+    const order = await queryRunner.manager.findOne(Order, {
       where: { id },
       relations: ["items", "items.product"],
     });
@@ -223,15 +243,19 @@ export const cancelOrder = async (req: Request, res: Response) => {
 
     order.status = "cancelled";
     order.cancellationReason = reason;
-    await orderRepository.save(order);
+    await queryRunner.manager.save(order);
 
     for (const item of order.items) {
-      const product = await productRepository.findOne({ where: { id: item.productId } });
+      const product = await queryRunner.manager.findOne(Product, {
+        where: { id: item.productId },
+      });
       if (product) {
         product.stock += item.quantity;
-        await productRepository.save(product);
+        await queryRunner.manager.save(product);
       }
     }
+
+    await queryRunner.commitTransaction();
 
     await createSystemNotification({
       type: "cancelled",
@@ -248,7 +272,10 @@ export const cancelOrder = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: order });
   } catch (error: any) {
+    await queryRunner.rollbackTransaction();
     res.status(500).json({ success: false, error: error.message });
+  } finally {
+    await queryRunner.release();
   }
 };
 
@@ -274,7 +301,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     order.status = status;
     await orderRepository.save(order);
 
-    const statusMessages: Record<string, { title: string; message: string; type: any }> = {
+    const statusMessages: Record<string, { title: string; message: string; type: string }> = {
       confirmed: {
         title: "Order Confirmed",
         message: `Your order #${id.slice(0, 8).toUpperCase()} has been confirmed and is being prepared.`,
