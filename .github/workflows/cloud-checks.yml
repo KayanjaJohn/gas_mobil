@@ -1,0 +1,74 @@
+name: GasMobil cloud checks
+
+on:
+  pull_request:
+    branches: [main, "fix/launch-monday-critical-fixes"]
+  push:
+    branches: [main, "fix/launch-monday-critical-fixes", "chore/**", "fix/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gasmobil-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-dashboards:
+    name: Build ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin-dashboard, agent-app]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Build dashboard
+        run: npm run build
+
+  api:
+    name: Build API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Compile TypeScript
+        run: npm run build
+
+  android-apps:
+    name: Bundle ${{ matrix.app }} for Android
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [mobile, driver-app]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Validate Expo configuration
+        run: npx expo config --type public
+      - name: Export Android JavaScript bundle
+        run: npx expo export --platform android --output-dir dist-android
