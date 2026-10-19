@@ -1,0 +1,46 @@
+{
+  "name": "GasMobil Cloud Development",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [
+    3000,
+    3001,
+    5000,
+    8081,
+    8082
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Admin dashboard",
+      "onAutoForward": "openBrowser"
+    },
+    "3001": {
+      "label": "Agent dashboard",
+      "onAutoForward": "openBrowser"
+    },
+    "5000": {
+      "label": "GasMobil API",
+      "onAutoForward": "notify"
+    },
+    "8081": {
+      "label": "Expo Metro",
+      "onAutoForward": "notify"
+    },
+    "8082": {
+      "label": "Expo web / secondary preview",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/install-deps.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}
