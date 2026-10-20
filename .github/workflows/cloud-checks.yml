@@ -1,0 +1,92 @@
+name: GasMobil Cloud Checks
+
+on:
+  push:
+    branches: [main, "fix/**", "chore/**", "feature/**"]
+  pull_request:
+    branches: [main, "fix/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gasmobil-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-dashboards:
+    name: Build ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: admin-dashboard
+            directory: apps/admin-dashboard
+          - app: agent-app
+            directory: apps/agent-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: ${{ matrix.directory }}
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Build dashboard
+        working-directory: ${{ matrix.directory }}
+        run: npm run build
+
+  api:
+    name: Compile API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: apps/api
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: TypeScript build
+        working-directory: apps/api
+        run: npm run build
+
+  expo-bundles:
+    name: Bundle ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: customer-mobile
+            directory: apps/mobile
+          - app: driver-mobile
+            directory: apps/driver-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: ${{ matrix.directory }}
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Export Android JavaScript bundle
+        working-directory: ${{ matrix.directory }}
+        run: npx expo export --platform android
+
+  shared-package:
+    name: Build shared package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: packages/shared
+        run: npm install --no-audit --no-fund
+      - name: Build shared package
+        working-directory: packages/shared
+        run: npm run build

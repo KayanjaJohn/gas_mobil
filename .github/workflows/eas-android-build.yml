@@ -1,0 +1,61 @@
+name: GasMobil Android Cloud Builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Which Android app to build
+        required: true
+        type: choice
+        options: [customer, driver, both]
+        default: both
+
+permissions:
+  contents: read
+
+jobs:
+  build-customer:
+    if: ${{ inputs.app == 'customer' || inputs.app == 'both' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Require Expo token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Add EXPO_TOKEN in repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - run: npm install --global eas-cli
+      - name: Build customer Android preview APK
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform android --profile preview --non-interactive
+
+  build-driver:
+    if: ${{ inputs.app == 'driver' || inputs.app == 'both' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Require Expo token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Add EXPO_TOKEN in repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - run: npm install --global eas-cli
+      - name: Build driver Android preview APK
+        working-directory: apps/driver-app
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform android --profile preview --non-interactive
