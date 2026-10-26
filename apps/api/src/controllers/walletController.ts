@@ -78,7 +78,7 @@ export const topUpWallet = async (req: Request, res: Response) => {
     } else {
       const { requestPayment: airtelRequest } = await import("../services/airtelMoneyService");
       const result = await airtelRequest(phoneNumber, Number(amount), "UGX", externalId);
-      referenceId = result.transactionId || result.referenceId || "";
+      referenceId = result.transactionId || "";
     }
 
     // Create pending credit transaction

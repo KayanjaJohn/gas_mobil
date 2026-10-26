@@ -7,7 +7,7 @@ import {
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Driver {
   id: string; name: string; email: string; phone: string;
@@ -18,6 +18,36 @@ interface Driver {
 }
 
 interface Station { id: string; name: string; }
+
+function formatCoordinates(
+  latitude: unknown,
+  longitude: unknown
+): string {
+  if (
+    latitude === null ||
+    latitude === undefined ||
+    longitude === null ||
+    longitude === undefined ||
+    latitude === "" ||
+    longitude === ""
+  ) {
+    return "Unknown";
+  }
+
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 || lat > 90 ||
+    lng < -180 || lng > 180
+  ) {
+    return "Unknown";
+  }
+
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
 
 export default function Drivers() {
   const { token } = useAuth();
@@ -94,7 +124,12 @@ export default function Drivers() {
                   <TableCell>{driver.vehicleNumber || 'N/A'}<br/><Typography variant="caption" color="textSecondary">{driver.vehicleType}</Typography></TableCell>
                   <TableCell>{driver.station?.name || 'N/A'}</TableCell>
                   <TableCell><Chip label={driver.driverStatus} color={getStatusColor(driver.driverStatus)} size="small"/></TableCell>
-                  <TableCell>{driver.currentLatitude ? `${driver.currentLatitude.toFixed(4)}, ${driver.currentLongitude?.toFixed(4)}` : 'Unknown'}</TableCell>
+                  <TableCell>
+                    {formatCoordinates(
+                      driver.currentLatitude,
+                      driver.currentLongitude
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               {drivers.length === 0 && (

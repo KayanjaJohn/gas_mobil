@@ -218,14 +218,14 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
     if (existing) {
       await dRepo.update(
         (existing as any).id,
-        { driverId, driverName: driver.name, driverPhone: driver.phone, status: "assigned" } as any
+        { driverId, driverName: driver.name, driverPhone: driver.phone, status: "driver_assigned" } as any
       );
       const updated = await dRepo.findOne({ where: { orderId } } as any);
       return res.json({ success: true, delivery: updated });
     }
     const delivery = dRepo.create({
       orderId, driverId, driverName: driver.name,
-      driverPhone: driver.phone, status: "assigned",
+      driverPhone: driver.phone, status: "driver_assigned",
     } as any);
     const result: any = await dRepo.save(delivery);
     const saved = Array.isArray(result) ? result[0] : result;

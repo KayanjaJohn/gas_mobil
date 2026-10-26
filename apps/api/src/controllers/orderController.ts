@@ -7,6 +7,7 @@ import { User } from "../entities/User";
 import { Station } from "../entities/Station";
 import { Delivery } from "../entities/Delivery";
 import { createSystemNotification } from "../services/notificationService";
+import { NotificationType } from "../entities/Notification";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const productRepository = AppDataSource.getRepository(Product);
@@ -50,6 +51,14 @@ export const createOrder = async (req: Request, res: Response) => {
 
     if (user.role !== "customer") {
       return res.status(403).json({ success: false, error: "Only customers can place orders" });
+    }
+
+    // GasMobil launch policy: cash on delivery only.
+    if (paymentMethod && paymentMethod !== "cash") {
+      return res.status(400).json({
+        success: false,
+        error: "Cash on delivery is the only supported payment method.",
+      });
     }
 
     if (!deliveryLatitude || !deliveryLongitude) {
@@ -127,8 +136,8 @@ export const createOrder = async (req: Request, res: Response) => {
       deliveryLatitude: lat,
       deliveryLongitude: lng,
       locationAccuracy: req.body.accuracy || null,
-      paymentMethod: paymentMethod || "cash",
-      paymentStatus: paymentMethod === "wallet" ? "paid" : "pending",
+      paymentMethod: "cash",
+      paymentStatus: "pending",
       status: "pending",
       notes,
       items: orderItems,
@@ -301,7 +310,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     order.status = status;
     await orderRepository.save(order);
 
-    const statusMessages: Record<string, { title: string; message: string; type: string }> = {
+    const statusMessages: Record<string, { title: string; message: string; type: NotificationType }> = {
       confirmed: {
         title: "Order Confirmed",
         message: `Your order #${id.slice(0, 8).toUpperCase()} has been confirmed and is being prepared.`,
