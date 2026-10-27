@@ -42,7 +42,7 @@ export default function OrderLocScreen() {
   const fetchStations = async () => {
     setLoadingStations(true);
     try {
-      const res = await apiRequest<{ success: boolean; data: Station[] }>("get", "/stations");
+      const res = await apiRequest<Station[]>("get", "/stations");
       if (res.success && res.data) {
         setStations(res.data.filter((s) => s.latitude && s.longitude));
       }
@@ -62,7 +62,7 @@ export default function OrderLocScreen() {
     setDetecting(true);
     try {
       // Try to get device location
-      const { Location } = await import("expo-location");
+      const Location = await import("expo-location");
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission denied", "Location permission is needed to find the nearest station.");

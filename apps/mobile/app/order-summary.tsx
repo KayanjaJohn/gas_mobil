@@ -1,3 +1,4 @@
+import type { Product, Order } from "../src/types";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator,
@@ -11,17 +12,16 @@ import { useCartStore } from "../src/store/useCartStore";
 import { COLORS } from "../src/utils/constants";
 import { apiRequest } from "../src/services/api";
 
+
 const PAY_METHODS = [
-  { key: "wallet", icon: "💳", title: "Gasmobil Wallet", sub: "Balance: UGX 0" },
-  { key: "momo", icon: "📱", title: "Mobile Money", sub: "M-Pesa / Airtel" },
-  { key: "cod", icon: "⏰", title: "Pay Later", sub: "For verified businesses" },
+  { key: "cash" as const, icon: "cash", title: "Cash on Delivery", sub: "Pay your driver when your gas arrives" },
 ];
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
   const { orderType, size, paymentMethod, setPaymentMethod, reset, deliveryAddress, deliveryLat, deliveryLng, notes } = useOrderStore();
   const { items: cartItems, total: cartTotal, clearCart } = useCartStore();
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [placing, setPlacing] = useState(false);
 
@@ -29,7 +29,7 @@ export default function OrderSummaryScreen() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await apiRequest("get", "/products");
+        const res = await apiRequest<Product[]>("get", "/products");
         if (res.success && res.data) {
           setProducts(res.data);
         }
@@ -43,9 +43,15 @@ export default function OrderSummaryScreen() {
   }, []);
 
   // Find the real product for the selected cylinder type/size
-  const cylinderProduct = products.find(
-    (p) => p.type === "cylinder" && p.name?.toLowerCase().includes(size.toLowerCase())
-  );
+  const requestedKg = Number.parseFloat(size);
+  const cylinderProduct = products.find((p) => {
+    if (p.type !== "cylinder" || !p.isAvailable || p.stock < 1) return false;
+    const exactSize = String(p.size ?? "").replace(/\s/g, "").toLowerCase()
+      === size.replace(/\s/g, "").toLowerCase();
+    const exactWeight = Number(p.weight) === requestedKg;
+    const exactName = new RegExp(`\\b${requestedKg}\\s*kg\\b`, "i").test(p.name);
+    return exactSize || exactWeight || exactName;
+  });
 
   const cylinderPrice = cylinderProduct?.price || 0;
   const total = cylinderPrice + cartTotal;
@@ -54,7 +60,7 @@ export default function OrderSummaryScreen() {
     if (placing) return;
 
     // Build items array with real product UUIDs
-    const items: any[] = [];
+    const items: Array<{ productId: string; quantity: number }> = [];
 
     if (cylinderProduct) {
       items.push({ productId: cylinderProduct.id, quantity: 1 });
@@ -81,10 +87,10 @@ export default function OrderSummaryScreen() {
 
     const payload = {
       items,
-      deliveryAddress: deliveryAddress || "Customer address",
+      deliveryAddress: deliveryAddress.trim(),
       deliveryLatitude: deliveryLat,
       deliveryLongitude: deliveryLng,
-      paymentMethod: paymentMethod || "cod",
+      paymentMethod: "cash",
       notes: notes || `${orderType === "swap" ? "Swap Refill" : "Buy Full Kit"} — ${size}`,
     };
 
@@ -92,11 +98,12 @@ export default function OrderSummaryScreen() {
     setPlacing(true);
 
     try {
-      const res = await apiRequest("post", "/orders", payload);
+      const res = await apiRequest<Order>("post", "/orders", payload);
       if (res.success && res.data) {
+        const placedOrderId = res.data.id;
         console.log("[Order] Order placed successfully | id:", res.data.id);
-        Alert.alert("Order Placed!", `Your gas order has been placed successfully.\nOrder ID: ${res.data.id?.slice(0, 8)}`, [
-          { text: "Track Now", onPress: () => { reset(); clearCart(); router.push({ pathname: "/tracking", params: { orderId: res.data.id } }); } },
+        Alert.alert("Order Placed!", `Your gas order has been placed successfully.\nOrder ID: ${placedOrderId?.slice(0, 8)}`, [
+          { text: "Track Now", onPress: () => { reset(); clearCart(); router.push({ pathname: "/tracking", params: { orderId: placedOrderId } }); } },
           { text: "OK", onPress: () => { reset(); clearCart(); router.push("/(tabs)"); } },
         ]);
       } else {
@@ -156,7 +163,7 @@ export default function OrderSummaryScreen() {
             <TouchableOpacity
               key={m.key}
               style={[styles.payOpt, paymentMethod === m.key && styles.payOptActive]}
-              onPress={() => setPaymentMethod(m.key)}
+              onPress={() => setPaymentMethod("cash")}
               activeOpacity={0.8}
             >
               <Text style={{ fontSize: 18, width: 28 }}>{m.icon}</Text>

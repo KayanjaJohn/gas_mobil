@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, usePathname } from "expo-router";
 import { COLORS } from "../utils/constants";
 import { useNotificationStore } from "../store/useNotificationStore";
@@ -15,14 +16,10 @@ interface Props {
 export default function TopBar({ title, showBack = false, onBack, right }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const isHome = pathname === "/(tabs)" || pathname === "/";
-
-  // ── FIX: Use shared Zustand store instead of local fetch loop ──
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const fetchNotifications = useNotificationStore((s) => s.fetchNotifications);
   const { isConnected } = useSocketNotifications();
 
-  // Fetch once on mount; socket events and notifications screen handle the rest
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
@@ -31,20 +28,25 @@ export default function TopBar({ title, showBack = false, onBack, right }: Props
     <View style={styles.container}>
       <View style={styles.left}>
         {showBack ? (
-          <TouchableOpacity onPress={onBack || (() => router.back())} activeOpacity={0.7}>
-            <View style={styles.backBtn}>
-              <Text style={styles.backIcon}>←</Text>
-            </View>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            onPress={onBack || (() => router.back())}
+            activeOpacity={0.75}
+            style={styles.backBtn}
+          >
+            <Icon name="arrow-left" size={22} color={COLORS.text} />
           </TouchableOpacity>
         ) : (
           <View style={styles.brand}>
             <View style={styles.logo}>
-              <Text style={styles.logoText}>🔥</Text>
+              <Icon name="fire" size={25} color={COLORS.accent} />
             </View>
             <View>
               <View style={styles.locRow}>
-                <Text style={styles.locIcon}>📍</Text>
+                <Icon name="map-marker" size={13} color={COLORS.accent} />
                 <Text style={styles.locText}>Kampala, Uganda</Text>
+                <View style={[styles.connectionDot, { backgroundColor: isConnected ? "#35B879" : COLORS.muted }]} />
               </View>
               <Text style={styles.brandTitle}>
                 Gas<Text style={styles.accent}>mobil</Text> Uganda
@@ -54,21 +56,24 @@ export default function TopBar({ title, showBack = false, onBack, right }: Props
         )}
       </View>
 
-      {title && <Text style={styles.title}>{title}</Text>}
+      {title && <Text numberOfLines={1} style={styles.title}>{title}</Text>}
 
-      {right ? (
-        right
-      ) : !showBack ? (
+      {right ? right : !showBack ? (
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
           onPress={() => router.push("/(tabs)/notifications")}
-          activeOpacity={0.7}
+          activeOpacity={0.75}
+          style={styles.bell}
         >
-          <View style={styles.bell}>
-            <Text style={styles.bellIcon}>🔔</Text>
-            {unreadCount > 0 && <View style={styles.dot} />}
-          </View>
+          <Icon name="bell-outline" size={22} color={COLORS.text} />
+          {unreadCount > 0 && (
+            <View style={styles.dot}>
+              {unreadCount > 9 && <Text style={styles.dotText}>9+</Text>}
+            </View>
+          )}
         </TouchableOpacity>
-      ) : null}
+      ) : <View style={styles.trailingSpacer} />}
     </View>
   );
 }
@@ -81,32 +86,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 18,
     paddingBottom: 8,
+    minHeight: 66,
   },
   left: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10 },
   logo: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: "#0a1830", borderWidth: 1, borderColor: "#16223a",
+    width: 40, height: 40, borderRadius: 13,
+    backgroundColor: "#123D30", borderWidth: 1, borderColor: "#245747",
     alignItems: "center", justifyContent: "center",
   },
-  logoText: { fontSize: 20 },
-  locRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  locIcon: { fontSize: 10 },
+  locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 11, color: COLORS.muted },
-  brandTitle: { fontSize: 17, fontWeight: "600", color: "#fff", letterSpacing: -0.2, marginTop: 2 },
+  connectionDot: { width: 5, height: 5, borderRadius: 3, marginLeft: 2 },
+  brandTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text, letterSpacing: -0.2, marginTop: 2 },
   accent: { color: COLORS.accent },
-  title: { fontSize: 18, fontWeight: "700", color: "#fff", flex: 1, textAlign: "center" },
-  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#1a2236", alignItems: "center", justifyContent: "center" },
-  backIcon: { color: "#fff", fontSize: 18 },
+  title: { fontSize: 17, fontWeight: "700", color: COLORS.text, flex: 1, textAlign: "center" },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 13, backgroundColor: COLORS.card,
+    borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center",
+  },
   bell: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: "#121a28", borderWidth: 1, borderColor: COLORS.border,
+    width: 42, height: 42, borderRadius: 14,
+    backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border,
     alignItems: "center", justifyContent: "center", position: "relative",
   },
-  bellIcon: { fontSize: 16 },
   dot: {
-    position: "absolute", top: 9, right: 10,
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: COLORS.danger, borderWidth: 1, borderColor: "#121a28",
+    position: "absolute", top: 6, right: 6, minWidth: 9, height: 9,
+    borderRadius: 6, backgroundColor: COLORS.accent, borderWidth: 1, borderColor: COLORS.card,
+    alignItems: "center", justifyContent: "center",
   },
+  dotText: { color: "#fff", fontSize: 7, fontWeight: "800", paddingHorizontal: 2 },
+  trailingSpacer: { width: 40 },
 });

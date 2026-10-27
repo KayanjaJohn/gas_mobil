@@ -40,7 +40,7 @@ import {
   SearchOutlined,
 } from "@mui/icons-material";
 import api from "../services/api";
-
+import ImageUpload from "../components/ImageUpload";
 interface Product {
   id: string;
   name: string;
@@ -620,12 +620,10 @@ export default function Products() {
                 />
               </Grid>
             </Grid>
-            <TextField
-              label="Image URL (optional)"
-              value={form.imageUrl}
-              onChange={(event) => updateField("imageUrl", event.target.value)}
-              helperText="Paste an image URL. Image upload can be connected separately."
-              fullWidth
+            <ImageUpload
+                value={form.imageUrl}
+                onChange={(url) => updateField("imageUrl", url)}
+                token={localStorage.getItem("agent_token") || ""}
             />
           </Stack>
         </DialogContent>

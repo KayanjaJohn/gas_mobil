@@ -76,6 +76,13 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+  meta?: {
+    total?: number;
+    page?: number;
+    limit?: number;
+    unreadCount?: number;
+    [key: string]: unknown;
+  };
 }
 
 export async function apiRequest<T>(

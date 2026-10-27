@@ -61,15 +61,28 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    if (!deliveryLatitude || !deliveryLongitude) {
+    if (
+      deliveryLatitude === undefined || deliveryLatitude === null ||
+      deliveryLongitude === undefined || deliveryLongitude === null ||
+      deliveryAddress?.trim().length < 5
+    ) {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({
         success: false,
-        error: "Device GPS location is required. Please enable location services in the app and retry.",
+        error: "A valid delivery address and GPS location are required.",
       });
     }
 
-    const lat = parseFloat(deliveryLatitude);
-    const lng = parseFloat(deliveryLongitude);
+    const lat = Number(deliveryLatitude);
+    const lng = Number(deliveryLongitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({
+        success: false,
+        error: "GPS coordinates must be valid numbers.",
+      });
+    }
 
     if (lat < -1.5 || lat > 4.5 || lng < 29.5 || lng > 35.0) {
       return res.status(400).json({

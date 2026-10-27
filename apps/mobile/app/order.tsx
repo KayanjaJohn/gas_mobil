@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import type { Order, Product } from "../src/types";
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,15 +16,12 @@ import { useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useLocation } from '../src/hooks/useLocation';
 import { apiRequest } from '../src/services/api';
+
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/utils/constants';
 
 const PAYMENT_METHODS = [
-  { id: 'momo', label: 'MTN Mobile Money', icon: 'cellphone', color: '#FFCC00' },
-  { id: 'airtel', label: 'Airtel Money', icon: 'cellphone', color: '#E4002B' },
-  { id: 'wallet', label: 'GasMobil Wallet', icon: 'wallet', color: '#2196F3' },
-  { id: 'card', label: 'Credit / Debit Card', icon: 'credit-card', color: '#4CAF50' },
-  { id: 'cash', label: 'Cash on Delivery', icon: 'cash', color: '#9E9E9E' },
+  { id: 'cash', label: 'Cash on Delivery', icon: 'cash', color: '#F36A21' },
 ];
 
 const CYLINDER_SIZES = [
@@ -45,9 +43,31 @@ export default function OrderScreen() {
   const [orderType, setOrderType] = useState('swap');
   const [cylinderSize, setCylinderSize] = useState('12kg');
   const [quantity, setQuantity] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('momo');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [notes, setNotes] = useState('');
   const [placing, setPlacing] = useState(false);
+
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest<Product[]>("get", "/products")
+      .then((res) => {
+        if (active && res.success && Array.isArray(res.data)) setProducts(res.data);
+      })
+      .catch((err) => console.error("[Order] Product fetch failed:", err))
+    return () => { active = false; };
+  }, []);
+
+  const requestedKg = Number.parseFloat(cylinderSize);
+  const cylinderProduct = products.find((p) => {
+    if (p.type !== "cylinder" || !p.isAvailable || p.stock < quantity) return false;
+    const exactSize = String(p.size ?? "").replace(/\\s/g, "").toLowerCase()
+      === cylinderSize.replace(/\\s/g, "").toLowerCase();
+    const exactWeight = Number(p.weight) === requestedKg;
+    const exactName = new RegExp(`\\\\b${requestedKg}\\\\s*kg\\\\b`, "i").test(p.name);
+    return exactSize || exactWeight || exactName;
+  });
 
   const selectedSize = CYLINDER_SIZES.find((s) => s.id === cylinderSize);
   const totalAmount = (selectedSize?.price || 0) * quantity;
@@ -81,12 +101,22 @@ export default function OrderScreen() {
       return;
     }
 
+    if (!location.address?.trim() ||
+        !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
+      Alert.alert("Delivery details required", "Please capture a valid delivery address and GPS location.");
+      return;
+    }
+    if (!cylinderProduct) {
+      Alert.alert("Cylinder unavailable", `No available ${cylinderSize} cylinder matches your selection.`);
+      return;
+    }
+
     setPlacing(true);
     try {
       const payload = {
         items: [
           {
-            productId: cylinderSize,
+            productId: cylinderProduct.id,
             quantity,
             type: orderType,
           },
@@ -96,22 +126,23 @@ export default function OrderScreen() {
         deliveryLatitude: location.latitude,
         deliveryLongitude: location.longitude,
         accuracy: location.accuracy,
-        paymentMethod,
+        paymentMethod: "cash",
         notes: notes || `${ORDER_TYPES.find((t) => t.id === orderType)?.label} — ${cylinderSize}`,
       };
 
       console.log('[Order] Payload:', JSON.stringify(payload, null, 2));
 
-      const res = await apiRequest('post', '/orders', payload);
+      const res = await apiRequest<Order>('post', '/orders', payload);
 
-      if (res.success) {
+      if (res.success && res.data) {
+        const placedOrderId = res.data.id;
         Alert.alert(
           'Order Placed!',
-          `Order #${res.data.id.slice(0, 8).toUpperCase()} placed successfully.\n\nDelivering to: ${location.address}`,
+          `Order #${placedOrderId.slice(0, 8).toUpperCase()} placed successfully.\n\nDelivering to: ${location.address}`,
           [
             {
               text: 'Track Order',
-              onPress: () => router.push(`/tracking/${res.data.id}` as any),
+              onPress: () => router.push(`/tracking/${placedOrderId}` as any),
             },
             { text: 'OK', style: 'cancel' },
           ]

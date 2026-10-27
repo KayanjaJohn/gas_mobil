@@ -60,7 +60,7 @@ export default function TrackingScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiRequest<{ success: boolean; data: Order; error?: string }>("get", `/orders/${orderId}`);
+      const res = await apiRequest<Order>("get", `/orders/${orderId}`);
       if (res.success && res.data) {
         setOrder(res.data);
         setError(null);
@@ -78,7 +78,7 @@ export default function TrackingScreen() {
   const fetchOrders = async () => {
     setOrdersLoading(true);
     try {
-      const res = await apiRequest<{ success: boolean; data: Order[]; error?: string }>("get", "/orders");
+      const res = await apiRequest<Order[]>("get", "/orders");
       if (res.success && res.data) {
         const active = res.data.filter((o: Order) => o.status !== "delivered" && o.status !== "cancelled");
         setOrders(active);

@@ -75,7 +75,7 @@ export default function HomeScreen() {
   const fetchStations = useCallback(async () => {
     setLoadingStations(true);
     try {
-      const res = await apiRequest<{ success: boolean; data: Station[] }>("get", "/stations");
+      const res = await apiRequest<Station[]>("get", "/stations");
       if (res.success && res.data) {
         const activeStations = res.data.filter((s: Station) => s.isActive);
         setStations(activeStations);

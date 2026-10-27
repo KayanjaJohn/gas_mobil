@@ -67,8 +67,8 @@ export default function ProfileScreen() {
 
   const fetchWallet = async () => {
     try {
-      const res = await apiRequest<{ success: boolean; data?: { balance: number } }>("get", "/wallet");
-      if (res.success && res.data) setWalletBalance(Number(res.data.balance) || 0);
+      const res = await apiRequest<{ wallet?: { balance?: number }; transactions?: unknown[] }>("get", "/wallet");
+      if (res.success && res.data) setWalletBalance(Number(res.data.wallet?.balance) || 0);
     } catch (err) {
       console.error("[Profile] Wallet fetch error:", err);
     } finally {

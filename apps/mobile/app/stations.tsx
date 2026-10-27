@@ -35,7 +35,7 @@ export default function StationsScreen() {
   const fetchStations = async () => {
     setLoading(true);
     try {
-      const res = await apiRequest<{ success: boolean; data: Station[] }>("get", "/stations");
+      const res = await apiRequest<Station[]>("get", "/stations");
       if (res.success && res.data) {
         setStations(res.data);
       }

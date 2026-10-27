@@ -4,21 +4,22 @@ import {
   ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverNotifications, DriverNotification } from '../hooks/useDriverNotifications';
 
 const ICONS: Record<string, string> = {
-  new_order_assigned: '📦',
-  order_placed: '🛒',
-  order_confirmed: '✅',
-  driver_assigned: '🚚',
-  picked_up: '📦',
-  in_transit: '🚛',
-  nearby: '📍',
-  delivered: '🏠',
-  cancelled: '❌',
-  payment_received: '💰',
-  payment_failed: '💳',
-  system_announcement: '📢',
+  new_order_assigned: 'package-variant',
+  order_placed: 'cart-outline',
+  order_confirmed: 'check-circle-outline',
+  driver_assigned: 'truck-delivery-outline',
+  picked_up: 'package-variant-closed',
+  in_transit: 'truck-fast-outline',
+  nearby: 'map-marker-radius-outline',
+  delivered: 'home-check-outline',
+  cancelled: 'close-circle-outline',
+  payment_received: 'cash-check',
+  payment_failed: 'alert-circle-outline',
+  system_announcement: 'bullhorn-outline',
 };
 
 export default function NotificationsScreen() {
@@ -52,7 +53,7 @@ export default function NotificationsScreen() {
       style={[styles.item, !item.isRead && styles.itemUnread]}
     >
       <View style={styles.iconBox}>
-        <Text style={{ fontSize: 22 }}>{ICONS[item.type] || '🔔'}</Text>
+        <Icon name={ICONS[item.type] || 'bell-outline'} size={23} color="#F59E0B" />
       </View>
       <View style={styles.content}>
         <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
@@ -74,7 +75,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
+          <Icon name="arrow-left" size={22} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
         {unreadCount > 0 && (
@@ -101,7 +102,7 @@ export default function NotificationsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>🔔</Text>
+              <Icon name="bell-outline" size={44} color="#F59E0B" style={styles.emptyIcon} />
               <Text style={styles.emptyTitle}>No notifications</Text>
               <Text style={styles.emptySub}>You'll see order updates here.</Text>
             </View>
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
   time: { color: '#64748B', fontSize: 11, marginTop: 6 },
   deleteBtn: { color: '#64748B', fontSize: 20, paddingHorizontal: 4 },
   empty: { alignItems: 'center', marginTop: 80 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
+  emptyIcon: { marginBottom: 12 },
   emptyTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
   emptySub: { color: '#64748B', fontSize: 13, marginTop: 4 },
 });
