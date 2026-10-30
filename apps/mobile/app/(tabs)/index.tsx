@@ -284,7 +284,7 @@ export default function HomeScreen() {
         <Card style={styles.contactCard}>
           <View style={styles.contactHead}>
             <View style={styles.contactLogo}>
-              <Icon name="fire" size={22} color="#1484FF" />
+              <Icon name="fire" size={22} color={COLORS.accent} />
             </View>
             <View>
               <Text style={styles.contactTitle}>Gasmobil Uganda</Text>
