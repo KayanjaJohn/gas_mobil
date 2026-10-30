@@ -57,6 +57,7 @@ export default function Dashboard() {
           <CircularProgress />
         </Box>
       ) : (
+        <>
         <Grid container spacing={3}>
           {cards.map((card) => (
             <Grid item xs={12} sm={6} md={3} key={card.title}>
@@ -83,6 +84,7 @@ export default function Dashboard() {
           ))}
           {stats.recentOrders.length === 0 && <Typography color="text.secondary" align="center" sx={{ py: 3 }}>No station orders yet</Typography>}
         </Paper>
+        </>
       )}
     </Box>
   );
