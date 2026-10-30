@@ -74,10 +74,8 @@ export default function OrderDetailScreen() {
     setUpdating(true);
     try {
       await api.put(`/driver/delivery/${delivery.id}/status`, { status });
+      // The refreshed order status triggers the GPS effect once.
       await fetchOrder();
-      if (status === 'in_transit' || status === 'nearby') {
-        await startTracking();
-      }
     } catch (error: any) {
       Alert.alert('Update failed', error.response?.data?.error || error.message || 'Please try again.');
     } finally {
@@ -222,7 +220,7 @@ const styles = StyleSheet.create({
   dotLive: { backgroundColor: '#168447' },
   dotWaiting: { backgroundColor: '#F36A21' },
   mapStatusText: { color: '#0B3D2E', fontSize: 11, fontWeight: '800', flex: 1 },
-  card: { backgroundColor: '#0B3D2E', marginHorizontal: 12, marginTop: 0, marginBottom: 12, borderRadius: 12, padding: 16 },
+  card: { backgroundColor: '#FFF8EE', marginHorizontal: 12, marginTop: 0, marginBottom: 12, borderRadius: 12, padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#0B3D2E', marginBottom: 12 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#D8CDBB' },
   detailLabel: { fontSize: 14, color: '#68786F' },
