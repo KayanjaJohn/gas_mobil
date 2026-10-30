@@ -238,9 +238,9 @@ export const initializeSocket = (server: HttpServer) => {
       try {
         // A driver may publish location only for a delivery currently assigned
         // to that driver's authenticated account.
-        const delivery = await AppDataSource.getRepository(Delivery).findOne({
+        const deliveryRepository = AppDataSource.getRepository(Delivery);
+        const delivery = await deliveryRepository.findOne({
           where: { orderId: data.orderId, driverId: userId },
-          select: { id: true, orderId: true, status: true },
         });
 
         if (!delivery || ["delivered", "failed"].includes(delivery.status)) {
@@ -268,7 +268,26 @@ export const initializeSocket = (server: HttpServer) => {
           timestamp: new Date().toISOString(),
         };
 
+        // Persist the latest fix so tracking screens can recover after reconnects.
+        delivery.currentLocation = {
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+        };
+        await deliveryRepository.save(delivery);
+
+        const driver = await AppDataSource.getRepository(User).findOne({
+          where: { id: userId },
+        });
+        if (driver) {
+          driver.currentLatitude = locationData.latitude;
+          driver.currentLongitude = locationData.longitude;
+          driver.lastLocationUpdate = new Date(locationData.timestamp);
+          await AppDataSource.getRepository(User).save(driver);
+        }
+
         io.to(`order_${delivery.orderId}`).emit("location_update", locationData);
+        io.to("admins").emit("driver_location_update", locationData);
+        if (stationId) io.to(`station_${stationId}`).emit("driver_location_update", locationData);
         socket.emit("location_confirmed", {
           orderId: delivery.orderId,
           received: true,
