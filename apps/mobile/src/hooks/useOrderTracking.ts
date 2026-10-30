@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiRequest } from "../services/api";
 import {
   initializeSocket,
   joinOrderRoom,
@@ -31,6 +32,35 @@ export const useOrderTracking = (orderId: string | null) => {
     if (!orderId) return;
 
     let mounted = true;
+
+    // Hydrate the last persisted GPS fix so customers opening tracking mid-journey
+    // see the driver's current/last known position before the next socket event.
+    apiRequest<any>("get", `/orders/${orderId}`)
+      .then((response) => {
+        if (!mounted || !response.success || !response.data) return;
+        const order: any = response.data;
+        const delivery = order.deliveries?.find((item: any) => item.currentLocation) || order.deliveries?.[0];
+        const point = delivery?.currentLocation?.location || delivery?.currentLocation;
+        const latitude = Number(point?.latitude ?? point?.lat);
+        const longitude = Number(point?.longitude ?? point?.lng ?? point?.lon);
+        if (Number.isFinite(latitude) && Number.isFinite(longitude) &&
+            latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180 &&
+            (latitude !== 0 || longitude !== 0)) {
+          setDriverLocation({
+            latitude,
+            longitude,
+            accuracy: point.accuracy ?? undefined,
+            speed: point.speed ?? undefined,
+            heading: point.heading ?? undefined,
+            timestamp: point.timestamp || delivery?.updatedAt || new Date().toISOString(),
+          });
+        }
+        if (order.status) {
+          setOrderStatus({ orderId, status: order.status });
+        }
+      })
+      .catch((error) => console.warn("[Tracking] Could not hydrate last driver position:", error?.message));
+
     let activeSocket: Awaited<ReturnType<typeof initializeSocket>> = null;
 
     const handleLocation = (payload: any) => {
