@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native';
-import { useNavigation, type NavigationProp } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, type NavigationProp } from '@react-navigation/native';
+import { useDriverLocation } from '../hooks/useDriverLocation';
 import { useAuth } from '../context/AuthContext';
 import { useDriverNotifications } from '../hooks/useDriverNotifications';
 import api from '../services/api';
@@ -74,7 +75,22 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const activeOrders = orders.filter(o => ['in_transit', 'nearby'].includes(o.status));
   const pendingOrders = orders.filter(o => ['confirmed', 'driver_assigned', 'picked_up'].includes(o.status));
+  const activeOrderId = activeOrders[0]?.id || null;
+  const { startTracking, stopTracking, currentLocation } = useDriverLocation(activeOrderId);
+
+  // Resume location sharing after app restart while an assigned delivery is active.
+  // Focus cleanup prevents Home and OrderDetail from running duplicate GPS watchers.
+  useFocusEffect(
+    useCallback(() => {
+      if (!activeOrderId) return;
+      startTracking().catch((error: any) => {
+        console.error('[Home] Unable to resume active delivery GPS:', error?.message || error);
+      });
+      return () => stopTracking();
+    }, [activeOrderId, startTracking, stopTracking])
+  );
 
   return (
     <View style={styles.container}>
@@ -137,6 +153,42 @@ export default function HomeScreen() {
             <Text style={styles.actionText}>Settings</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Active delivery is separate from pending orders and restored after app restart. */}
+        <Text style={styles.sectionTitle}>Active Deliveries ({activeOrders.length})</Text>
+        {activeOrders.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyText}>No delivery currently in progress</Text>
+          </View>
+        ) : (
+          activeOrders.map(order => (
+            <TouchableOpacity
+              key={order.id}
+              style={[styles.orderCard, styles.activeOrderCard]}
+              onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+              activeOpacity={0.8}
+            >
+              <View style={styles.orderHeader}>
+                <Text style={styles.orderId}>Order #{order.id.slice(0, 8)}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: 'rgba(22,163,74,0.25)' }]}>
+                  <Text style={styles.statusText}>{order.status.replace(/_/g, ' ').toUpperCase()}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Icon name="map-marker-outline" size={17} color="#F36A21" />
+                <Text style={styles.orderAddress}> {order.deliveryAddress}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Icon name="crosshairs-gps" size={17} color={currentLocation ? '#22C55E' : '#F36A21'} />
+                <Text style={styles.orderCustomer}>
+                  {currentLocation ? 'Your live location is sharing' : 'Restoring live GPS…'}
+                </Text>
+              </View>
+              <Text style={styles.orderAmount}>UGX {Number(order.totalAmount || 0).toLocaleString()}</Text>
+              <Text style={styles.openDeliveryText}>OPEN DELIVERY MAP  →</Text>
+            </TouchableOpacity>
+          ))
+        )}
 
         {/* Pending Orders */}
         <Text style={styles.sectionTitle}>Pending Orders ({pendingOrders.length})</Text>
@@ -225,6 +277,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#fff', paddingHorizontal: 20, marginBottom: 12 },
   emptyBox: { paddingHorizontal: 20, paddingVertical: 30, alignItems: 'center' },
   emptyText: { color: '#64748B', fontSize: 14 },
+  activeOrderCard: { borderColor: '#168447', borderWidth: 1.5 },
+  openDeliveryText: { color: '#F36A21', fontSize: 11, fontWeight: '800', marginTop: 10 },
   orderCard: {
     backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
     marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#334155',
