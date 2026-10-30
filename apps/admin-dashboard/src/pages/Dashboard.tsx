@@ -47,12 +47,12 @@ export default function Dashboard() {
   };
 
   const cards = [
-    { title: "Total Orders", value: stats.totalOrders, icon: <ShoppingCart />, color: "#7380ec" },
-    { title: "Pending Orders", value: stats.pendingOrders, icon: <TrendingUp />, color: "#ffbb55" },
-    { title: "Active Drivers", value: stats.totalDrivers, icon: <LocalShipping />, color: "#41f1b6" },
-    { title: "Products", value: stats.totalProducts, icon: <Store />, color: "#ff7782" },
-    { title: "Stations", value: stats.totalStations, icon: <Store />, color: "#7380ec" },
-    { title: "Today's Revenue", value: `UGX ${stats.todayRevenue.toLocaleString()}`, icon: <Assessment />, color: "#41f1b6" },
+    { title: "Total Orders", value: stats.totalOrders, icon: <ShoppingCart />, color: "#0B3D2E" },
+    { title: "Pending Orders", value: stats.pendingOrders, icon: <TrendingUp />, color: "#D97706" },
+    { title: "Active Drivers", value: stats.totalDrivers, icon: <LocalShipping />, color: "#21865D" },
+    { title: "Products", value: stats.totalProducts, icon: <Store />, color: "#F36A21" },
+    { title: "Stations", value: stats.totalStations, icon: <Store />, color: "#0B3D2E" },
+    { title: "Today's Revenue", value: `UGX ${stats.todayRevenue.toLocaleString()}`, icon: <Assessment />, color: "#21865D" },
   ];
 
   return (
