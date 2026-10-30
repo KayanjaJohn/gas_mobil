@@ -12,6 +12,7 @@ interface Props {
     accuracy?: number;
     heading?: number;
     speed?: number;
+    timestamp?: string;
   } | null;
   orderStatus: { message?: string; status?: string } | null;
   isConnected: boolean;
