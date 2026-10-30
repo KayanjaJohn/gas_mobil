@@ -79,11 +79,8 @@ export default function DeliveryScreen() {
     setUpdating(true);
     try {
       await api.put(`/driver/delivery/${delivery.id}/status`, { status });
+      // Refreshing activeOrder triggers the GPS lifecycle effect exactly once.
       await fetchActiveDelivery();
-      if (status === 'in_transit' || status === 'nearby') {
-        // The status refresh triggers the GPS effect; explicitly request it now too.
-        await startTracking();
-      }
     } catch (error: any) {
       Alert.alert('Could not update delivery', error.response?.data?.error || error.message || 'Please try again.');
     } finally {
