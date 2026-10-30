@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   cylTitle: { color: COLORS.text, fontSize: 15, fontWeight: "700" },
   warn: { fontSize: 12, marginTop: 6, marginBottom: 6 },
   insp: { fontSize: 11, color: COLORS.muted },
-  actions: { flexDirection: "row", paddingHorizontal: 16, gap: 8 },
+  actions: { flexDirection: "row", paddingHorizontal: 16, gap: 8, marginBottom: 18 },
   action: { flex: 1, alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 3, minHeight: 76, borderRadius: 12, backgroundColor: COLORS.accent, borderWidth: 0, borderColor: COLORS.accent },
   actionIcon: { width: 30, height: 30, borderRadius: 9, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
   actionLabel: { fontSize: 10, color: "#FFFFFF", fontWeight: "700", textAlign: "center" },
