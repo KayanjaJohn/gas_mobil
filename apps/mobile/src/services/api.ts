@@ -1,5 +1,6 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { updateSocketToken } from "./socketService";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -54,6 +55,7 @@ api.interceptors.response.use(
           if (refreshRes.data?.success && refreshRes.data?.data?.accessToken) {
             const newToken = refreshRes.data.data.accessToken;
             await AsyncStorage.setItem("access_token", newToken);
+            await updateSocketToken(newToken);
             // Retry original request
             error.config.headers.Authorization = "Bearer " + newToken;
             return api.request(error.config);
