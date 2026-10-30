@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { disconnectSocket } from '../services/socketService';
 import type { User } from '../types';
 
 interface Station {
@@ -141,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  };
 
  const logout = async () => {
+ disconnectSocket();
  await AsyncStorage.removeItem('driver_token');
  await AsyncStorage.removeItem('driver_refresh_token');
  await AsyncStorage.removeItem('driver_user');
