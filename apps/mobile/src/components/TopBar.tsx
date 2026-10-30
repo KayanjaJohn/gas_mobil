@@ -49,7 +49,7 @@ export default function TopBar({ title, showBack = false, onBack, right }: Props
                 <View style={[styles.connectionDot, { backgroundColor: isConnected ? "#35B879" : COLORS.muted }]} />
               </View>
               <Text style={styles.brandTitle}>
-                Gas<Text style={styles.accent}>mobil</Text> Uganda
+                <Text style={styles.brandCream}>GAS</Text><Text style={styles.accent}>MOBIL</Text><Text style={styles.brandCream}> Uganda</Text>
               </Text>
             </View>
           </View>
@@ -98,7 +98,8 @@ const styles = StyleSheet.create({
   locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   locText: { fontSize: 11, color: "#D8E7DE" },
   connectionDot: { width: 5, height: 5, borderRadius: 3, marginLeft: 2 },
-  brandTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text, letterSpacing: -0.2, marginTop: 2 },
+  brandTitle: { flexDirection: "row", alignItems: "baseline", fontSize: 17, fontWeight: "800", letterSpacing: -0.2, marginTop: 2 },
+  brandCream: { color: "#FFF8EE", fontWeight: "800" },
   accent: { color: COLORS.accent },
   title: { fontSize: 17, fontWeight: "700", color: COLORS.text, flex: 1, textAlign: "center" },
   backBtn: {
