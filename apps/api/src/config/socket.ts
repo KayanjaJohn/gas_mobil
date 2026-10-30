@@ -252,9 +252,10 @@ export const initializeSocket = (server: HttpServer) => {
         }
 
         const now = Date.now();
-        const lastUpdate = driverLocationRateLimit.get(userId) || 0;
+        const rateLimitKey = `${userId}:${data.orderId}`;
+        const lastUpdate = driverLocationRateLimit.get(rateLimitKey) || 0;
         if (now - lastUpdate < LOCATION_UPDATE_MIN_INTERVAL_MS) return;
-        driverLocationRateLimit.set(userId, now);
+        driverLocationRateLimit.set(rateLimitKey, now);
 
         const locationData = {
           orderId: delivery.orderId,
@@ -319,7 +320,9 @@ export const initializeSocket = (server: HttpServer) => {
     socket.on("disconnect", () => {
       console.log(`[Socket] ${userName} disconnected: ${socket.id}`);
       if (userRole === "driver") {
-        driverLocationRateLimit.delete(userId);
+        for (const key of driverLocationRateLimit.keys()) {
+          if (key.startsWith(`${userId}:`)) driverLocationRateLimit.delete(key);
+        }
         io.to("admins").emit("driver_offline", {
           driverId: userId,
           driverName: userName,
