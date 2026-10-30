@@ -77,19 +77,20 @@ export default function HomeScreen() {
 
   const activeOrders = orders.filter(o => ['in_transit', 'nearby'].includes(o.status));
   const pendingOrders = orders.filter(o => ['confirmed', 'driver_assigned', 'picked_up'].includes(o.status));
-  const activeOrderId = activeOrders[0]?.id || null;
-  const { startTracking, stopTracking, currentLocation } = useDriverLocation(activeOrderId);
+  const activeOrderIds = activeOrders.map((order) => order.id);
+  const activeOrderKey = activeOrderIds.join(',');
+  const { startTracking, stopTracking, currentLocation } = useDriverLocation(activeOrderIds);
 
   // Resume location sharing after app restart while an assigned delivery is active.
   // Focus cleanup prevents Home and OrderDetail from running duplicate GPS watchers.
   useFocusEffect(
     useCallback(() => {
-      if (!activeOrderId) return;
+      if (activeOrderIds.length === 0) return;
       startTracking().catch((error: any) => {
         console.error('[Home] Unable to resume active delivery GPS:', error?.message || error);
       });
       return () => stopTracking();
-    }, [activeOrderId, startTracking, stopTracking])
+    }, [activeOrderKey, startTracking, stopTracking])
   );
 
   return (
