@@ -3,14 +3,15 @@ import * as Location from 'expo-location';
 import { emitLocation, getSocket, initializeSocket } from '../services/socketService';
 import { LocationPoint } from '../types';
 
-export const useDriverLocation = (orderId: string | null) => {
+export const useDriverLocation = (orderId: string | string[] | null) => {
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
   const startingRef = useRef(false);
   const [currentLocation, setCurrentLocation] = useState<LocationPoint | null>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
   const publishLocation = useCallback((coords: Location.LocationObjectCoords) => {
-    if (!orderId) return;
+    const orderIds = Array.isArray(orderId) ? orderId : orderId ? [orderId] : [];
+    if (!orderIds.length) return;
     const point: LocationPoint = {
       latitude: coords.latitude,
       longitude: coords.longitude,
@@ -20,7 +21,7 @@ export const useDriverLocation = (orderId: string | null) => {
       timestamp: new Date().toISOString(),
     };
     setCurrentLocation(point);
-    emitLocation({ orderId, ...point });
+    orderIds.forEach((id) => emitLocation({ orderId: id, ...point }));
   }, [orderId]);
 
   const startTracking = useCallback(async () => {
