@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter, usePathname } from "expo-router";
 import { COLORS } from "../utils/constants";
 import { useNotificationStore } from "../store/useNotificationStore";
@@ -92,11 +92,11 @@ const styles = StyleSheet.create({
   brand: { flexDirection: "row", alignItems: "center", gap: 10 },
   logo: {
     width: 40, height: 40, borderRadius: 13,
-    backgroundColor: "#123D30", borderWidth: 1, borderColor: "#245747",
+    backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border,
     alignItems: "center", justifyContent: "center",
   },
   locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  locText: { fontSize: 11, color: COLORS.muted },
+  locText: { fontSize: 11, color: "#D8E7DE" },
   connectionDot: { width: 5, height: 5, borderRadius: 3, marginLeft: 2 },
   brandTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text, letterSpacing: -0.2, marginTop: 2 },
   accent: { color: COLORS.accent },

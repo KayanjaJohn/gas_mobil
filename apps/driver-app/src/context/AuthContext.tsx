@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import type { User } from '../types';
 
 interface Station {
  id: string;
@@ -9,17 +10,7 @@ interface Station {
  city: string;
 }
 
-interface User {
- id: string;
- name: string;
- email: string;
- phone?: string;
- role: string;
- stationId?: string;
- station?: Station | null;
- status?: string;
- vehicleNumber?: string;
-}
+
 
 interface AuthContextType {
  user: User | null;

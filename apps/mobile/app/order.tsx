@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import type { Order, Product } from "../src/types";
 import React, { useState, useCallback, useEffect } from 'react';
 import {
@@ -13,7 +14,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
 import { useLocation } from '../src/hooks/useLocation';
 import { apiRequest } from '../src/services/api';
 
@@ -171,7 +172,7 @@ export default function OrderScreen() {
 
         {/* ── LOCATION SECTION ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📍 Delivery Location</Text>
+          <Text style={styles.sectionTitle}><Icon name="map-marker-outline" size={19} color={COLORS.accent} />  Delivery Location</Text>
 
           {!location ? (
             <TouchableOpacity
@@ -210,7 +211,7 @@ export default function OrderScreen() {
 
         {/* Order Type */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔥 Order Type</Text>
+          <Text style={styles.sectionTitle}><Icon name="fire" size={19} color={COLORS.accent} />  Order Type</Text>
           <View style={styles.typeRow}>
             {ORDER_TYPES.map((type) => (
               <TouchableOpacity
@@ -237,7 +238,7 @@ export default function OrderScreen() {
 
         {/* Cylinder Size */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🛢️ Cylinder Size</Text>
+          <Text style={styles.sectionTitle}><Icon name="propane-tank" size={19} color={COLORS.accent} />  Cylinder Size</Text>
           <View style={styles.sizeRow}>
             {CYLINDER_SIZES.map((size) => (
               <TouchableOpacity
@@ -259,7 +260,7 @@ export default function OrderScreen() {
 
         {/* Quantity */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔢 Quantity</Text>
+          <Text style={styles.sectionTitle}><Icon name="counter" size={19} color={COLORS.accent} />  Quantity</Text>
           <View style={styles.qtyRow}>
             <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity((q) => Math.max(1, q - 1))}>
               <Icon name="minus" size={20} color="#fff" />
@@ -273,7 +274,7 @@ export default function OrderScreen() {
 
         {/* Payment Method */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>💳 Payment Method</Text>
+          <Text style={styles.sectionTitle}><Icon name="cash" size={19} color={COLORS.accent} />  Payment Method</Text>
           {PAYMENT_METHODS.map((method) => (
             <TouchableOpacity
               key={method.id}
@@ -282,7 +283,7 @@ export default function OrderScreen() {
               activeOpacity={0.8}
             >
               <View style={[styles.payIcon, { backgroundColor: method.color }]}>
-                <Icon name={method.icon} size={20} color="#fff" />
+                <Icon name={method.icon as any} size={20} color="#fff" />
               </View>
               <Text style={[styles.payLabel, paymentMethod === method.id && styles.payLabelActive]}>
                 {method.label}
@@ -296,7 +297,7 @@ export default function OrderScreen() {
 
         {/* Notes */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📝 Delivery Notes (Optional)</Text>
+          <Text style={styles.sectionTitle}><Icon name="note-text-outline" size={19} color={COLORS.accent} />  Delivery Notes (Optional)</Text>
           <TextInput
             style={styles.notesInput}
             multiline

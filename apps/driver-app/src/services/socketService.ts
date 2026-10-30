@@ -14,7 +14,7 @@ export const initializeSocket = async (): Promise<Socket | null> => {
 
     socket = io(API_URL, {
       auth: { token },
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

@@ -8,7 +8,7 @@ import OrderDetailScreen from './src/screens/OrderDetailScreen';
 import DeliveryScreen from './src/screens/DeliveryScreen';
 import EarningsScreen from './src/screens/EarningsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-import NotificationsScreen from './src/screens/NotificationsScreen';
+import NotificationsScreen from './src/screens/NotificationScreen';
 
 const Stack = createNativeStackNavigator();
 

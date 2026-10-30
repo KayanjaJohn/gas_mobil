@@ -1,14 +1,14 @@
 import { Product } from '../types';
 
 export const COLORS = {
-  bg: "#FFF8EE",
-  card: "#FFFFFF",
-  card2: "#F5EBDD",
-  border: "#E9E2D7",
+  bg: "#0B3D2E",
+  card: "#FFF8EE",
+  card2: "#F0E5D3",
+  border: "#D8CDBB",
   accent: "#F36A21",
   accent2: "#FF8547",
   accentGlow: "rgba(243,106,33,0.22)",
-  text: "#123D30",
+  text: "#0B3D2E",
   muted: "#68786F",
   muted2: "#A8B0A9",
   danger: "#D94343",

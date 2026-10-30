@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverLocation } from '../hooks/useDriverLocation';
 import api from '../services/api';
 import { Order, LocationPoint } from '../types';
@@ -66,6 +67,7 @@ export default function DeliveryScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.emptyState}>
+          <Icon name="truck-delivery-outline" size={54} color="#F59E0B" style={{ marginBottom: 16 }} />
           <Text style={styles.emptyTitle}>No Active Delivery</Text>
           <Text style={styles.emptyText}>Accept an order to start delivery tracking</Text>
         </View>
@@ -95,20 +97,20 @@ export default function DeliveryScreen() {
         {route.length > 0 && (
           <Polyline
             coordinates={route.map(r => ({ latitude: r.latitude, longitude: r.longitude }))}
-            strokeColor="#7380ec"
+            strokeColor="#F59E0B"
             strokeWidth={3}
           />
         )}
       </MapView>
 
       <View style={styles.bottomSheet}>
-        <Text style={styles.address}>{activeOrder.deliveryAddress}</Text>
-        <Text style={styles.amount}>UGX {Number(activeOrder.totalAmount).toLocaleString()}</Text>
+        <View style={styles.infoRow}><Icon name="map-marker-outline" size={20} color="#F59E0B" /><Text style={styles.address}> {activeOrder.deliveryAddress}</Text></View>
+        <View style={styles.infoRow}><Icon name="cash-multiple" size={20} color="#F59E0B" /><Text style={styles.amount}> UGX {Number(activeOrder.totalAmount).toLocaleString()}</Text></View>
 
         <View style={styles.actions}>
           {activeOrder.status === 'driver_assigned' && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#7380ec' }]}
+              style={[styles.actionButton, { backgroundColor: '#F59E0B' }]}
               onPress={() => updateStatus('picked_up')}
             >
               <Text style={styles.actionText}>Picked Up</Text>
@@ -116,7 +118,7 @@ export default function DeliveryScreen() {
           )}
           {activeOrder.status === 'picked_up' && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#ffbb55' }]}
+              style={[styles.actionButton, { backgroundColor: '#F59E0B' }]}
               onPress={() => updateStatus('in_transit')}
             >
               <Text style={styles.actionText}>Start Delivery</Text>
@@ -124,7 +126,7 @@ export default function DeliveryScreen() {
           )}
           {activeOrder.status === 'in_transit' && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#41f1b6' }]}
+              style={[styles.actionButton, { backgroundColor: '#22C55E' }]}
               onPress={() => updateStatus('delivered')}
             >
               <Text style={styles.actionText}>Mark Delivered</Text>
@@ -139,6 +141,7 @@ export default function DeliveryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0B1120',
   },
   map: {
     width,
@@ -153,17 +156,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#666',
+    color: '#E2E8F0',
   },
   emptyText: {
     fontSize: 14,
-    color: '#999',
+    color: '#94A3B8',
     marginTop: 8,
   },
   bottomSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E293B',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: '#334155',
     padding: 20,
     flex: 1,
     shadowColor: '#000',
@@ -172,16 +177,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   address: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#F8FAFC',
     marginBottom: 8,
   },
   amount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#7380ec',
+    color: '#F59E0B',
     marginBottom: 16,
   },
   actions: {

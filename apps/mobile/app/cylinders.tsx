@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import TopBar from "../src/components/TopBar";
 
@@ -6,7 +7,7 @@ export default function CylindersScreen() {
     <View style={styles.container}>
       <TopBar title="My Cylinders" showBack />
       <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", marginTop: 60 }}>
-        <Text style={{ fontSize: 48, marginBottom: 12 }}>📦</Text>
+        <Icon name="propane-tank" size={48} color="#1484FF" style={{ marginBottom: 12 }} />
         <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>No cylinders registered yet</Text>
         <Text style={{ color: "#8A93A6", fontSize: 13, textAlign: "center", marginTop: 8, lineHeight: 20 }}>
           After your first delivery, your cylinders will appear here for easy re-ordering and tracking.

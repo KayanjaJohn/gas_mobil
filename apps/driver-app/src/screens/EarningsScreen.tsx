@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
@@ -81,7 +82,7 @@ export default function EarningsScreen() {
                   {e.status}
                 </Text>
               </View>
-              <Text style={styles.earningAddress}>📍 {e.order?.deliveryAddress || 'Unknown address'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}><Icon name="map-marker-outline" size={16} color="#94A3B8" /><Text style={styles.earningAddress}> {e.order?.deliveryAddress || 'Unknown address'}</Text></View>
               <Text style={styles.earningAmount}>UGX {e.amount?.toLocaleString()}</Text>
               <Text style={styles.earningDate}>{new Date(e.createdAt).toLocaleDateString()}</Text>
             </View>

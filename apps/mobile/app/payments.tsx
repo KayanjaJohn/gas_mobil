@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import TopBar from "../src/components/TopBar";
 
 const METHODS = [
@@ -18,7 +18,7 @@ export default function PaymentsScreen() {
       <ScrollView style={{ padding: 16 }}>
         {METHODS.map((m, i) => (
           <View key={i} style={[styles.card, m.active && styles.cardActive]}>
-            <Icon name={m.icon} size={26} color="#F36A21" style={{ marginRight: 12 }} />
+            <Icon name={m.icon as any} size={26} color="#F36A21" style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: "#123D30", fontSize: 14, fontWeight: "600" }}>{m.name}</Text>
               <Text style={{ color: "#66776F", fontSize: 12, marginTop: 2 }}>{m.sub}</Text>

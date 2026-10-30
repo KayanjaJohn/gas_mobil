@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import { useAuth } from "../../src/context/AuthContext";
 import { apiRequest } from "../../src/services/api";
 import { useSocketNotifications } from "../../src/hooks/useSocketNotifications";
@@ -184,7 +184,7 @@ export default function NotificationsScreen() {
               style={[styles.item, !n.isRead && styles.itemUnread]}
             >
               <View style={styles.iconBox}>
-                <Icon name={ICONS[n.type] || "bell-outline"} size={23} color={COLORS.accent} />
+                <Icon name={(ICONS[n.type] || "bell-outline") as any} size={23} color={COLORS.accent} />
               </View>
               <View style={styles.content}>
                 <Text style={[styles.title, !n.isRead && styles.titleUnread]}>

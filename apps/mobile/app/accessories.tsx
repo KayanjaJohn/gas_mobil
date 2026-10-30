@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image,
@@ -9,7 +10,9 @@ import { useCartStore } from "../src/store/useCartStore";
 import { useProducts } from "../src/hooks/useProducts";
 import { COLORS } from "../src/utils/constants";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL
+  ?.replace(/\/api\/?$/, "")
+  .replace(/\/+$/, "");
 
 export default function AccessoriesScreen() {
   const router = useRouter();
@@ -24,8 +27,9 @@ export default function AccessoriesScreen() {
 
   const getImageUrl = (imageUrl: string | null) => {
     if (!imageUrl) return null;
-    if (imageUrl.startsWith('http')) return imageUrl;
-    return `${API_BASE}${imageUrl}`;
+    if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+    if (!API_BASE) return null;
+    return `${API_BASE}/${imageUrl.replace(/^\/+/, "")}`;
   };
 
   return (
@@ -34,7 +38,7 @@ export default function AccessoriesScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🔧 Accessories</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}><Icon name="tools" size={22} color={COLORS.accent} /><Text style={styles.headerTitle}> Accessories</Text></View>
           <Text style={styles.headerSub}>Burners, regulators, hosepipes and more</Text>
         </View>
 
@@ -47,7 +51,7 @@ export default function AccessoriesScreen() {
 
         {!loading && accessories.length === 0 && (
           <View style={styles.center}>
-            <Text style={styles.emptyIcon}>🔧</Text>
+            <Icon name="tools" size={32} color={COLORS.accent} />
             <Text style={styles.emptyTitle}>No accessories available</Text>
           </View>
         )}
@@ -76,7 +80,7 @@ export default function AccessoriesScreen() {
                     />
                   ) : (
                     <View style={styles.imgFallback}>
-                      <Text style={{ fontSize: 20 }}>{outOfStock ? "❌" : "🔧"}</Text>
+                      <Icon name={outOfStock ? "close-circle-outline" : "tools"} size={20} color={outOfStock ? COLORS.danger : COLORS.accent} />
                     </View>
                   )}
                 </View>

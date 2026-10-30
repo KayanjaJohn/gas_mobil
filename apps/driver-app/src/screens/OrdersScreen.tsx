@@ -72,13 +72,13 @@ export default function OrdersScreen() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      driver_assigned: '#7380ec',
-      picked_up: '#ffbb55',
-      in_transit: '#ff7782',
-      delivered: '#41f1b6',
-      completed: '#41f1b6',
+      driver_assigned: '#F59E0B',
+      picked_up: '#F59E0B',
+      in_transit: '#38BDF8',
+      delivered: '#22C55E',
+      completed: '#22C55E',
     };
-    return colors[status] || '#999';
+    return colors[status] || '#64748B';
   };
 
   return (
@@ -104,10 +104,10 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0B1120',
   },
   orderCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E293B',
     margin: 12,
     marginBottom: 0,
     borderRadius: 12,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   orderId: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#E2E8F0',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -141,16 +141,16 @@ const styles = StyleSheet.create({
   },
   address: {
     fontSize: 14,
-    color: '#666',
+    color: '#94A3B8',
     marginBottom: 8,
   },
   amount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#7380ec',
+    color: '#F59E0B',
   },
   acceptButton: {
-    backgroundColor: '#41f1b6',
+    backgroundColor: '#16A34A',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -168,11 +168,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#94A3B8',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#64748B',
     marginTop: 8,
   },
 });

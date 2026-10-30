@@ -1,11 +1,22 @@
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useDriverNotifications } from '../hooks/useDriverNotifications';
 import api from '../services/api';
+
+type DriverStackParamList = {
+  Login: undefined;
+  Home: undefined;
+  OrderDetail: { orderId: string };
+  Delivery: undefined;
+  Earnings: undefined;
+  Profile: undefined;
+  Notifications: undefined;
+};
 
 interface Order {
   id: string;
@@ -24,7 +35,7 @@ interface Stats {
 }
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<DriverStackParamList>>();
   const { user, logout } = useAuth();
   const { unreadCount } = useDriverNotifications();
 
@@ -79,7 +90,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Notifications' as never)}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 18 }}>🔔</Text>
+            <Icon name="bell-outline" size={21} color="#F59E0B" />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -118,11 +129,11 @@ export default function HomeScreen() {
         {/* Quick Actions */}
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Earnings' as never)}>
-            <Text style={styles.actionIcon}>💰</Text>
+            <Icon name="cash-multiple" size={25} color="#F59E0B" style={styles.actionIcon} />
             <Text style={styles.actionText}>Earnings</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Profile' as never)}>
-            <Text style={styles.actionIcon}>⚙️</Text>
+            <Icon name="cog-outline" size={25} color="#F59E0B" style={styles.actionIcon} />
             <Text style={styles.actionText}>Settings</Text>
           </TouchableOpacity>
         </View>
@@ -140,7 +151,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={order.id}
               style={styles.orderCard}
-              onPress={() => navigation.navigate('OrderDetail' as never, { orderId: order.id } as never)}
+              onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
               activeOpacity={0.8}
             >
               <View style={styles.orderHeader}>
@@ -149,8 +160,8 @@ export default function HomeScreen() {
                   <Text style={styles.statusText}>{order.status.replace('_', ' ')}</Text>
                 </View>
               </View>
-              <Text style={styles.orderAddress}>📍 {order.deliveryAddress}</Text>
-              <Text style={styles.orderCustomer}>👤 {order.user?.name || 'Customer'}</Text>
+              <View style={styles.infoRow}><Icon name="map-marker-outline" size={17} color="#94A3B8" /><Text style={styles.orderAddress}> {order.deliveryAddress}</Text></View>
+              <View style={styles.infoRow}><Icon name="account-outline" size={17} color="#94A3B8" /><Text style={styles.orderCustomer}> {order.user?.name || 'Customer'}</Text></View>
               <Text style={styles.orderAmount}>UGX {order.totalAmount?.toLocaleString() || '0'}</Text>
             </TouchableOpacity>
           ))
@@ -208,7 +219,8 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
     borderWidth: 1, borderColor: '#334155', alignItems: 'center',
   },
-  actionIcon: { fontSize: 24, marginBottom: 6 },
+  actionIcon: { marginBottom: 6 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   actionText: { color: '#fff', fontSize: 13, fontWeight: '500' },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#fff', paddingHorizontal: 20, marginBottom: 12 },
   emptyBox: { paddingHorizontal: 20, paddingVertical: 30, alignItems: 'center' },

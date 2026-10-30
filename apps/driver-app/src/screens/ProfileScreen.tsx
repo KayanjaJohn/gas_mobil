@@ -35,12 +35,12 @@ export default function ProfileScreen() {
       <View style={styles.infoCard}>
         <InfoRow label="Email" value={user?.email} />
         <InfoRow label="Phone" value={user?.phone} />
-        <InfoRow label="Vehicle" value={`${user?.vehicleType} • ${user?.vehicleNumber}`} />
+        <InfoRow label="Vehicle" value={`${user?.vehicleType || 'Vehicle not set'} • ${user?.vehicleNumber || 'No number'}`} />
         <InfoRow label="Station" value={user?.station?.name || 'Not assigned'} />
         <InfoRow 
           label="Status" 
           value={user?.driverStatus?.toUpperCase()} 
-          valueColor={user?.driverStatus === 'online' ? '#41f1b6' : '#ff7782'}
+          valueColor={user?.driverStatus === 'online' ? '#22C55E' : '#F59E0B'}
         />
       </View>
 
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
   );
 }
 
-function InfoRow({ label, value, valueColor = '#333' }: { label: string; value?: string; valueColor?: string }) {
+function InfoRow({ label, value, valueColor = '#E2E8F0' }: { label: string; value?: string; valueColor?: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -63,7 +63,7 @@ function InfoRow({ label, value, valueColor = '#333' }: { label: string; value?:
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0B1120',
     padding: 16,
   },
   header: {
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#7380ec',
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -87,15 +87,15 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#E2E8F0',
   },
   role: {
     fontSize: 14,
-    color: '#7380ec',
+    color: '#F59E0B',
     marginTop: 4,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E293B',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -105,18 +105,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#334155',
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#94A3B8',
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
   },
   logoutButton: {
-    backgroundColor: '#ff7782',
+    backgroundColor: '#DC2626',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',

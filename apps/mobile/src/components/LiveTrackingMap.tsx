@@ -1,20 +1,28 @@
 import React from 'react';
 import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import { useOrderTracking } from '../hooks/useOrderTracking';
 
 interface Props {
   orderId: string;
   deliveryLatitude: number;
   deliveryLongitude: number;
+  driverLocation: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  } | null;
+  orderStatus: { message?: string } | null;
+  isConnected: boolean;
 }
 
 export const LiveTrackingMap: React.FC<Props> = ({
   orderId,
   deliveryLatitude,
   deliveryLongitude,
+  driverLocation,
+  orderStatus,
+  isConnected,
 }) => {
-  const { driverLocation, orderStatus, isConnected } = useOrderTracking(orderId);
 
   const initialRegion = {
     latitude: deliveryLatitude,

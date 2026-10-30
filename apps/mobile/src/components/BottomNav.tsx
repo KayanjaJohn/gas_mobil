@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import { usePathname, useRouter } from "expo-router";
 import { COLORS } from "../utils/constants";
 
@@ -38,9 +38,9 @@ export default function BottomNav() {
           >
             <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
               <Icon
-                name={tab.icon}
+                name={tab.icon as any}
                 size={22}
-                color={active ? COLORS.accent : COLORS.muted}
+                color={active ? COLORS.accent : "#FFF8EE"}
               />
             </View>
             <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
@@ -59,11 +59,11 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: "row",
     justifyContent: "space-around",
-    paddingTop: 9,
-    paddingBottom: 27,
-    backgroundColor: COLORS.card,
+    paddingTop: 10,
+    paddingBottom: 25,
+    backgroundColor: COLORS.green,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: "#245747",
     zIndex: 60,
     elevation: 12,
   },
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconWrapActive: { backgroundColor: "#FCE8D9" },
-  label: { fontSize: 10.5, color: COLORS.muted, fontWeight: "500" },
-  labelActive: { color: COLORS.accent, fontWeight: "700" },
+  iconWrapActive: { backgroundColor: "rgba(243,106,33,0.20)", borderRadius: 12 },
+  label: { fontSize: 11, color: "#FFF8EE", fontWeight: "500" },
+  labelActive: { color: COLORS.accent, fontWeight: "800" },
 });

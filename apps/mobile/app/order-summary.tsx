@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import type { Product, Order } from "../src/types";
 import React, { useState, useEffect } from "react";
 import {
@@ -150,7 +151,7 @@ export default function OrderSummaryScreen() {
         </Card>
 
         <TouchableOpacity style={styles.addCard} onPress={() => router.push("/accessories")} activeOpacity={0.8}>
-          <View style={styles.addIcon}><Text style={{ fontSize: 18 }}>🔥</Text></View>
+          <View style={styles.addIcon}><Icon name="fire" size={18} color="#1484FF" /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.addTitle}>Need a burner, regulator or hosepipe?</Text>
             <Text style={styles.addSub}>Browse accessories to add to this order</Text>

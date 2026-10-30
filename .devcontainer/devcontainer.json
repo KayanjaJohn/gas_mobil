@@ -4,7 +4,7 @@
   "forwardPorts": [
     3000,
     3001,
-    5000,
+    3200,
     8081,
     19000,
     19001,
@@ -19,7 +19,7 @@
       "label": "GasMobil Agent Dashboard",
       "onAutoForward": "openBrowser"
     },
-    "5000": {
+    "3200": {
       "label": "GasMobil API",
       "onAutoForward": "notify"
     },

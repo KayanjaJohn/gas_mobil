@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
@@ -18,20 +19,18 @@ const ROLE_STYLES: Record<string, { label: string; color: string; bg: string }> 
 };
 
 const MENU_ITEMS = [
-  { icon: "📦", title: "My Cylinders",    sub: "View & register your cylinders", route: "/cylinders" as const },
-  { icon: "💳", title: "Payment Methods", sub: "Wallet, M-Pesa, Airtel",       route: "/payments" as const },
-  { icon: "🔔", title: "Notifications",   sub: "Order updates & alerts",       route: "/(tabs)/notifications" as const },
-  { icon: "⚡", title: "Auto-Refill",     sub: "Never run out of gas",         route: "/auto-refill" as const },
-  { icon: "❓", title: "Help & Support",  sub: "FAQs, call us, report issue",  route: "/help" as const },
-  { icon: "🔧", title: "Settings",        sub: "Language, location, privacy",  route: "/settings" as const },
+  { icon: "package-variant", title: "My Cylinders",    sub: "View & register your cylinders", route: "/cylinders" as const },
+  { icon: "cash", title: "Payment Methods", sub: "Cash on delivery", route: "/payments" as const },
+  { icon: "bell-outline", title: "Notifications",   sub: "Order updates & alerts",       route: "/(tabs)/notifications" as const },
+  { icon: "lightning-bolt", title: "Auto-Refill",     sub: "Never run out of gas",         route: "/auto-refill" as const },
+  { icon: "help-circle-outline", title: "Help & Support",  sub: "FAQs, call us, report issue",  route: "/help" as const },
+  { icon: "cog-outline", title: "Settings",        sub: "Language, location, privacy",  route: "/settings" as const },
 ];
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, updateUser } = useAuth();
 
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [walletLoading, setWalletLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -51,10 +50,6 @@ export default function ProfileScreen() {
   const role = ROLE_STYLES[user?.role || "customer"] || ROLE_STYLES.customer;
 
   useEffect(() => {
-    fetchWallet();
-  }, []);
-
-  useEffect(() => {
     if (user) {
       setForm({
         name: user.name || "",
@@ -64,17 +59,6 @@ export default function ProfileScreen() {
       });
     }
   }, [user]);
-
-  const fetchWallet = async () => {
-    try {
-      const res = await apiRequest<{ wallet?: { balance?: number }; transactions?: unknown[] }>("get", "/wallet");
-      if (res.success && res.data) setWalletBalance(Number(res.data.wallet?.balance) || 0);
-    } catch (err) {
-      console.error("[Profile] Wallet fetch error:", err);
-    } finally {
-      setWalletLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!form.name || !form.phone) {
@@ -123,21 +107,6 @@ export default function ProfileScreen() {
           <View style={[styles.roleBadge, { backgroundColor: role.bg }]}>
             <Text style={[styles.roleText, { color: role.color }]}>{role.label}</Text>
           </View>
-        </View>
-
-        {/* Wallet Card */}
-        <View style={styles.wallet}>
-          <Text style={styles.walletLabel}>GASMOBIL WALLET</Text>
-          <Text style={styles.walletBal}>
-            UGX {walletBalance.toLocaleString("en-UG")}
-          </Text>
-          <TouchableOpacity
-            style={styles.topupBtn}
-            activeOpacity={0.8}
-            onPress={() => Alert.alert("Coming Soon", "Wallet top-up will be available shortly.")}
-          >
-            <Text style={styles.topupText}>Top Up</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Personal Info Card */}
@@ -230,7 +199,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
               onPress={() => router.push(item.route as any)}
             >
-              <Text style={styles.menuIcon}>{item.icon}</Text>
+              <Icon name={item.icon as any} size={22} color={COLORS.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.menuTitle}>{item.title}</Text>
                 <Text style={styles.menuSub}>{item.sub}</Text>

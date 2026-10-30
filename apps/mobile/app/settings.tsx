@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import TopBar from "../src/components/TopBar";
@@ -9,28 +10,28 @@ export default function SettingsScreen() {
       <TopBar title="Settings" showBack />
       <ScrollView style={{ padding: 16 }}>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>🌍 Language</Text>
+          <Text style={styles.cardTitle}>Language</Text>
           <TouchableOpacity style={styles.row} onPress={() => Alert.alert("Coming Soon", "More languages on the way.")}>
             <Text style={styles.rowText}>English (UG)</Text>
             <Text style={styles.chev}>›</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>📍 Location</Text>
+          <Text style={styles.cardTitle}>Location</Text>
           <TouchableOpacity style={styles.row} onPress={() => router.push("/profile")}>
             <Text style={styles.rowText}>Update delivery address</Text>
             <Text style={styles.chev}>›</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>🔔 Notifications</Text>
+          <Text style={styles.cardTitle}>Notifications</Text>
           <TouchableOpacity style={styles.row} onPress={() => router.push("/(tabs)/notifications")}>
             <Text style={styles.rowText}>Manage notification preferences</Text>
             <Text style={styles.chev}>›</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>🔒 Privacy</Text>
+          <Text style={styles.cardTitle}>Privacy</Text>
           <TouchableOpacity style={styles.row} onPress={() => Alert.alert("Privacy Policy", "Your data is encrypted and never sold to third parties.")}>
             <Text style={styles.rowText}>Privacy Policy</Text>
             <Text style={styles.chev}>›</Text>

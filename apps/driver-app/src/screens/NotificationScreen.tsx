@@ -3,9 +3,19 @@ import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl,
   ActivityIndicator, SafeAreaView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverNotifications, DriverNotification } from '../hooks/useDriverNotifications';
+
+type DriverStackParamList = {
+  Login: undefined;
+  Home: undefined;
+  OrderDetail: { orderId: string };
+  Delivery: undefined;
+  Earnings: undefined;
+  Profile: undefined;
+  Notifications: undefined;
+};
 
 const ICONS: Record<string, string> = {
   new_order_assigned: 'package-variant',
@@ -23,7 +33,7 @@ const ICONS: Record<string, string> = {
 };
 
 export default function NotificationsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<DriverStackParamList>>();
   const {
     notifications,
     unreadCount,
@@ -47,7 +57,7 @@ export default function NotificationsScreen() {
       onPress={() => {
         if (!item.isRead) markAsRead(item.id);
         if (item.orderId) {
-          navigation.navigate('OrderDetail' as never, { orderId: item.orderId } as never);
+          navigation.navigate('OrderDetail', { orderId: item.orderId });
         }
       }}
       style={[styles.item, !item.isRead && styles.itemUnread]}

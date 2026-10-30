@@ -93,7 +93,7 @@ export default function OrderDetailScreen() {
       <View style={styles.actions}>
         {order.status === 'driver_assigned' && (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#7380ec' }]}
+            style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
             onPress={() => updateDeliveryStatus('picked_up')}
           >
             <Text style={styles.actionText}>Confirm Pickup</Text>
@@ -101,7 +101,7 @@ export default function OrderDetailScreen() {
         )}
         {order.status === 'picked_up' && (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#ffbb55' }]}
+            style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
             onPress={() => updateDeliveryStatus('in_transit')}
           >
             <Text style={styles.actionText}>Start Delivery</Text>
@@ -109,7 +109,7 @@ export default function OrderDetailScreen() {
         )}
         {order.status === 'in_transit' && (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#41f1b6' }]}
+            style={[styles.actionBtn, { backgroundColor: '#16A34A' }]}
             onPress={() => updateDeliveryStatus('delivered')}
           >
             <Text style={styles.actionText}>Mark as Delivered</Text>
@@ -132,7 +132,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0B1120',
   },
   center: {
     flex: 1,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E293B',
     margin: 12,
     marginBottom: 0,
     borderRadius: 12,
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#E2E8F0',
     marginBottom: 12,
   },
   detailRow: {
@@ -157,16 +157,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#334155',
   },
   detailLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#94A3B8',
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: '#E2E8F0',
     flex: 1,
     textAlign: 'right',
   },
@@ -175,9 +175,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#334155',
   },
-  itemName: {
+  itemName: { color: '#E2E8F0',
     flex: 2,
     fontSize: 14,
   },
@@ -185,14 +185,14 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: 14,
-    color: '#666',
+    color: '#94A3B8',
   },
   itemPrice: {
     flex: 1,
     textAlign: 'right',
     fontSize: 14,
     fontWeight: '500',
-    color: '#7380ec',
+    color: '#F59E0B',
   },
   actions: {
     padding: 12,
