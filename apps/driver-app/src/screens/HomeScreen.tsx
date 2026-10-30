@@ -130,11 +130,11 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{stats.todayOrders}</Text>
-            <Text style={styles.statLabel}>Today's Orders</Text>
+            <Text style={styles.statLabel}>Orders Today</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{stats.todayCompleted}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statLabel}>Completed Today</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>UGX {stats.todayEarnings.toLocaleString()}</Text>
@@ -181,11 +181,11 @@ export default function HomeScreen() {
               <View style={styles.infoRow}>
                 <Icon name="crosshairs-gps" size={17} color={currentLocation ? '#22C55E' : '#F36A21'} />
                 <Text style={styles.orderCustomer}>
-                  {currentLocation ? 'Your live location is sharing' : 'Restoring live GPS…'}
+                  {currentLocation ? 'Your live location is sharing' : 'Connecting to GPS…'}
                 </Text>
               </View>
               <Text style={styles.orderAmount}>UGX {Number(order.totalAmount || 0).toLocaleString()}</Text>
-              <Text style={styles.openDeliveryText}>OPEN DELIVERY MAP  →</Text>
+              <Text style={styles.openDeliveryText}>VIEW LIVE DELIVERY  →</Text>
             </TouchableOpacity>
           ))
         )}
@@ -259,9 +259,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   profileText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
+  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 18 },
   statCard: {
-    flex: 1, backgroundColor: '#1E293B', borderRadius: 14, padding: 14,
+    flex: 1, backgroundColor: '#1E293B', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8,
     borderWidth: 1, borderColor: '#334155', alignItems: 'center',
   },
   statNumber: { fontSize: 18, fontWeight: '700', color: '#F59E0B' },
@@ -274,11 +274,11 @@ const styles = StyleSheet.create({
   actionIcon: { marginBottom: 6 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   actionText: { color: '#fff', fontSize: 13, fontWeight: '500' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#fff', paddingHorizontal: 20, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#FFF8EE', paddingHorizontal: 20, marginTop: 4, marginBottom: 12 },
   emptyBox: { paddingHorizontal: 20, paddingVertical: 30, alignItems: 'center' },
   emptyText: { color: '#64748B', fontSize: 14 },
-  activeOrderCard: { borderColor: '#168447', borderWidth: 1.5 },
-  openDeliveryText: { color: '#F36A21', fontSize: 11, fontWeight: '800', marginTop: 10 },
+  activeOrderCard: { borderColor: '#168447', borderWidth: 1.5, padding: 18, borderRadius: 17 },
+  openDeliveryText: { color: '#F36A21', fontSize: 12, fontWeight: '900', letterSpacing: 0.4, marginTop: 12 },
   orderCard: {
     backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
     marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#334155',
