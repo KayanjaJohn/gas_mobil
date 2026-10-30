@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { apiRequest } from '../services/api';
 import { User } from '../types';
+import { initializeSocket, disconnectSocket } from '../services/socketService';
 
 interface LoginCredentials {
   emailOrPhone: string;
@@ -51,8 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user;
 
+  // Own the shared socket lifecycle at the authenticated-session boundary.
+  useEffect(() => {
+    if (isLoading) return;
+    if (user) {
+      initializeSocket();
+    } else {
+      disconnectSocket();
+    }
+  }, [user, isLoading]);
+
   const clearAuth = useCallback(async () => {
     if (__DEV__) console.log('[Auth] Clearing auth state');
+    disconnectSocket();
     await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
     setUser(null);
   }, []);
