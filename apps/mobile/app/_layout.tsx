@@ -1,6 +1,5 @@
 import React, { useEffect, useCallback }from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
-import { useSocket } from "../src/hooks/useSocket";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { View, ActivityIndicator } from "react-native";
@@ -30,11 +29,6 @@ function RootLayoutInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoading]);
   // NOTE: segments intentionally removed from deps to prevent redirect loops
-
-  useSocket((data) => {
-    // Optionally show a local toast or re-fetch notifications
-    console.log("[Socket] Real-time notification:", data);
-  });
 
   if (isLoading) {
     return (
