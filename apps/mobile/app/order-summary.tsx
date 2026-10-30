@@ -15,7 +15,7 @@ import { apiRequest } from "../src/services/api";
 
 
 const PAY_METHODS = [
-  { key: "cash" as const, icon: "cash", title: "Cash on Delivery", sub: "Pay your driver when your gas arrives" },
+  { key: "cash" as const, icon: "cash-multiple", title: "Cash on Delivery", sub: "Pay your driver when your gas arrives" },
 ];
 
 export default function OrderSummaryScreen() {
@@ -167,7 +167,7 @@ export default function OrderSummaryScreen() {
               onPress={() => setPaymentMethod("cash")}
               activeOpacity={0.8}
             >
-              <Text style={{ fontSize: 18, width: 28 }}>{m.icon}</Text>
+              <View style={styles.paymentIcon}><Icon name={m.icon as any} size={23} color={COLORS.green} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.payTitle}>{m.title}</Text>
                 <Text style={styles.paySub}>{m.sub}</Text>
@@ -201,21 +201,22 @@ const styles = StyleSheet.create({
   step: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "#1E2A44" },
   stepActive: { backgroundColor: COLORS.accent },
   summary: { marginBottom: 14 },
-  summaryTitle: { color: "#fff", fontSize: 14, fontWeight: "600", marginBottom: 12 },
+  summaryTitle: { color: COLORS.green, fontSize: 14, fontWeight: "600", marginBottom: 12 },
   sline: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 7 },
   slabel: { color: COLORS.muted, fontSize: 13 },
-  svalue: { color: "#fff", fontSize: 13, fontWeight: "500" },
+  svalue: { color: COLORS.green, fontSize: 13, fontWeight: "500" },
   totalLine: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 8, paddingTop: 14 },
-  totalLabel: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  totalLabel: { color: COLORS.green, fontSize: 15, fontWeight: "600" },
   totalValue: { color: COLORS.accent, fontSize: 15, fontWeight: "700" },
   addCard: { marginHorizontal: 16, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 14, flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 6 },
   addIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(245,158,11,0.12)", alignItems: "center", justifyContent: "center" },
-  addTitle: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  addTitle: { color: COLORS.green, fontSize: 13, fontWeight: "600" },
   addSub: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   label: { fontSize: 13, color: COLORS.text, marginHorizontal: 16, marginTop: 18, marginBottom: 10, fontWeight: "600" },
   payOpt: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 },
-  payOptActive: { borderColor: COLORS.accent },
-  payTitle: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  payOptActive: { borderColor: COLORS.accent, backgroundColor: "#FFF1E4" },
+  paymentIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#F1E7D8", alignItems: "center", justifyContent: "center" },
+  payTitle: { color: COLORS.green, fontSize: 14, fontWeight: "600" },
   paySub: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   row2: { flexDirection: "row", gap: 10, marginHorizontal: 16, marginTop: 16, marginBottom: 100 },
   ghostBtn: { flex: 1, backgroundColor: "transparent", borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
