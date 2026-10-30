@@ -340,11 +340,11 @@ export default function OrderScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 6 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#FFF8EE', marginBottom: 6 },
   headerSub: { fontSize: 14, color: COLORS.muted, marginBottom: 20 },
 
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#FFF8EE', marginBottom: 12 },
 
   // Location
   locationCard: {
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   },
   locationCardError: { borderColor: COLORS.danger, borderStyle: 'solid' },
   locationCardActive: {
-    backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: 16, padding: 16,
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 16,
     borderWidth: 2, borderColor: COLORS.success,
   },
   locationText: { flex: 1, fontSize: 14, color: COLORS.muted, fontWeight: '500' },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   locationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
   locationActiveTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.success },
   refreshBtn: { padding: 4 },
-  locationAddress: { fontSize: 15, fontWeight: '600', color: '#fff', marginBottom: 4 },
+  locationAddress: { fontSize: 15, fontWeight: '600', color: COLORS.text, marginBottom: 4 },
   locationCoords: { fontSize: 12, color: COLORS.muted },
 
   // Order Type
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', borderWidth: 2, borderColor: COLORS.border,
   },
   typeCardActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  typeLabel: { fontSize: 14, fontWeight: '700', color: '#fff', marginTop: 8 },
+  typeLabel: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginTop: 8 },
   typeLabelActive: { color: '#fff' },
   typeDesc: { fontSize: 11, color: COLORS.muted, marginTop: 4, textAlign: 'center' },
   typeDescActive: { color: 'rgba(255,255,255,0.8)' },
@@ -383,8 +383,8 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
     alignItems: 'center', borderWidth: 2, borderColor: COLORS.border,
   },
-  sizeCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(20,132,255,0.1)' },
-  sizeLabel: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  sizeCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(243,106,33,0.10)' },
+  sizeLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   sizeLabelActive: { color: COLORS.accent },
   sizePrice: { fontSize: 12, color: COLORS.muted, marginTop: 4 },
   sizePriceActive: { color: COLORS.accent, fontWeight: '700' },
@@ -404,15 +404,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
     marginBottom: 8, borderWidth: 2, borderColor: COLORS.border,
   },
-  payCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(20,132,255,0.06)' },
+  payCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(243,106,33,0.08)' },
   payIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  payLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: '#fff' },
+  payLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text },
   payLabelActive: { color: COLORS.accent },
 
   // Notes
   notesInput: {
     backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
-    fontSize: 14, color: '#fff', borderWidth: 1, borderColor: COLORS.border,
+    fontSize: 14, color: COLORS.text, borderWidth: 1, borderColor: COLORS.border,
     minHeight: 80, textAlignVertical: 'top',
   },
 
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   footer: { marginTop: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   totalLabel: { fontSize: 16, color: COLORS.muted },
-  totalAmount: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  totalAmount: { fontSize: 24, fontWeight: '800', color: '#FFF8EE' },
   placeBtn: {
     backgroundColor: COLORS.accent, borderRadius: 16, paddingVertical: 16,
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
