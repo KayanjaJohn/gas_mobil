@@ -107,7 +107,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Notifications' as never)}
             activeOpacity={0.7}
           >
-            <Icon name="bell-outline" size={21} color="#F59E0B" />
+            <Icon name="bell" size={23} color="#0B3D2E" />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -241,11 +241,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
   },
-  greeting: { fontSize: 20, fontWeight: '700', color: '#0B3D2E' },
-  subtitle: { fontSize: 13, color: '#68786F', marginTop: 2 },
+  greeting: { fontSize: 20, fontWeight: '700', color: '#FFF8EE' },
+  subtitle: { fontSize: 13, color: '#D8E7DE', marginTop: 2 },
   bellBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF8EE',
-    borderWidth: 1, borderColor: '#D8CDBB', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#F36A21', alignItems: 'center', justifyContent: 'center',
     position: 'relative',
   },
   badge: {
