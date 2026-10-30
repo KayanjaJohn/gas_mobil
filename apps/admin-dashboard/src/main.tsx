@@ -22,13 +22,19 @@ function Main() {
       createTheme({
         palette: {
           mode,
-          primary: { main: "#7380ec" },
-          secondary: { main: "#ff7782" },
-          success: { main: "#41f1b6" },
-          warning: { main: "#ffbb55" },
+          primary: { main: "#0B3D2E", contrastText: "#FFF8EE" },
+          secondary: { main: "#F36A21", contrastText: "#FFF8EE" },
+          success: { main: "#21865D" },
+          warning: { main: "#D97706" },
           background: {
-            default: mode === "light" ? "#f5f5f5" : "#121212",
+            default: mode === "light" ? "#F3EBDD" : "#0B3D2E",
+            paper: mode === "light" ? "#FFF8EE" : "#123F32",
           },
+          text: {
+            primary: mode === "light" ? "#0B3D2E" : "#FFF8EE",
+            secondary: mode === "light" ? "#68786F" : "#D8E7DE",
+          },
+          divider: mode === "light" ? "#D8CDBB" : "#315C4D",
         },
       }),
     [mode],
