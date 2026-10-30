@@ -1,5 +1,5 @@
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native';
@@ -77,7 +77,7 @@ export default function HomeScreen() {
 
   const activeOrders = orders.filter(o => ['in_transit', 'nearby'].includes(o.status));
   const pendingOrders = orders.filter(o => ['confirmed', 'driver_assigned', 'picked_up'].includes(o.status));
-  const activeOrderIds = activeOrders.map((order) => order.id);
+  const activeOrderIds = useMemo(() => activeOrders.map((order) => order.id), [orders]);
   const activeOrderKey = activeOrderIds.join(',');
   const { startTracking, stopTracking, currentLocation } = useDriverLocation(activeOrderIds);
 
