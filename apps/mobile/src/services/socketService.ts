@@ -60,7 +60,7 @@ export const updateSocketToken = async (token: string) => {
   const activeSocket = socket || await initializeSocket();
   if (!activeSocket) return;
 
-  activeSocket.auth = { ...(activeSocket.auth || {}), token };
+  activeSocket.auth = { token };
   if (activeSocket.connected) {
     activeSocket.disconnect();
     activeSocket.connect();
