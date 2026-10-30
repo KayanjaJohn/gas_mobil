@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-type ReportPeriod = 'daily' | 'weekly' | 'yearly';
+type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 interface Order {
   id: string;
@@ -26,6 +26,7 @@ interface Order {
 const periodOptions: Array<{ value: ReportPeriod; label: string; icon: JSX.Element }> = [
   { value: 'daily', label: 'Daily', icon: <Today /> },
   { value: 'weekly', label: 'Weekly', icon: <ViewWeek /> },
+  { value: 'monthly', label: 'Monthly', icon: <Event /> },
   { value: 'yearly', label: 'Yearly', icon: <Event /> },
 ];
 
@@ -52,6 +53,8 @@ const getPeriodStart = (period: ReportPeriod) => {
     date.setDate(date.getDate() + mondayOffset);
   }
 
+  if (period === 'monthly') date.setDate(1);
+
   if (period === 'yearly') {
     date.setMonth(0, 1);
   }
@@ -69,6 +72,7 @@ const formatPeriodLabel = (period: ReportPeriod, start: Date) => {
     return `${formatter.format(start)} - ${formatter.format(end)}`;
   }
 
+  if (period === 'monthly') return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(start);
   return String(start.getFullYear());
 };
 
@@ -105,6 +109,8 @@ export default function Reports() {
   }, [orders, periodStart]);
 
   const paidOrders = reportOrders.filter((order) => order.paymentStatus === 'paid');
+  const totalOrderValue = reportOrders.filter((order) => !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  const outstandingCash = reportOrders.filter((order) => order.paymentStatus !== 'paid' && !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const completedOrders = reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status));
   const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const averageOrderValue = paidOrders.length ? totalRevenue / paidOrders.length : 0;
@@ -127,7 +133,10 @@ export default function Reports() {
       ['Generated At', new Date().toLocaleString()],
       ['Orders', String(reportOrders.length)],
       ['Completed Orders', String(completedOrders.length)],
+      ['Total Order Value', String(totalOrderValue)],
+      ['Paid Orders', String(paidOrders.length)],
       ['Paid Revenue', String(totalRevenue)],
+      ['COD Outstanding', String(outstandingCash)],
       ['Average Paid Order', String(Math.round(averageOrderValue))],
       [],
       ['Order ID', 'Customer', 'Phone', 'Date', 'Status', 'Payment', 'Driver', 'Amount'],
