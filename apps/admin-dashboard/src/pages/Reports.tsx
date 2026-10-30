@@ -140,6 +140,8 @@ export default function Reports() {
   }, [stationOrders, periodStart]);
 
   const paidOrders = reportOrders.filter((order) => order.paymentStatus === 'paid');
+  const totalOrderValue = reportOrders.filter((order) => !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  const outstandingCash = reportOrders.filter((order) => order.paymentStatus !== 'paid' && !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const completedOrders = reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status));
   const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const averageOrderValue = paidOrders.length ? totalRevenue / paidOrders.length : 0;
@@ -159,7 +161,10 @@ export default function Reports() {
       ['Generated At', new Date().toLocaleString()],
       ['Orders', String(reportOrders.length)],
       ['Completed Orders', String(completedOrders.length)],
+      ['Total Order Value', String(totalOrderValue)],
+      ['Paid Orders', String(paidOrders.length)],
       ['Paid Revenue', String(totalRevenue)],
+      ['COD Outstanding', String(outstandingCash)],
       ['Average Paid Order', String(Math.round(averageOrderValue))],
       [],
       ['Order ID', 'Customer', 'Date', 'Status', 'Payment', 'Amount'],
@@ -283,8 +288,20 @@ export default function Reports() {
                   <Typography variant="h5" fontWeight="bold">{completedOrders.length}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Paid Orders</Typography>
+                  <Typography variant="h5" fontWeight="bold">{paidOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Total Order Value</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {totalOrderValue.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
                   <Typography variant="body2" color="textSecondary">Paid Revenue</Typography>
                   <Typography variant="h5" fontWeight="bold">UGX {totalRevenue.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">COD Outstanding</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {outstandingCash.toLocaleString()}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Typography variant="body2" color="textSecondary">Avg. Paid Order</Typography>
