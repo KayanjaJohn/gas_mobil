@@ -1,12 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from "react";
 import {
   initializeSocket,
   joinOrderRoom,
   leaveOrderRoom,
-  onDriverLocationUpdate,
-  onOrderStatusUpdate,
-  removeAllListeners,
-} from '../services/socketService';
+  getSocket,
+} from "../services/socketService";
 
 interface DriverLocation {
   latitude: number;
@@ -14,71 +12,104 @@ interface DriverLocation {
   accuracy?: number;
   speed?: number;
   heading?: number;
-  timestamp: string;
+  timestamp?: string;
 }
 
 interface OrderStatus {
   orderId: string;
   status: string;
-  deliveryStatus: string;
-  message: string;
+  deliveryStatus?: string;
+  message?: string;
 }
 
 export const useOrderTracking = (orderId: string | null) => {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
   const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<any>(null);
+  const [isConnected, setIsConnected] = useState(!!getSocket()?.connected);
 
   useEffect(() => {
-    if (!orderId) {
-      console.log('[Tracking] No orderId provided, skipping setup');
-      return;
-    }
+    if (!orderId) return;
 
-    console.log('[Tracking] Setting up tracking for order:', orderId);
+    let mounted = true;
+    let activeSocket: Awaited<ReturnType<typeof initializeSocket>> = null;
 
-    const setupSocket = async () => {
-      const socket = await initializeSocket();
-      socketRef.current = socket;
-      if (socket) {
-        console.log('[Tracking] Socket connected, joining room:', orderId);
-        setIsConnected(true);
-        joinOrderRoom(orderId);
-
-        onDriverLocationUpdate((data: any) => {
-          console.log('[Tracking] Driver location update:', data);
-          setDriverLocation(data.location || data);
-        });
-
-        onOrderStatusUpdate((data: any) => {
-          console.log('[Tracking] Order status update:', data);
-          setOrderStatus(data);
-        });
-      } else {
-        console.warn('[Tracking] Socket initialization returned null');
-      }
+    const handleLocation = (payload: any) => {
+      const location = payload?.location || payload;
+      if (payload?.orderId && String(payload.orderId) !== String(orderId)) return;
+      const latitude = Number(location?.latitude ?? location?.lat);
+      const longitude = Number(location?.longitude ?? location?.lng ?? location?.lon);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+      setDriverLocation({
+        latitude,
+        longitude,
+        accuracy: location.accuracy ?? undefined,
+        speed: location.speed ?? undefined,
+        heading: location.heading ?? undefined,
+        timestamp: location.timestamp || new Date().toISOString(),
+      });
     };
 
-    setupSocket();
+    const handleStatus = (payload: any) => {
+      if (!payload) return;
+      const payloadOrderId = payload.orderId || payload.data?.orderId;
+      if (payloadOrderId && String(payloadOrderId) !== String(orderId)) return;
+      const status = payload.status || payload.data?.status || payload.data?.deliveryStatus;
+      if (!status) return;
+      setOrderStatus({
+        orderId,
+        status,
+        deliveryStatus: payload.deliveryStatus || payload.data?.deliveryStatus,
+        message: payload.message || payload.data?.message,
+      });
+    };
+
+    const handleNotification = (payload: any) => {
+      if (String(payload?.orderId || payload?.data?.orderId || "") !== String(orderId)) return;
+      handleStatus(payload);
+    };
+
+    const attach = async () => {
+      const connectedSocket = await initializeSocket();
+      if (!mounted || !connectedSocket) return;
+      activeSocket = connectedSocket;
+
+      const onConnect = () => {
+        setIsConnected(true);
+        joinOrderRoom(orderId);
+      };
+      const onDisconnect = () => setIsConnected(false);
+
+      activeSocket.on("connect", onConnect);
+      activeSocket.on("disconnect", onDisconnect);
+      activeSocket.on("location_update", handleLocation);
+      activeSocket.on("driver_location_update", handleLocation);
+      activeSocket.on("order_status_update", handleStatus);
+      activeSocket.on("order_status_changed", handleStatus);
+      activeSocket.on("notification", handleNotification);
+      setIsConnected(activeSocket.connected);
+      if (activeSocket.connected) joinOrderRoom(orderId);
+
+      cleanup = () => {
+        activeSocket?.off("connect", onConnect);
+        activeSocket?.off("disconnect", onDisconnect);
+        activeSocket?.off("location_update", handleLocation);
+        activeSocket?.off("driver_location_update", handleLocation);
+        activeSocket?.off("order_status_update", handleStatus);
+        activeSocket?.off("order_status_changed", handleStatus);
+        activeSocket?.off("notification", handleNotification);
+      };
+    };
+
+    let cleanup = () => {};
+    attach();
 
     return () => {
-      console.log('[Tracking] Cleaning up tracking for order:', orderId);
-      if (orderId) {
-        leaveOrderRoom(orderId);
-      }
-      removeAllListeners();
-      // ── CRITICAL FIX: Do NOT disconnectSocket() here ──
-      // The socket is shared across the app for notifications.
-      // Only leave the room and remove listeners.
+      mounted = false;
+      leaveOrderRoom(orderId);
+      cleanup();
       setIsConnected(false);
-      socketRef.current = null;
     };
   }, [orderId]);
 
-  return {
-    driverLocation,
-    orderStatus,
-    isConnected,
-  };
+  return { driverLocation, orderStatus, isConnected };
 };
