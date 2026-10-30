@@ -103,7 +103,7 @@ export const LiveTrackingMap: React.FC<Props> = ({
             <Text style={styles.waitingText}>
               {orderStatus?.status === 'in_transit' || orderStatus?.status === 'nearby'
                 ? 'Driver is starting GPS. Waiting for first location…'
-                : 'Your driver’s live location appears when delivery starts.'}
+                : 'Waiting for the driver's first GPS update…'}
             </Text>
           </View>
         )}
