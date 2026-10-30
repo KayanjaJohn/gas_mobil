@@ -40,7 +40,7 @@ export default function ProfileScreen() {
         <InfoRow 
           label="Status" 
           value={user?.driverStatus?.toUpperCase()} 
-          valueColor={user?.driverStatus === 'online' ? '#22C55E' : '#F59E0B'}
+          valueColor={user?.driverStatus === 'online' ? '#168447' : '#F36A21'}
         />
       </View>
 
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
   );
 }
 
-function InfoRow({ label, value, valueColor = '#E2E8F0' }: { label: string; value?: string; valueColor?: string }) {
+function InfoRow({ label, value, valueColor = '#0B3D2E' }: { label: string; value?: string; valueColor?: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -63,7 +63,7 @@ function InfoRow({ label, value, valueColor = '#E2E8F0' }: { label: string; valu
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120',
+    backgroundColor: '#0B3D2E',
     padding: 16,
   },
   header: {
@@ -74,28 +74,28 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#F36A21',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   avatarText: {
     fontSize: 32,
-    color: '#fff',
+    color: '#FFF8EE',
     fontWeight: 'bold',
   },
   name: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#E2E8F0',
+    color: '#0B3D2E',
   },
   role: {
     fontSize: 14,
-    color: '#F59E0B',
+    color: '#F36A21',
     marginTop: 4,
   },
   infoCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#FFF8EE',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -105,11 +105,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#D8CDBB',
   },
   infoLabel: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#68786F',
   },
   infoValue: {
     fontSize: 14,
