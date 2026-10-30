@@ -6,30 +6,37 @@ export function useSocket(onNotification?: (data: any) => void) {
     let mounted = true;
     let activeSocket: ReturnType<typeof getSocket> = null;
 
+    const handleNotification = (data: any) => onNotification?.(data);
+    const handleProductCreated = (data: any) =>
+      onNotification?.({ ...data, type: "product_created" });
+    const handleProductUpdated = (data: any) =>
+      onNotification?.({ ...data, type: "product_updated" });
+    const handleProductDeleted = (data: any) =>
+      onNotification?.({ ...data, type: "product_deleted" });
+
     const attach = async () => {
       const connectedSocket = await initializeSocket();
       if (!mounted || !connectedSocket) return;
       activeSocket = connectedSocket;
 
-      const handleNotification = (data: any) => onNotification?.(data);
-      const handleProduct = (type: string) => (data: any) =>
-        onNotification?.({ ...data, type });
-
       activeSocket.on("notification", handleNotification);
       activeSocket.on("order_status_changed", handleNotification);
       activeSocket.on("order_status_update", handleNotification);
-      activeSocket.on("product_created", handleProduct("product_created"));
-      activeSocket.on("product_updated", handleProduct("product_updated"));
-      activeSocket.on("product_deleted", handleProduct("product_deleted"));
+      activeSocket.on("product_created", handleProductCreated);
+      activeSocket.on("product_updated", handleProductUpdated);
+      activeSocket.on("product_deleted", handleProductDeleted);
     };
 
     attach();
     return () => {
       mounted = false;
-      if (activeSocket && onNotification) {
-        // The named listener references are managed by the subscription hook below.
-        // Do not disconnect the shared app-wide socket from a feature hook.
-      }
+      activeSocket?.off("notification", handleNotification);
+      activeSocket?.off("order_status_changed", handleNotification);
+      activeSocket?.off("order_status_update", handleNotification);
+      activeSocket?.off("product_created", handleProductCreated);
+      activeSocket?.off("product_updated", handleProductUpdated);
+      activeSocket?.off("product_deleted", handleProductDeleted);
+      // Feature hooks unsubscribe only; the authenticated session owns disconnect.
     };
   }, [onNotification]);
 
