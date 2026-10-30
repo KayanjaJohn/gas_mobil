@@ -22,7 +22,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/utils/constants';
 
 const PAYMENT_METHODS = [
-  { id: 'cash', label: 'Cash on Delivery', icon: 'cash', color: '#F36A21' },
+  { id: 'cash', label: 'Cash on Delivery', icon: 'cash-multiple', color: '#F36A21' },
 ];
 
 const CYLINDER_SIZES = [
@@ -167,8 +167,15 @@ export default function OrderScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <Text style={styles.headerTitle}>Place Order</Text>
-        <Text style={styles.headerSub}>Order gas for delivery to your location</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}>
+            <Icon name="arrow-left" size={22} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Place Order</Text>
+            <Text style={styles.headerSub}>Order gas for delivery to your location</Text>
+          </View>
+        </View>
 
         {/* ── LOCATION SECTION ── */}
         <View style={styles.section}>
@@ -247,6 +254,7 @@ export default function OrderScreen() {
                 onPress={() => setCylinderSize(size.id)}
                 activeOpacity={0.8}
               >
+                <Icon name="propane-tank" size={32} color={cylinderSize === size.id ? COLORS.accent : COLORS.green} style={styles.cylinderIcon} />
                 <Text style={[styles.sizeLabel, cylinderSize === size.id && styles.sizeLabelActive]}>
                   {size.label}
                 </Text>
@@ -263,11 +271,11 @@ export default function OrderScreen() {
           <Text style={styles.sectionTitle}><Icon name="counter" size={19} color={COLORS.accent} />  Quantity</Text>
           <View style={styles.qtyRow}>
             <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity((q) => Math.max(1, q - 1))}>
-              <Icon name="minus" size={20} color="#fff" />
+              <Icon name="minus" size={20} color={COLORS.green} />
             </TouchableOpacity>
             <Text style={styles.qtyText}>{quantity}</Text>
             <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity((q) => Math.min(5, q + 1))}>
-              <Icon name="plus" size={20} color="#fff" />
+              <Icon name="plus" size={20} color={COLORS.green} />
             </TouchableOpacity>
           </View>
         </View>
@@ -340,6 +348,9 @@ export default function OrderScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: 16, paddingBottom: 40 },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 },
+  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: COLORS.card, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.border },
+  headerCopy: { flex: 1 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#FFF8EE', marginBottom: 6 },
   headerSub: { fontSize: 14, color: COLORS.muted, marginBottom: 20 },
 
@@ -384,7 +395,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', borderWidth: 2, borderColor: COLORS.border,
   },
   sizeCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(243,106,33,0.10)' },
-  sizeLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  cylinderIcon: { marginBottom: 5 },
+  sizeLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
   sizeLabelActive: { color: COLORS.accent },
   sizePrice: { fontSize: 12, color: COLORS.muted, marginTop: 4 },
   sizePriceActive: { color: COLORS.accent, fontWeight: '700' },
@@ -396,7 +408,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: COLORS.border,
   },
-  qtyText: { fontSize: 20, fontWeight: '700', color: '#fff', minWidth: 30, textAlign: 'center' },
+  qtyText: { fontSize: 20, fontWeight: '700', color: '#FFF8EE', minWidth: 30, textAlign: 'center' },
 
   // Payment
   payCard: {
