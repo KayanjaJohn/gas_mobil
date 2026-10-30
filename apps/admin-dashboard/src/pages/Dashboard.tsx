@@ -14,6 +14,9 @@ interface Stats {
   totalProducts: number;
   totalStations: number;
   todayRevenue: number;
+  totalOrderValue: number;
+  outstandingCash: number;
+  todayOrders: number;
   recentOrders: any[];
 }
 
@@ -22,7 +25,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     totalOrders: 0, pendingOrders: 0, totalDrivers: 0,
-    totalProducts: 0, totalStations: 0, todayRevenue: 0, recentOrders: [],
+    totalProducts: 0, totalStations: 0, todayRevenue: 0, totalOrderValue: 0, outstandingCash: 0, todayOrders: 0, recentOrders: [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -48,11 +51,14 @@ export default function Dashboard() {
 
   const cards = [
     { title: "Total Orders", value: stats.totalOrders, icon: <ShoppingCart />, color: "#0B3D2E" },
+    { title: "Today’s Orders", value: stats.todayOrders, icon: <TrendingUp />, color: "#F36A21" },
     { title: "Pending Orders", value: stats.pendingOrders, icon: <TrendingUp />, color: "#D97706" },
     { title: "Active Drivers", value: stats.totalDrivers, icon: <LocalShipping />, color: "#21865D" },
     { title: "Products", value: stats.totalProducts, icon: <Store />, color: "#F36A21" },
     { title: "Stations", value: stats.totalStations, icon: <Store />, color: "#0B3D2E" },
-    { title: "Today's Revenue", value: `UGX ${stats.todayRevenue.toLocaleString()}`, icon: <Assessment />, color: "#21865D" },
+    { title: "Total Order Value", value: `UGX ${Number(stats.totalOrderValue || 0).toLocaleString()}`, icon: <Assessment />, color: "#21865D" },
+    { title: "COD Outstanding", value: `UGX ${Number(stats.outstandingCash || 0).toLocaleString()}`, icon: <Assessment />, color: "#D97706" },
+    { title: "Collected Today", value: `UGX ${Number(stats.todayRevenue || 0).toLocaleString()}`, icon: <Assessment />, color: "#21865D" },
   ];
 
   return (
