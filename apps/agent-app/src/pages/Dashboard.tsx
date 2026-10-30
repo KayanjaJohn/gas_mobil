@@ -31,10 +31,10 @@ export default function Dashboard() {
   };
 
   const cards = [
-    { title: "Station Orders", value: stats.totalOrders, icon: <ShoppingCart />, color: "#7380ec" },
-    { title: "Pending", value: stats.pendingOrders, icon: <TrendingUp />, color: "#ffbb55" },
-    { title: "Drivers", value: stats.totalDrivers, icon: <LocalShipping />, color: "#41f1b6" },
-    { title: "Products", value: stats.totalProducts, icon: <Inventory />, color: "#ff7782" },
+    { title: "Station Orders", value: stats.totalOrders, icon: <ShoppingCart />, color: "#0B3D2E" },
+    { title: "Pending", value: stats.pendingOrders, icon: <TrendingUp />, color: "#D97706" },
+    { title: "Drivers", value: stats.totalDrivers, icon: <LocalShipping />, color: "#21865D" },
+    { title: "Products", value: stats.totalProducts, icon: <Inventory />, color: "#F36A21" },
   ];
 
   return (
