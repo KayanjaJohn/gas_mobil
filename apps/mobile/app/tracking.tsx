@@ -6,7 +6,6 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import TopBar from "../src/components/TopBar";
 import BottomNav from "../src/components/BottomNav";
-import { LiveTrackingMap } from "../src/components/LiveTrackingMap";
 import { COLORS } from "../src/utils/constants";
 import { apiRequest } from "../src/services/api";
 import { useOrderTracking } from "../src/hooks/useOrderTracking";
@@ -149,14 +148,15 @@ export default function TrackingScreen() {
         {/* ── LIVE MAP (replaces mock) ── */}
         {activeOrder && hasDeliveryCoords ? (
           <View style={styles.mapContainer}>
-            <LiveTrackingMap
-              orderId={order.id}
-              deliveryLatitude={latitude}
-              deliveryLongitude={longitude}
-              driverLocation={driverLocation}
-              orderStatus={orderStatus}
-              isConnected={isConnected}
-            />
+            <View style={styles.mapFallback}>
+              <Icon name="map-outline" size={30} color={COLORS.accent} />
+              <Text style={styles.mapFallbackText}>Live map temporarily unavailable</Text>
+              <Text style={styles.mapFallbackText}>
+                {driverLocation
+                  ? `Driver location: ${driverLocation.latitude.toFixed(5)}, ${driverLocation.longitude.toFixed(5)}`
+                  : "Waiting for the driver's first GPS update..."}
+              </Text>
+            </View>
             <View style={styles.connectionBadge}>
               <Text style={styles.connectionText}>
                 {isConnected ? <><Icon name="wifi" size={14} color={COLORS.success} /> Live</> : <><Icon name="wifi-off" size={14} color={COLORS.danger} /> Offline</>}
