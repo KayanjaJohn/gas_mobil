@@ -338,7 +338,7 @@ export default function Stations() {
                     {station.agents && station.agents.length > 0 ? (
                       <Box>
                         {station.agents.map((agent) => (
-                          <Box key={agent.id} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                          <Box key={agent.id} sx={{ mb: 1, p: 1, bgcolor: "#FFF8EE", color: "#0B3D2E", border: "1px solid #D8CDBB", borderRadius: 1, "& .MuiTypography-root": { color: "#0B3D2E" }, "& .MuiIconButton-root": { color: "#0B3D2E" }, "& .MuiButton-root": { color: "#0B3D2E" } }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="body2" fontWeight="medium">
                                 {agent.name}
