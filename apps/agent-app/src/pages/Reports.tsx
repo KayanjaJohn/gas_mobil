@@ -139,7 +139,7 @@ export default function Reports() {
       ['COD Outstanding', String(outstandingCash)],
       ['Average Paid Order', String(Math.round(averageOrderValue))],
       [],
-      ['Order ID', 'Customer', 'Phone', 'Date', 'Status', 'Payment', 'Driver', 'Amount'],
+      ['Order ID', 'Customer', 'Phone', 'Date', 'Status', 'Payment Method', 'Payment Status', 'Driver', 'Amount'],
       ...(reportOrders.length > 0
         ? reportOrders.map((order) => [
             order.id,
@@ -147,11 +147,12 @@ export default function Reports() {
             order.user?.phone || '',
             new Date(order.createdAt).toLocaleString(),
             order.status,
-            order.paymentStatus || 'N/A',
+            'Cash on Delivery',
+            order.paymentStatus || 'pending',
             getDriverName(order),
             String(order.totalAmount),
           ])
-        : [['No orders found for this period', '', '', '', '', '', '', '']]),
+        : [['No orders found for this period', '', '', '', '', '', '', '', '']]),
     ];
 
     const csv = rows
@@ -173,7 +174,7 @@ export default function Reports() {
         <Box>
           <Typography variant="h4">Station Reports</Typography>
           <Typography variant="body2" color="textSecondary">
-            Generate daily, weekly, and yearly reports for {user?.station?.name || 'your station'}.
+            Generate daily, weekly, monthly, and yearly reports for {user?.station?.name || 'your station'}.
           </Typography>
         </Box>
         <Button variant="outlined" startIcon={<Download />} onClick={handleDownload}>
@@ -262,7 +263,7 @@ export default function Reports() {
                   <TableCell>Customer</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Payment</TableCell>
+                  <TableCell>Payment / Collection</TableCell>
                   <TableCell>Driver</TableCell>
                   <TableCell align="right">Amount</TableCell>
                 </TableRow>
@@ -279,7 +280,10 @@ export default function Reports() {
                     <TableCell>
                       <Chip label={order.status.replace('_', ' ')} color={statusColors[order.status] || 'default'} size="small" />
                     </TableCell>
-                    <TableCell>{order.paymentStatus || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600}>Cash on Delivery</Typography>
+                      <Typography variant="caption" color="textSecondary">{order.paymentStatus || 'pending'}</Typography>
+                    </TableCell>
                     <TableCell>{getDriverName(order)}</TableCell>
                     <TableCell align="right">UGX {Number(order.totalAmount).toLocaleString()}</TableCell>
                   </TableRow>
