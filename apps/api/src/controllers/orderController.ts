@@ -50,11 +50,13 @@ export const createOrder = async (req: Request, res: Response) => {
     const { user } = req as any;
 
     if (user.role !== "customer") {
+      await queryRunner.rollbackTransaction();
       return res.status(403).json({ success: false, error: "Only customers can place orders" });
     }
 
     // GasMobil launch policy: cash on delivery only.
     if (paymentMethod && paymentMethod !== "cash") {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({
         success: false,
         error: "Cash on delivery is the only supported payment method.",
@@ -85,6 +87,7 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     if (lat < -1.5 || lat > 4.5 || lng < 29.5 || lng > 35.0) {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({
         success: false,
         error: "Invalid location coordinates. Location must be within Uganda.",
@@ -93,6 +96,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const stations = await stationRepository.find({ where: { isActive: true } });
     if (stations.length === 0) {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({ success: false, error: "No active stations available" });
     }
 
@@ -174,7 +178,9 @@ export const createOrder = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, data: order });
   } catch (error: any) {
-    await queryRunner.rollbackTransaction();
+    if (queryRunner.isTransactionActive) {
+      await queryRunner.rollbackTransaction();
+    }
     console.error("[createOrder]", error);
     res.status(500).json({ success: false, error: error.message });
   } finally {

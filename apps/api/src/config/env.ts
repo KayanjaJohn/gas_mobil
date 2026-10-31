@@ -18,8 +18,6 @@ const envSchema = z.object({
   DRIVER_APP_URL: z.string().url(),
   
   // Third-Party Secrets
-  STRIPE_SECRET_KEY: z.string().startsWith('sk_live_'),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_'),
   
   MTN_MOMO_API_USER: z.string(),
   MTN_MOMO_API_KEY: z.string(),
