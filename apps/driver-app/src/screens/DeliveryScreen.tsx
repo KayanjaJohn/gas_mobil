@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, ActivityIndicator, Linking,
+  View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverLocation } from '../hooks/useDriverLocation';
@@ -123,7 +123,7 @@ export default function DeliveryScreen() {
               : 'Your GPS position will appear when tracking starts'}
           </Text>
         </View>
-      </View>pView>
+      </View>
 
       <View style={styles.liveBadge}>
         <View style={[styles.liveDot, isMoving && hasDriverLocation ? styles.liveDotOn : styles.liveDotOff]} />
