@@ -36,6 +36,17 @@ function Main() {
           },
           divider: mode === "light" ? "#D8CDBB" : "#315C4D",
         },
+        components: {
+          MuiTableCell: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE", borderColor: mode === "light" ? "#D8CDBB" : "#315C4D" }, head: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE", fontWeight: 700 } } },
+          MuiInputBase: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
+          MuiInputLabel: { styleOverrides: { root: { color: mode === "light" ? "#68786F" : "#D8E7DE", "&.Mui-focused": { color: "#F36A21" } } } },
+          MuiFormLabel: { styleOverrides: { root: { color: mode === "light" ? "#68786F" : "#D8E7DE" } } },
+          MuiMenuItem: { styleOverrides: { root: { color: "#0B3D2E" } } },
+          MuiDialogTitle: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
+          MuiDialogContent: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
+          MuiButton: { styleOverrides: { root: { textTransform: "none", fontWeight: 600 } } },
+          MuiChip: { styleOverrides: { label: { fontWeight: 600 } } },
+        },
       }),
     [mode],
   );
