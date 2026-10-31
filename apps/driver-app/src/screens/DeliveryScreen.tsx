@@ -1,23 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, ActivityIndicator, Linking,
 } from 'react-native';
-import MapView, { Marker, Polyline, Region } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverLocation } from '../hooks/useDriverLocation';
 import api from '../services/api';
 import { Order } from '../types';
 
-const { width, height } = Dimensions.get('window');
-const DEFAULT_REGION: Region = {
-  latitude: 0.3476, longitude: 32.5825, latitudeDelta: 0.08, longitudeDelta: 0.08,
-};
 
 export default function DeliveryScreen() {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const mapRef = useRef<MapView>(null);
   const { startTracking, stopTracking, currentLocation, permissionGranted } =
     useDriverLocation(activeOrder?.id || null);
 
@@ -59,15 +53,7 @@ export default function DeliveryScreen() {
     return () => stopTracking();
   }, [activeOrder?.id, activeOrder?.status, startTracking, stopTracking]);
 
-  useEffect(() => {
-    if (!destination || !currentLocation || !mapRef.current) return;
-    mapRef.current.animateToRegion({
-      latitude: currentLocation.latitude,
-      longitude: currentLocation.longitude,
-      latitudeDelta: 0.025,
-      longitudeDelta: 0.025,
-    }, 700);
-  }, [currentLocation?.latitude, currentLocation?.longitude, destination]);
+
 
   const updateStatus = async (status: string) => {
     if (!activeOrder || updating) return;
@@ -122,36 +108,22 @@ export default function DeliveryScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        initialRegion={destination ? { ...destination, latitudeDelta: 0.05, longitudeDelta: 0.05 } : DEFAULT_REGION}
-        showsUserLocation
-        showsMyLocationButton
-        loadingEnabled
-      >
-        {destination && (
-          <Marker coordinate={destination} title="Customer delivery address" description={activeOrder.deliveryAddress} pinColor="#F36A21" />
-        )}
-        {currentLocation && (
-          <Marker
-            coordinate={{ latitude: currentLocation.latitude, longitude: currentLocation.longitude }}
-            title="Your current location"
-            description="Live driver GPS position"
-            pinColor="#0B3D2E"
-          />
-        )}
-        {destination && currentLocation && (
-          <Polyline
-            coordinates={[
-              { latitude: currentLocation.latitude, longitude: currentLocation.longitude },
-              destination,
-            ]}
-            strokeColor="#F36A21"
-            strokeWidth={5}
-          />
-        )}
-      </MapView>
+      <View style={styles.map}>
+        <View style={styles.mapPlaceholder}>
+          <Icon name="map-marker-radius-outline" size={42} color="#F36A21" />
+          <Text style={styles.mapPlaceholderTitle}>Delivery location</Text>
+          <Text style={styles.mapPlaceholderText}>
+            {destination
+              ? `Destination: ${destination.latitude.toFixed(5)}, ${destination.longitude.toFixed(5)}`
+              : 'Waiting for a valid customer delivery pin'}
+          </Text>
+          <Text style={styles.mapPlaceholderText}>
+            {currentLocation
+              ? `Your GPS: ${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`
+              : 'Your GPS position will appear when tracking starts'}
+          </Text>
+        </View>
+      </View>pView>
 
       <View style={styles.liveBadge}>
         <View style={[styles.liveDot, isMoving && hasDriverLocation ? styles.liveDotOn : styles.liveDotOff]} />
@@ -214,7 +186,10 @@ export default function DeliveryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B3D2E' },
   center: { flex: 1, backgroundColor: '#0B3D2E', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  map: { width, height: height * 0.58 },
+  map: { height: '58%', minHeight: 260, margin: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#102D25' },
+  mapPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8 },
+  mapPlaceholderTitle: { color: '#FFF8EE', fontSize: 17, fontWeight: '800' },
+  mapPlaceholderText: { color: '#D6E4DC', fontSize: 12, textAlign: 'center' },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 28 },
   emptyTitle: { fontSize: 21, fontWeight: '800', color: '#FFF8EE' },
   emptyText: { fontSize: 14, color: '#D6E4DC', marginTop: 8, textAlign: 'center' },
