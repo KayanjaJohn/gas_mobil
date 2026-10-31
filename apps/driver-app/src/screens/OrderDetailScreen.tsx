@@ -1,16 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, Dimensions, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import MapView, { Marker, Polyline, Region } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import api from '../services/api';
 import { Order } from '../types';
 import { useDriverLocation } from '../hooks/useDriverLocation';
 
-const { width } = Dimensions.get('window');
-const DEFAULT_REGION: Region = { latitude: 0.3476, longitude: 32.5825, latitudeDelta: 0.08, longitudeDelta: 0.08 };
 
 export default function OrderDetailScreen() {
   const route = useRoute<any>();
@@ -18,7 +15,6 @@ export default function OrderDetailScreen() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const mapRef = useRef<MapView>(null);
   const { startTracking, stopTracking, currentLocation } = useDriverLocation(order?.id || null);
 
   const destination = useMemo(() => {
@@ -56,13 +52,7 @@ export default function OrderDetailScreen() {
     return () => stopTracking();
   }, [order?.id, order?.status, startTracking, stopTracking]);
 
-  useEffect(() => {
-    if (!destination || !currentLocation || !mapRef.current) return;
-    mapRef.current.fitToCoordinates([
-      { latitude: currentLocation.latitude, longitude: currentLocation.longitude },
-      destination,
-    ], { edgePadding: { top: 55, right: 45, bottom: 45, left: 45 }, animated: true });
-  }, [currentLocation?.latitude, currentLocation?.longitude, destination]);
+
 
   const updateDeliveryStatus = async (status: string) => {
     if (!order || updating) return;
@@ -102,38 +92,18 @@ export default function OrderDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.mapCard}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          initialRegion={destination ? { ...destination, latitudeDelta: 0.05, longitudeDelta: 0.05 } : DEFAULT_REGION}
-          showsUserLocation
-          showsMyLocationButton
-          loadingEnabled
-        >
-          {destination && <Marker coordinate={destination} title="Customer delivery address" description={order.deliveryAddress} pinColor="#F36A21" />}
-          {currentLocation && (
-            <Marker
-              coordinate={{ latitude: currentLocation.latitude, longitude: currentLocation.longitude }}
-              title="You are here"
-              description="Your live driver GPS position"
-              pinColor="#0B3D2E"
-            />
-          )}
-          {destination && currentLocation && (
-            <Polyline
-              coordinates={[
-                { latitude: currentLocation.latitude, longitude: currentLocation.longitude },
-                destination,
-              ]}
-              strokeColor="#F36A21"
-              strokeWidth={5}
-            />
-          )}
-        </MapView>
-        <View style={styles.mapStatus}>
-          <View style={[styles.dot, isMoving && currentLocation ? styles.dotLive : styles.dotWaiting]} />
-          <Text style={styles.mapStatusText}>
-            {isMoving ? (currentLocation ? 'LIVE · Your location is being shared' : 'Starting GPS…') : 'Your location appears when you start delivery'}
+        <View style={styles.mapPlaceholder}>
+          <Icon name="map-marker-radius-outline" size={42} color="#F36A21" />
+          <Text style={styles.mapPlaceholderTitle}>Delivery location</Text>
+          <Text style={styles.mapPlaceholderText}>
+            {destination
+              ? `Customer destination: ${destination.latitude.toFixed(5)}, ${destination.longitude.toFixed(5)}`
+              : 'No valid customer delivery pin is available'}
+          </Text>
+          <Text style={styles.mapPlaceholderText}>
+            {currentLocation
+              ? `Your GPS: ${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`
+              : 'Your live GPS position will appear when delivery starts'}
           </Text>
         </View>
       </View>
@@ -213,8 +183,10 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 24 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B3D2E' },
   loadingText: { color: '#0B3D2E', marginTop: 10 },
-  mapCard: { height: 300, margin: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#0B3D2E' },
-  map: { width: width - 24, height: 300 },
+  mapCard: { height: 300, margin: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#102D25' },
+  mapPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8, backgroundColor: '#102D25' },
+  mapPlaceholderTitle: { color: '#FFF8EE', fontSize: 17, fontWeight: '800' },
+  mapPlaceholderText: { color: '#D6E4DC', fontSize: 12, textAlign: 'center' },
   mapStatus: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, backgroundColor: '#0B3D2E' },
   dot: { width: 9, height: 9, borderRadius: 5 },
   dotLive: { backgroundColor: '#168447' },
