@@ -24,7 +24,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ github.repository_owner }}/gas-mobil-api
+          images: ghcr.io/kayanjajohn/gas-mobil-api
           tags: |
             type=sha
             type=raw,value=latest
@@ -50,7 +50,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ github.repository_owner }}/gas-mobil-website
+          images: ghcr.io/kayanjajohn/gas-mobil-website
           tags: |
             type=sha
             type=raw,value=latest
