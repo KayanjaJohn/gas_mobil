@@ -23,8 +23,12 @@ RUN npm install --omit=dev --legacy-peer-deps
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs &&     adduser -S nodejs -u 1001
+# Create non-root user and writable upload directories
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodejs -u 1001 \
+    && mkdir -p /app/uploads/products \
+    && chown -R nodejs:nodejs /app/uploads
+
 USER nodejs
 
 EXPOSE 5000
