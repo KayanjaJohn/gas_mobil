@@ -214,23 +214,35 @@ export default function Reports() {
             </Box>
 
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Orders</Typography>
-                <Typography variant="h5" fontWeight="bold">{reportOrders.length}</Typography>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Orders</Typography>
+                  <Typography variant="h5" fontWeight="bold">{reportOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Completed Deliveries</Typography>
+                  <Typography variant="h5" fontWeight="bold">{completedOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Completed Delivery Value</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0).toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Paid Orders</Typography>
+                  <Typography variant="h5" fontWeight="bold">{paidOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Paid Revenue</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {totalRevenue.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">COD Outstanding</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {outstandingCash.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Average Paid Order</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {Math.round(averageOrderValue).toLocaleString()}</Typography>
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Completed</Typography>
-                <Typography variant="h5" fontWeight="bold">{completedOrders.length}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Paid Revenue</Typography>
-                <Typography variant="h5" fontWeight="bold">UGX {totalRevenue.toLocaleString()}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Avg. Paid Order</Typography>
-                <Typography variant="h5" fontWeight="bold">UGX {Math.round(averageOrderValue).toLocaleString()}</Typography>
-              </Grid>
-            </Grid>
 
             <Box sx={{ display: 'flex', gap: 1, mt: 3, flexWrap: 'wrap' }}>
               {Object.entries(statusSummary).map(([status, count]) => (
