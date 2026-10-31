@@ -284,16 +284,16 @@ export default function Reports() {
                   <Typography variant="h5" fontWeight="bold">{reportOrders.length}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Typography variant="body2" color="textSecondary">Completed</Typography>
+                  <Typography variant="body2" color="textSecondary">Completed Deliveries</Typography>
                   <Typography variant="h5" fontWeight="bold">{completedOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Completed Delivery Value</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0).toLocaleString()}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Typography variant="body2" color="textSecondary">Paid Orders</Typography>
                   <Typography variant="h5" fontWeight="bold">{paidOrders.length}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Typography variant="body2" color="textSecondary">Total Order Value</Typography>
-                  <Typography variant="h5" fontWeight="bold">UGX {totalOrderValue.toLocaleString()}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Typography variant="body2" color="textSecondary">Paid Revenue</Typography>
@@ -304,7 +304,7 @@ export default function Reports() {
                   <Typography variant="h5" fontWeight="bold">UGX {outstandingCash.toLocaleString()}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Typography variant="body2" color="textSecondary">Avg. Paid Order</Typography>
+                  <Typography variant="body2" color="textSecondary">Average Paid Order</Typography>
                   <Typography variant="h5" fontWeight="bold">UGX {Math.round(averageOrderValue).toLocaleString()}</Typography>
                 </Grid>
               </Grid>
