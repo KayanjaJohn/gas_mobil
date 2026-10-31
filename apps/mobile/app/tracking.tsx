@@ -148,7 +148,7 @@ export default function TrackingScreen() {
         {/* ── LIVE MAP (replaces mock) ── */}
         {activeOrder && hasDeliveryCoords ? (
           <View style={styles.mapContainer}>
-            <View style={styles.mapFallback}>
+            <View style={[styles.mapFallback, { flex: 1 }]}>
               <Icon name="map-outline" size={30} color={COLORS.accent} />
               <Text style={styles.mapFallbackText}>Live map temporarily unavailable</Text>
               <Text style={styles.mapFallbackText}>
