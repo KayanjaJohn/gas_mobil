@@ -1,62 +1,35 @@
-import { useEffect, useRef, useState } from "react";
-import { io, Socket } from "socket.io-client";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import { initializeSocket, getSocket } from "../services/socketService";
 import { useNotificationStore } from "../store/useNotificationStore";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
-
-/**
- * HIGH FIX: Returns isConnected as a stable boolean instead of a function.
- * This prevents infinite re-renders in components that use it in useEffect deps.
- */
 export function useSocketNotifications() {
-  const socketRef = useRef<Socket | null>(null);
-  const addNotification = useNotificationStore((s) => s.addNotification);
-  const fetchNotifications = useNotificationStore((s) => s.fetchNotifications);
-  const [isConnected, setIsConnected] = useState(false);
+  const addNotification = useNotificationStore((state) => state.addNotification);
+  const fetchNotifications = useNotificationStore((state) => state.fetchNotifications);
+  const [isConnected, setIsConnected] = useState(!!getSocket()?.connected);
 
   useEffect(() => {
-    let socket: Socket;
+    let mounted = true;
+    let activeSocket: ReturnType<typeof getSocket> = null;
 
-    const connect = async () => {
-      const token = await AsyncStorage.getItem("access_token");
-      if (!token) return;
+    const attach = async () => {
+      const connectedSocket = await initializeSocket();
+      if (!mounted || !connectedSocket) return;
+      activeSocket = connectedSocket;
 
-      socket = io(API_URL, {
-        auth: { token },
-        transports: ["websocket"],
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 2000,
-      });
-
-      socketRef.current = socket;
-
-      socket.on("connect", () => {
-        console.log("[Socket] Connected");
+      const onConnect = () => {
         setIsConnected(true);
         fetchNotifications();
-      });
-
-      socket.on("disconnect", (reason) => {
-        console.log("[Socket] Disconnected:", reason);
-        setIsConnected(false);
-      });
-
-      socket.on("connect_error", (err) => {
-        console.log("[Socket] Connection error:", err.message);
-        setIsConnected(false);
-      });
-
-      const handleNotificationEvent = (payload: any) => {
-        console.log("[Socket] Notification event received:", payload.type || payload.title);
-        if (payload.id && typeof payload.id === "string" && payload.id.length === 36) {
+      };
+      const onDisconnect = () => setIsConnected(false);
+      const onConnectError = () => setIsConnected(false);
+      const onNotification = (payload: any) => {
+        if (payload?.id) {
           addNotification({
             id: payload.id,
             type: payload.type || "system_announcement",
             title: payload.title || "Notification",
             message: payload.message || "",
-            isRead: false,
+            isRead: !!payload.isRead,
             createdAt: payload.createdAt || new Date().toISOString(),
             orderId: payload.orderId,
             data: payload.data,
@@ -66,23 +39,37 @@ export function useSocketNotifications() {
         }
       };
 
-      socket.on("notification", handleNotificationEvent);
-      socket.on("admin_notification", handleNotificationEvent);
-      socket.on("system_broadcast", handleNotificationEvent);
-      socket.on("order_status_changed", handleNotificationEvent);
-      socket.on("payment_completed", handleNotificationEvent);
+      activeSocket.on("connect", onConnect);
+      activeSocket.on("disconnect", onDisconnect);
+      activeSocket.on("connect_error", onConnectError);
+      activeSocket.on("notification", onNotification);
+      activeSocket.on("admin_notification", onNotification);
+      activeSocket.on("system_broadcast", onNotification);
+      activeSocket.on("order_status_changed", onNotification);
+      activeSocket.on("payment_completed", onNotification);
+      setIsConnected(activeSocket.connected);
+      if (activeSocket.connected) fetchNotifications();
+
+      // Store exact handlers for safe cleanup.
+      cleanup = () => {
+        activeSocket?.off("connect", onConnect);
+        activeSocket?.off("disconnect", onDisconnect);
+        activeSocket?.off("connect_error", onConnectError);
+        activeSocket?.off("notification", onNotification);
+        activeSocket?.off("admin_notification", onNotification);
+        activeSocket?.off("system_broadcast", onNotification);
+        activeSocket?.off("order_status_changed", onNotification);
+        activeSocket?.off("payment_completed", onNotification);
+      };
     };
 
-    connect();
-
+    let cleanup = () => {};
+    attach();
     return () => {
-      if (socket) {
-        socket.disconnect();
-        socketRef.current = null;
-        setIsConnected(false);
-      }
+      mounted = false;
+      cleanup();
     };
   }, [addNotification, fetchNotifications]);
 
-  return { socket: socketRef.current, isConnected };
+  return { socket: getSocket(), isConnected };
 }

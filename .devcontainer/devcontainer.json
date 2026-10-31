@@ -1,12 +1,32 @@
 {
   "name": "GasMobil Cloud Development",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
-  "forwardPorts": [3000, 3001, 5000, 8081, 19000, 19001, 19002],
+  "forwardPorts": [
+    3000,
+    3001,
+    3200,
+    8081,
+    19000,
+    19001,
+    19002
+  ],
   "portsAttributes": {
-    "3000": { "label": "GasMobil Admin Dashboard", "onAutoForward": "openBrowser" },
-    "3001": { "label": "GasMobil Agent Dashboard", "onAutoForward": "openBrowser" },
-    "5000": { "label": "GasMobil API", "onAutoForward": "notify" },
-    "8081": { "label": "Expo Metro", "onAutoForward": "notify" }
+    "3000": {
+      "label": "GasMobil Admin Dashboard",
+      "onAutoForward": "openBrowser"
+    },
+    "3001": {
+      "label": "GasMobil Agent Dashboard",
+      "onAutoForward": "openBrowser"
+    },
+    "3200": {
+      "label": "GasMobil API",
+      "onAutoForward": "notify"
+    },
+    "8081": {
+      "label": "Expo Metro",
+      "onAutoForward": "notify"
+    }
   },
   "customizations": {
     "vscode": {
@@ -18,5 +38,8 @@
       ]
     }
   },
-  "remoteUser": "node"
+  "remoteUser": "node",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  }
 }

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { apiRequest } from '../services/api';
 import { User } from '../types';
+import { initializeSocket, disconnectSocket } from '../services/socketService';
 
 interface LoginCredentials {
   emailOrPhone: string;
@@ -31,7 +32,7 @@ interface AuthContextType {
   updateUser: (data: Partial<User>) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
+export const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
@@ -51,8 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user;
 
+  // Own the shared socket lifecycle at the authenticated-session boundary.
+  useEffect(() => {
+    if (isLoading) return;
+    if (user) {
+      initializeSocket();
+    } else {
+      disconnectSocket();
+    }
+  }, [user, isLoading]);
+
   const clearAuth = useCallback(async () => {
     if (__DEV__) console.log('[Auth] Clearing auth state');
+    disconnectSocket();
     await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
     setUser(null);
   }, []);
@@ -73,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          const res = await apiRequest<{ success: boolean; data: User }>('get', '/auth/me');
+          const res = await apiRequest<User>('get', '/auth/me');
           if (res.success && res.data) {
             if (__DEV__) console.log('[Auth] Token valid | user:', res.data.email);
             setUser(res.data);
@@ -116,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async ({ emailOrPhone, password }: LoginCredentials) => {
     if (__DEV__) console.log('[Auth] Login attempt:', emailOrPhone);
-    const res = await apiRequest<{ success: boolean; data: { token: string; refreshToken?: string; user: User } }>(
+    const res = await apiRequest<{ token: string; accessToken?: string; refreshToken?: string; user: User }>(
       'post', '/auth/login', { emailOrPhone, password }
     );
     if (!res.success || !res.data) throw new Error('Login failed');
@@ -130,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async ({ name, email, phone, password, address, city, latitude, longitude }: RegisterCredentials) => {
     if (__DEV__) console.log('[Auth] Register attempt:', email);
-    const res = await apiRequest<{ success: boolean; data: { token: string; refreshToken?: string; user: User } }>(
+    const res = await apiRequest<{ token: string; accessToken?: string; refreshToken?: string; user: User }>(
       'post', '/auth/register', {
         name, email, phone, password, role: 'customer',
         address, city, latitude, longitude,
@@ -146,9 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateUser = useCallback(async (data: Partial<User>) => {
-    const res = await apiRequest<{ success: boolean; data: User; error?: string }>(
-      "put", "/auth/profile", data
-    );
+    const res = await apiRequest<User>("put", "/auth/profile", data);
     if (!res.success || !res.data) {
       throw new Error(res.error || "Failed to update profile");
     }

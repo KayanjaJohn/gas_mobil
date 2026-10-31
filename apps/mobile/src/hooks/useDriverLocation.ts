@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import * as Location from "expo-location";
-import { getSocket } from "../services/socketService";
+import { getSocket, initializeSocket } from "../services/socketService";
 
 /**
  * Hook for drivers to broadcast live location via socket.
@@ -23,6 +23,8 @@ export const useDriverLocation = (orderId: string | null) => {
     if (trackingRef.current || !orderId) return;
 
     try {
+      // Ensure the authenticated shared connection exists before location updates begin.
+      await initializeSocket();
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         console.warn("[DriverLocation] Permission denied");

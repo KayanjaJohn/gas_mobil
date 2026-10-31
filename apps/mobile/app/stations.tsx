@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useEffect, useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
@@ -35,7 +36,7 @@ export default function StationsScreen() {
   const fetchStations = async () => {
     setLoading(true);
     try {
-      const res = await apiRequest<{ success: boolean; data: Station[] }>("get", "/stations");
+      const res = await apiRequest<Station[]>("get", "/stations");
       if (res.success && res.data) {
         setStations(res.data);
       }
@@ -62,7 +63,7 @@ export default function StationsScreen() {
         <TopBar title="Partner Stations" showBack onBack={() => router.push("/(tabs)")} />
 
         <View style={styles.netsum}>
-          <Text style={styles.netsumLabel}>🔥 NETWORK SUMMARY</Text>
+          <Text style={styles.netsumLabel}>NETWORK SUMMARY</Text>
           <View style={styles.netsumNums}>
             <View><Text style={styles.netsumBig}>{activeCount}</Text><Text style={styles.netsumSmall}>Active Stations</Text></View>
             <View><Text style={styles.netsumBig}>{stations.length}</Text><Text style={styles.netsumSmall}>Total Stations</Text></View>
@@ -70,7 +71,7 @@ export default function StationsScreen() {
         </View>
 
         <View style={styles.searchWrap}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Icon name="magnify" size={21} color={COLORS.muted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search station or city…"
@@ -109,7 +110,7 @@ export default function StationsScreen() {
                     <Text style={styles.stationSub}>{station.city || station.address}</Text>
                     <Text style={styles.stationSold}>{station.region || "Uganda"}</Text>
                   </View>
-                  <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7}><Text>📍</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7}><Icon name="map-marker-outline" size={20} color={COLORS.accent} /></TouchableOpacity>
                 </View>
               ))}
               {filtered.length === 0 && (

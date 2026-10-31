@@ -11,6 +11,7 @@ const userRepo = AppDataSource.getRepository(User);
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pending: ['picked_up'],
+  driver_assigned: ['picked_up'],
   picked_up: ['in_transit'],
   in_transit: ['nearby', 'delivered'],
   nearby: ['delivered'],
@@ -109,10 +110,11 @@ export async function updateDeliveryStatusUnified(input: UpdateDeliveryStatusInp
     }
 
     if (input.status === 'delivered') {
-      (order as any).status = 'completed';
-      if (order.paymentMethod === 'cash') {
-        (order as any).paymentStatus = 'paid';
-      }
+  (order as any).status = 'completed';
+
+  // Do not mark cash as paid automatically.
+  // Payment must be confirmed separately.
+
 
       // Free up driver
       const driver = await queryRunner.manager.findOne(User, { where: { id: input.driverId } });

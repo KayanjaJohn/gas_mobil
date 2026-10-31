@@ -1,39 +1,20 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-const LOCAL_HOST_IP = process.env.EXPO_PUBLIC_API_URL;  // Updated to your actual IP
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || "").replace(/\/+$/, "");
 let authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
-	authToken = token;
+        authToken = token;
 }
 
-const resolveApiUrls = (): string[] => {
-	const manifest = (Constants as any).manifest;
-	const expoConfig = (Constants as any).expoConfig;
+const API_URLS = API_BASE_URL
+        ? [API_BASE_URL.endsWith("/api") ? API_BASE_URL : API_BASE_URL + "/api"]
+        : [];
 
-	const urls: string[] = [];
-	const hostFromExtra = expoConfig?.extra?.API_URL || manifest?.extra?.API_URL;
-	if (hostFromExtra) {
-		urls.push(hostFromExtra.replace(/\/$/, ""));
-	}
-
-	const debuggerHost = manifest?.debuggerHost || expoConfig?.extra?.debuggerHost;
-	if (debuggerHost) {
-		const host = debuggerHost.split(":")[0];
-		if (host) {
-			urls.push(`http://${host}:5000/api`);
-		}
-	}
-
-	urls.push(`http://${LOCAL_HOST_IP}:5000/api`);
-	urls.push("http://10.0.2.2:5000/api");
-	urls.push("http://127.0.0.1:5000/api");
-
-	return urls.filter(Boolean);
-};
-
-const API_URLS = resolveApiUrls();
+if (API_URLS.length === 0) {
+        console.warn("[API] EXPO_PUBLIC_API_URL is not configured.");
+}
 
 async function tryFetch(url: string, path: string, options: RequestInit, timeoutMs: number) {
 	const controller = new AbortController();

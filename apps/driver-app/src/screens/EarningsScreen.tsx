@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
@@ -77,11 +78,11 @@ export default function EarningsScreen() {
             <View key={e.id} style={styles.earningCard}>
               <View style={styles.earningHeader}>
                 <Text style={styles.earningId}>Order #{e.orderId?.slice(0, 8)}</Text>
-                <Text style={[styles.earningStatus, { color: e.status === 'paid' ? '#22C55E' : '#F59E0B' }]}>
+                <Text style={[styles.earningStatus, { color: e.status === 'paid' ? '#21865D' : '#F36A21' }]}>
                   {e.status}
                 </Text>
               </View>
-              <Text style={styles.earningAddress}>📍 {e.order?.deliveryAddress || 'Unknown address'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}><Icon name="map-marker-outline" size={16} color="#94A3B8" /><Text style={styles.earningAddress}> {e.order?.deliveryAddress || 'Unknown address'}</Text></View>
               <Text style={styles.earningAmount}>UGX {e.amount?.toLocaleString()}</Text>
               <Text style={styles.earningDate}>{new Date(e.createdAt).toLocaleDateString()}</Text>
             </View>
@@ -93,34 +94,34 @@ export default function EarningsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B1120' },
+  container: { flex: 1, backgroundColor: '#0B3D2E' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backText: { color: '#fff', fontSize: 28, fontWeight: '300' },
-  title: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  backText: { color: '#FFF8EE', fontSize: 28, fontWeight: '300' },
+  title: { color: '#FFF8EE', fontSize: 18, fontWeight: '700' },
   totalCard: {
-    backgroundColor: '#1E293B', borderRadius: 16, padding: 24,
-    marginHorizontal: 20, marginBottom: 20, borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#FFF8EE', borderRadius: 16, padding: 24,
+    marginHorizontal: 20, marginBottom: 20, borderWidth: 1, borderColor: '#D8CDBB',
     alignItems: 'center',
   },
-  totalLabel: { color: '#94A3B8', fontSize: 14, marginBottom: 8 },
-  totalAmount: { color: '#F59E0B', fontSize: 32, fontWeight: '700' },
-  totalSub: { color: '#64748B', fontSize: 12, marginTop: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#fff', paddingHorizontal: 20, marginBottom: 12 },
+  totalLabel: { color: '#68786F', fontSize: 14, marginBottom: 8 },
+  totalAmount: { color: '#F36A21', fontSize: 32, fontWeight: '700' },
+  totalSub: { color: '#68786F', fontSize: 12, marginTop: 4 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#FFF8EE', paddingHorizontal: 20, marginBottom: 12 },
   emptyBox: { paddingHorizontal: 20, paddingVertical: 40, alignItems: 'center' },
-  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-  emptySub: { color: '#64748B', fontSize: 13, marginTop: 4 },
+  emptyText: { color: '#68786F', fontSize: 16, fontWeight: '600' },
+  emptySub: { color: '#68786F', fontSize: 13, marginTop: 4 },
   earningCard: {
-    backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
-    marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#FFF8EE', borderRadius: 14, padding: 16,
+    marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#D8CDBB',
   },
   earningHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  earningId: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  earningId: { color: '#0B3D2E', fontSize: 14, fontWeight: '600' },
   earningStatus: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
-  earningAddress: { color: '#94A3B8', fontSize: 12, marginBottom: 6 },
-  earningAmount: { color: '#F59E0B', fontSize: 16, fontWeight: '700' },
-  earningDate: { color: '#64748B', fontSize: 11, marginTop: 4 },
+  earningAddress: { color: '#68786F', fontSize: 12, marginBottom: 6 },
+  earningAmount: { color: '#F36A21', fontSize: 16, fontWeight: '700' },
+  earningDate: { color: '#68786F', fontSize: 11, marginTop: 4 },
 });

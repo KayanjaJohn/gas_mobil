@@ -35,12 +35,12 @@ export default function ProfileScreen() {
       <View style={styles.infoCard}>
         <InfoRow label="Email" value={user?.email} />
         <InfoRow label="Phone" value={user?.phone} />
-        <InfoRow label="Vehicle" value={`${user?.vehicleType} • ${user?.vehicleNumber}`} />
+        <InfoRow label="Vehicle" value={`${user?.vehicleType || 'Vehicle not set'} • ${user?.vehicleNumber || 'No number'}`} />
         <InfoRow label="Station" value={user?.station?.name || 'Not assigned'} />
         <InfoRow 
           label="Status" 
           value={user?.driverStatus?.toUpperCase()} 
-          valueColor={user?.driverStatus === 'online' ? '#41f1b6' : '#ff7782'}
+          valueColor={user?.driverStatus === 'online' ? '#168447' : '#F36A21'}
         />
       </View>
 
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
   );
 }
 
-function InfoRow({ label, value, valueColor = '#333' }: { label: string; value?: string; valueColor?: string }) {
+function InfoRow({ label, value, valueColor = '#0B3D2E' }: { label: string; value?: string; valueColor?: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -63,7 +63,7 @@ function InfoRow({ label, value, valueColor = '#333' }: { label: string; value?:
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0B3D2E',
     padding: 16,
   },
   header: {
@@ -74,28 +74,28 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#7380ec',
+    backgroundColor: '#F36A21',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   avatarText: {
     fontSize: 32,
-    color: '#fff',
+    color: '#FFF8EE',
     fontWeight: 'bold',
   },
   name: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#0B3D2E',
   },
   role: {
     fontSize: 14,
-    color: '#7380ec',
+    color: '#F36A21',
     marginTop: 4,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFF8EE',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -105,18 +105,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#D8CDBB',
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#68786F',
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
   },
   logoutButton: {
-    backgroundColor: '#ff7782',
+    backgroundColor: '#DC2626',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',

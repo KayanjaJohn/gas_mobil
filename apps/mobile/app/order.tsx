@@ -1,4 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
+import type { Order, Product } from "../src/types";
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,18 +14,15 @@ import {
   StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
 import { useLocation } from '../src/hooks/useLocation';
 import { apiRequest } from '../src/services/api';
+
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/utils/constants';
 
 const PAYMENT_METHODS = [
-  { id: 'momo', label: 'MTN Mobile Money', icon: 'cellphone', color: '#FFCC00' },
-  { id: 'airtel', label: 'Airtel Money', icon: 'cellphone', color: '#E4002B' },
-  { id: 'wallet', label: 'GasMobil Wallet', icon: 'wallet', color: '#2196F3' },
-  { id: 'card', label: 'Credit / Debit Card', icon: 'credit-card', color: '#4CAF50' },
-  { id: 'cash', label: 'Cash on Delivery', icon: 'cash', color: '#9E9E9E' },
+  { id: 'cash', label: 'Cash on Delivery', icon: 'cash-multiple', color: '#F36A21' },
 ];
 
 const CYLINDER_SIZES = [
@@ -45,9 +44,31 @@ export default function OrderScreen() {
   const [orderType, setOrderType] = useState('swap');
   const [cylinderSize, setCylinderSize] = useState('12kg');
   const [quantity, setQuantity] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('momo');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [notes, setNotes] = useState('');
   const [placing, setPlacing] = useState(false);
+
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest<Product[]>("get", "/products")
+      .then((res) => {
+        if (active && res.success && Array.isArray(res.data)) setProducts(res.data);
+      })
+      .catch((err) => console.error("[Order] Product fetch failed:", err))
+    return () => { active = false; };
+  }, []);
+
+  const requestedKg = Number.parseFloat(cylinderSize);
+  const cylinderProduct = products.find((p) => {
+    if (p.type !== "cylinder" || !p.isAvailable || p.stock < quantity) return false;
+    const exactSize = String(p.size ?? "").replace(/\\s/g, "").toLowerCase()
+      === cylinderSize.replace(/\\s/g, "").toLowerCase();
+    const exactWeight = Number(p.weight) === requestedKg;
+    const exactName = new RegExp(`\\\\b${requestedKg}\\\\s*kg\\\\b`, "i").test(p.name);
+    return exactSize || exactWeight || exactName;
+  });
 
   const selectedSize = CYLINDER_SIZES.find((s) => s.id === cylinderSize);
   const totalAmount = (selectedSize?.price || 0) * quantity;
@@ -81,12 +102,22 @@ export default function OrderScreen() {
       return;
     }
 
+    if (!location.address?.trim() ||
+        !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
+      Alert.alert("Delivery details required", "Please capture a valid delivery address and GPS location.");
+      return;
+    }
+    if (!cylinderProduct) {
+      Alert.alert("Cylinder unavailable", `No available ${cylinderSize} cylinder matches your selection.`);
+      return;
+    }
+
     setPlacing(true);
     try {
       const payload = {
         items: [
           {
-            productId: cylinderSize,
+            productId: cylinderProduct.id,
             quantity,
             type: orderType,
           },
@@ -96,22 +127,23 @@ export default function OrderScreen() {
         deliveryLatitude: location.latitude,
         deliveryLongitude: location.longitude,
         accuracy: location.accuracy,
-        paymentMethod,
+        paymentMethod: "cash",
         notes: notes || `${ORDER_TYPES.find((t) => t.id === orderType)?.label} — ${cylinderSize}`,
       };
 
       console.log('[Order] Payload:', JSON.stringify(payload, null, 2));
 
-      const res = await apiRequest('post', '/orders', payload);
+      const res = await apiRequest<Order>('post', '/orders', payload);
 
-      if (res.success) {
+      if (res.success && res.data) {
+        const placedOrderId = res.data.id;
         Alert.alert(
           'Order Placed!',
-          `Order #${res.data.id.slice(0, 8).toUpperCase()} placed successfully.\n\nDelivering to: ${location.address}`,
+          `Order #${placedOrderId.slice(0, 8).toUpperCase()} placed successfully.\n\nDelivering to: ${location.address}`,
           [
             {
               text: 'Track Order',
-              onPress: () => router.push(`/tracking/${res.data.id}` as any),
+              onPress: () => router.push(`/tracking/${placedOrderId}` as any),
             },
             { text: 'OK', style: 'cancel' },
           ]
@@ -135,12 +167,19 @@ export default function OrderScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <Text style={styles.headerTitle}>Place Order</Text>
-        <Text style={styles.headerSub}>Order gas for delivery to your location</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}>
+            <Icon name="arrow-left" size={22} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Place Order</Text>
+            <Text style={styles.headerSub}>Order gas for delivery to your location</Text>
+          </View>
+        </View>
 
         {/* ── LOCATION SECTION ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📍 Delivery Location</Text>
+          <Text style={styles.sectionTitle}><Icon name="map-marker-outline" size={19} color={COLORS.accent} />  Delivery Location</Text>
 
           {!location ? (
             <TouchableOpacity
@@ -179,7 +218,7 @@ export default function OrderScreen() {
 
         {/* Order Type */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔥 Order Type</Text>
+          <Text style={styles.sectionTitle}><Icon name="fire" size={19} color={COLORS.accent} />  Order Type</Text>
           <View style={styles.typeRow}>
             {ORDER_TYPES.map((type) => (
               <TouchableOpacity
@@ -206,7 +245,7 @@ export default function OrderScreen() {
 
         {/* Cylinder Size */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🛢️ Cylinder Size</Text>
+          <Text style={styles.sectionTitle}><Icon name="propane-tank" size={19} color={COLORS.accent} />  Cylinder Size</Text>
           <View style={styles.sizeRow}>
             {CYLINDER_SIZES.map((size) => (
               <TouchableOpacity
@@ -215,6 +254,7 @@ export default function OrderScreen() {
                 onPress={() => setCylinderSize(size.id)}
                 activeOpacity={0.8}
               >
+                <Icon name="propane-tank" size={32} color={cylinderSize === size.id ? COLORS.accent : COLORS.green} style={styles.cylinderIcon} />
                 <Text style={[styles.sizeLabel, cylinderSize === size.id && styles.sizeLabelActive]}>
                   {size.label}
                 </Text>
@@ -228,21 +268,21 @@ export default function OrderScreen() {
 
         {/* Quantity */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔢 Quantity</Text>
+          <Text style={styles.sectionTitle}><Icon name="counter" size={19} color={COLORS.accent} />  Quantity</Text>
           <View style={styles.qtyRow}>
             <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity((q) => Math.max(1, q - 1))}>
-              <Icon name="minus" size={20} color="#fff" />
+              <Icon name="minus" size={20} color={COLORS.green} />
             </TouchableOpacity>
             <Text style={styles.qtyText}>{quantity}</Text>
             <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity((q) => Math.min(5, q + 1))}>
-              <Icon name="plus" size={20} color="#fff" />
+              <Icon name="plus" size={20} color={COLORS.green} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Payment Method */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>💳 Payment Method</Text>
+          <Text style={styles.sectionTitle}><Icon name="cash" size={19} color={COLORS.accent} />  Payment Method</Text>
           {PAYMENT_METHODS.map((method) => (
             <TouchableOpacity
               key={method.id}
@@ -251,7 +291,7 @@ export default function OrderScreen() {
               activeOpacity={0.8}
             >
               <View style={[styles.payIcon, { backgroundColor: method.color }]}>
-                <Icon name={method.icon} size={20} color="#fff" />
+                <Icon name={method.icon as any} size={20} color="#fff" />
               </View>
               <Text style={[styles.payLabel, paymentMethod === method.id && styles.payLabelActive]}>
                 {method.label}
@@ -265,7 +305,7 @@ export default function OrderScreen() {
 
         {/* Notes */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📝 Delivery Notes (Optional)</Text>
+          <Text style={styles.sectionTitle}><Icon name="note-text-outline" size={19} color={COLORS.accent} />  Delivery Notes (Optional)</Text>
           <TextInput
             style={styles.notesInput}
             multiline
@@ -308,11 +348,14 @@ export default function OrderScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 6 },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 },
+  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: COLORS.card, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: COLORS.border },
+  headerCopy: { flex: 1 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#FFF8EE', marginBottom: 6 },
   headerSub: { fontSize: 14, color: COLORS.muted, marginBottom: 20 },
 
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#FFF8EE', marginBottom: 12 },
 
   // Location
   locationCard: {
@@ -322,7 +365,7 @@ const styles = StyleSheet.create({
   },
   locationCardError: { borderColor: COLORS.danger, borderStyle: 'solid' },
   locationCardActive: {
-    backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: 16, padding: 16,
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 16,
     borderWidth: 2, borderColor: COLORS.success,
   },
   locationText: { flex: 1, fontSize: 14, color: COLORS.muted, fontWeight: '500' },
@@ -330,7 +373,7 @@ const styles = StyleSheet.create({
   locationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
   locationActiveTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.success },
   refreshBtn: { padding: 4 },
-  locationAddress: { fontSize: 15, fontWeight: '600', color: '#fff', marginBottom: 4 },
+  locationAddress: { fontSize: 15, fontWeight: '600', color: COLORS.text, marginBottom: 4 },
   locationCoords: { fontSize: 12, color: COLORS.muted },
 
   // Order Type
@@ -340,7 +383,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', borderWidth: 2, borderColor: COLORS.border,
   },
   typeCardActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  typeLabel: { fontSize: 14, fontWeight: '700', color: '#fff', marginTop: 8 },
+  typeLabel: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginTop: 8 },
   typeLabelActive: { color: '#fff' },
   typeDesc: { fontSize: 11, color: COLORS.muted, marginTop: 4, textAlign: 'center' },
   typeDescActive: { color: 'rgba(255,255,255,0.8)' },
@@ -351,8 +394,9 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
     alignItems: 'center', borderWidth: 2, borderColor: COLORS.border,
   },
-  sizeCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(20,132,255,0.1)' },
-  sizeLabel: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  sizeCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(243,106,33,0.10)' },
+  cylinderIcon: { marginBottom: 5 },
+  sizeLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
   sizeLabelActive: { color: COLORS.accent },
   sizePrice: { fontSize: 12, color: COLORS.muted, marginTop: 4 },
   sizePriceActive: { color: COLORS.accent, fontWeight: '700' },
@@ -364,7 +408,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: COLORS.border,
   },
-  qtyText: { fontSize: 20, fontWeight: '700', color: '#fff', minWidth: 30, textAlign: 'center' },
+  qtyText: { fontSize: 20, fontWeight: '700', color: '#FFF8EE', minWidth: 30, textAlign: 'center' },
 
   // Payment
   payCard: {
@@ -372,15 +416,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
     marginBottom: 8, borderWidth: 2, borderColor: COLORS.border,
   },
-  payCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(20,132,255,0.06)' },
+  payCardActive: { borderColor: COLORS.accent, backgroundColor: 'rgba(243,106,33,0.08)' },
   payIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  payLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: '#fff' },
+  payLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text },
   payLabelActive: { color: COLORS.accent },
 
   // Notes
   notesInput: {
     backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
-    fontSize: 14, color: '#fff', borderWidth: 1, borderColor: COLORS.border,
+    fontSize: 14, color: COLORS.text, borderWidth: 1, borderColor: COLORS.border,
     minHeight: 80, textAlignVertical: 'top',
   },
 
@@ -388,7 +432,7 @@ const styles = StyleSheet.create({
   footer: { marginTop: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   totalLabel: { fontSize: 16, color: COLORS.muted },
-  totalAmount: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  totalAmount: { fontSize: 24, fontWeight: '800', color: '#FFF8EE' },
   placeBtn: {
     backgroundColor: COLORS.accent, borderRadius: 16, paddingVertical: 16,
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,

@@ -6,7 +6,7 @@ dotenv.config();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
-  PORT: z.string().transform((val) => parseInt(val, 10)).default('8000'),
+  PORT: z.coerce.number().int().positive().default(8000),
   
   // MySQL Database Config
   DATABASE_URL: z.string().url(), // e.g., mysql://user:pass@host:3306/db
@@ -18,8 +18,6 @@ const envSchema = z.object({
   DRIVER_APP_URL: z.string().url(),
   
   // Third-Party Secrets
-  STRIPE_SECRET_KEY: z.string().startsWith('sk_live_'),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_'),
   
   MTN_MOMO_API_USER: z.string(),
   MTN_MOMO_API_KEY: z.string(),

@@ -1,20 +1,20 @@
 import { Product } from '../types';
 
 export const COLORS = {
-  bg: '#070b14',
-  card: '#101827',
-  card2: '#0e1521',
-  border: '#1F2A3D',
-  accent: '#1484FF',
-  accent2: '#3DA5FF',
-  accentGlow: 'rgba(20,132,255,.45)',
-  text: '#E6EAF2',
-  muted: '#8A93A6',
-  muted2: '#C4C4CDA3',
-  danger: '#ff4d4d',
-  success: '#22c55e',
-  warn: '#f59e0b',
-  green: '#34d399',
+  bg: "#0B3D2E",
+  card: "#FFF8EE",
+  card2: "#F0E5D3",
+  border: "#D8CDBB",
+  accent: "#F36A21",
+  accent2: "#FF8547",
+  accentGlow: "rgba(243,106,33,0.22)",
+  text: "#0B3D2E",
+  muted: "#68786F",
+  muted2: "#A8B0A9",
+  danger: "#D94343",
+  success: "#21865D",
+  warn: "#D97706",
+  green: "#0B3D2E",
 } as const;
 
 export const SIZES = {
@@ -30,16 +30,16 @@ export const PRICES = {
 } as const;
 
 export const ACCESSORIES: Product[] = [
-  { id: '1', name: 'Single Gas Burner', description: 'Stainless steel single burner stove for everyday cooking', price: 35000, stock: 50, type: 'burner', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '2', name: 'Double Gas Burner', description: 'Heavy-duty double burner stove for large households', price: 65000, stock: 30, type: 'burner', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '3', name: 'Commercial Gas Burner', description: 'Industrial-grade burner for restaurants and hotels', price: 180000, stock: 15, type: 'burner', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '4', name: 'Portable Gas Grill', description: 'Compact outdoor gas grill for barbecue and grilling', price: 120000, stock: 20, type: 'grill', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '5', name: 'Tabletop Gas Grill', description: 'Small tabletop grill perfect for balconies', price: 85000, stock: 25, type: 'grill', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '6', name: 'Standard Gas Regulator', description: 'Brass pressure regulator for setups', price: 25000, stock: 100, type: 'regulator', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '7', name: 'Low-Pressure Regulator', description: 'Precision low-pressure regulator', price: 35000, stock: 40, type: 'regulator', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '8', name: 'Commercial Regulator', description: 'Heavy-duty regulator for 45kg cylinders', price: 55000, stock: 20, type: 'regulator', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '9', name: 'Gas Hosepipe 1.5m', description: 'High-quality Cylinder rubber hose 1.5m length', price: 15000, stock: 200, type: 'hose', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
-  { id: '10', name: 'Gas Hosepipe 2m', description: 'Premium Cylinder rubber hose 2m length with clamps', price: 20000, stock: 150, type: 'hose', isAvailable: true, createdAt: new Date(), updatedAt: new Date() },
+  { id: '1', name: 'Single Gas Burner', description: 'Stainless steel single burner stove for everyday cooking', price: 35000, stock: 50, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), },
+  { id: '2', name: 'Double Gas Burner', description: 'Heavy-duty double burner stove for large households', price: 65000, stock: 30, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '3', name: 'Commercial Gas Burner', description: 'Industrial-grade burner for restaurants and hotels', price: 180000, stock: 15, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '4', name: 'Portable Gas Grill', description: 'Compact outdoor gas grill for barbecue and grilling', price: 120000, stock: 20, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '5', name: 'Tabletop Gas Grill', description: 'Small tabletop grill perfect for balconies', price: 85000, stock: 25, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '6', name: 'Standard Gas Regulator', description: 'Brass pressure regulator for setups', price: 25000, stock: 100, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '7', name: 'Low-Pressure Regulator', description: 'Precision low-pressure regulator', price: 35000, stock: 40, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '8', name: 'Commercial Regulator', description: 'Heavy-duty regulator for 45kg cylinders', price: 55000, stock: 20, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '9', name: 'Gas Hosepipe 1.5m', description: 'High-quality Cylinder rubber hose 1.5m length', price: 15000, stock: 200, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), },
+  { id: '10', name: 'Gas Hosepipe 2m', description: 'Premium Cylinder rubber hose 2m length with clamps', price: 20000, stock: 150, type: 'accessory', isAvailable: true, weight: null, size: null, imageUrl: null, stationId: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), },
 ];
 
 export const STATIONS = [

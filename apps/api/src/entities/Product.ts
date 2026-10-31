@@ -35,7 +35,7 @@ export class Product {
   @Column({ type: 'varchar', length: 500, nullable: true })
   declare imageUrl: string | null;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', length: 36, nullable: false })
   declare stationId: string;
 
   @ManyToOne(() => Station, station => station.products)

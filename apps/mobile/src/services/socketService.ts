@@ -2,70 +2,101 @@ import { io, Socket } from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 let socket: Socket | null = null;
+let socketPromise: Promise<Socket | null> | null = null;
+
+const getSocketUrl = () => process.env.EXPO_PUBLIC_API_URL?.replace(/\/api\/?$/, "");
 
 export const initializeSocket = async (): Promise<Socket | null> => {
-  try {
-    // CRITICAL FIX: was "customer_token" — AuthContext stores as "access_token"
-    const token = await AsyncStorage.getItem("access_token");
-    if (!token) {
-      console.log("[Socket] No access_token found, skipping init");
+  if (socket?.connected || socket?.active) return socket;
+  if (socketPromise) return socketPromise;
+
+  socketPromise = (async () => {
+    try {
+      const token = await AsyncStorage.getItem("access_token");
+      const apiUrl = getSocketUrl();
+      if (!token) {
+        console.log("[Socket] No access_token found; connection deferred");
+        return null;
+      }
+      if (!apiUrl) {
+        console.warn("[Socket] EXPO_PUBLIC_API_URL is not configured");
+        return null;
+      }
+
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+
+      console.log("[Socket] Creating shared connection:", apiUrl);
+      socket = io(apiUrl, {
+        auth: { token },
+        transports: ["polling", "websocket"],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+        timeout: 20000,
+      });
+
+      socket.on("connect", () => console.log("[Socket] Connected:", socket?.id));
+      socket.on("disconnect", (reason) => console.log("[Socket] Disconnected:", reason));
+      socket.on("connect_error", (error) => console.error("[Socket] Connection error:", error.message));
+      return socket;
+    } catch (error) {
+      console.error("[Socket] Initialization failed:", error);
       return null;
+    } finally {
+      socketPromise = null;
     }
+  })();
 
-    const API_URL = process.env.EXPO_PUBLIC_API_URL?.replace("/api", "");
-    if (!API_URL) {
-      console.warn("[Socket] API URL not configured");
-      return null;
-    }
-
-    console.log("[Socket] Initializing socket to:", API_URL);
-
-    socket = io(API_URL, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-    });
-
-    socket.on("connect", () => console.log("[Socket] Connected"));
-    socket.on("disconnect", (reason) => console.log("[Socket] Disconnected:", reason));
-    socket.on("connect_error", (err) => console.error("[Socket] Connection error:", err.message));
-
-    return socket;
-  } catch (error) {
-    console.error("[Socket] Init error:", error);
-    return null;
-  }
+  return socketPromise;
 };
 
 export const getSocket = () => socket;
+
+export const updateSocketToken = async (token: string) => {
+  if (!token) return;
+  const activeSocket = socket || await initializeSocket();
+  if (!activeSocket) return;
+
+  activeSocket.auth = { token };
+  if (activeSocket.connected) {
+    activeSocket.disconnect();
+    activeSocket.connect();
+  } else if (!activeSocket.active) {
+    activeSocket.connect();
+  }
+};
+
 export const disconnectSocket = () => {
   if (socket) {
+    socket.removeAllListeners();
     socket.disconnect();
     socket = null;
   }
+  socketPromise = null;
 };
 
 export const joinOrderRoom = (orderId: string) => {
-  if (socket) socket.emit("join_order", orderId);
+  if (socket?.connected) socket.emit("join_order", orderId);
 };
 
 export const leaveOrderRoom = (orderId: string) => {
-  if (socket) socket.emit("leave_order", orderId);
+  if (socket?.connected) socket.emit("leave_order", orderId);
 };
 
 export const onDriverLocationUpdate = (callback: (data: any) => void) => {
-  if (socket) socket.on("driver_location_update", callback);
+  socket?.on("location_update", callback);
+  socket?.on("driver_location_update", callback);
 };
 
 export const onOrderStatusUpdate = (callback: (data: any) => void) => {
-  if (socket) socket.on("order_status_update", callback);
+  socket?.on("order_status_update", callback);
 };
 
 export const removeAllListeners = () => {
-  if (socket) {
-    socket.removeAllListeners("driver_location_update");
-    socket.removeAllListeners("order_status_update");
-  }
+  socket?.removeAllListeners("location_update");
+  socket?.removeAllListeners("driver_location_update");
+  socket?.removeAllListeners("order_status_update");
 };

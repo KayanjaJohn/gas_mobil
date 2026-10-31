@@ -1,6 +1,5 @@
 import React, { useEffect, useCallback }from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
-import { useSocket } from "../src/hooks/useSocket";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { View, ActivityIndicator } from "react-native";
@@ -31,15 +30,10 @@ function RootLayoutInner() {
   }, [isAuthenticated, isLoading]);
   // NOTE: segments intentionally removed from deps to prevent redirect loops
 
-  useSocket((data) => {
-    // Optionally show a local toast or re-fetch notifications
-    console.log("[Socket] Real-time notification:", data);
-  });
-
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: COLORS.background }}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: COLORS.bg }}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
       </View>
     );
   }

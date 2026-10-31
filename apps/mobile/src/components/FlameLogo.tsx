@@ -1,23 +1,27 @@
-import React from 'react';
-import { Text, StyleSheet } from 'react-native';
+import React from "react";
+import { View, StyleSheet, ViewStyle } from "react-native";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
+import { COLORS } from "../utils/constants";
 
 interface Props {
   size?: number;
-  style?: object;
+  style?: ViewStyle;
 }
 
 export default function FlameLogo({ size = 72, style }: Props) {
   return (
-    <Text style={[styles.flame, { fontSize: size }, style]}>
-      🔥
-    </Text>
+    <View style={[styles.wrap, { width: size, height: size, borderRadius: size * 0.28 }, style]}>
+      <Icon name="fire" size={size * 0.58} color={COLORS.accent} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flame: {
-    textShadowColor: 'rgba(20,132,255,0.45)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 20,
+  wrap: {
+    backgroundColor: "#123D30",
+    borderWidth: 1,
+    borderColor: "#245747",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

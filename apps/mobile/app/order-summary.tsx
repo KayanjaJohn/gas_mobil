@@ -1,3 +1,5 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
+import type { Product, Order } from "../src/types";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator,
@@ -11,17 +13,16 @@ import { useCartStore } from "../src/store/useCartStore";
 import { COLORS } from "../src/utils/constants";
 import { apiRequest } from "../src/services/api";
 
+
 const PAY_METHODS = [
-  { key: "wallet", icon: "💳", title: "Gasmobil Wallet", sub: "Balance: UGX 0" },
-  { key: "momo", icon: "📱", title: "Mobile Money", sub: "M-Pesa / Airtel" },
-  { key: "cod", icon: "⏰", title: "Pay Later", sub: "For verified businesses" },
+  { key: "cash" as const, icon: "cash-multiple", title: "Cash on Delivery", sub: "Pay your driver when your gas arrives" },
 ];
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
   const { orderType, size, paymentMethod, setPaymentMethod, reset, deliveryAddress, deliveryLat, deliveryLng, notes } = useOrderStore();
   const { items: cartItems, total: cartTotal, clearCart } = useCartStore();
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [placing, setPlacing] = useState(false);
 
@@ -29,7 +30,7 @@ export default function OrderSummaryScreen() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await apiRequest("get", "/products");
+        const res = await apiRequest<Product[]>("get", "/products");
         if (res.success && res.data) {
           setProducts(res.data);
         }
@@ -43,9 +44,15 @@ export default function OrderSummaryScreen() {
   }, []);
 
   // Find the real product for the selected cylinder type/size
-  const cylinderProduct = products.find(
-    (p) => p.type === "cylinder" && p.name?.toLowerCase().includes(size.toLowerCase())
-  );
+  const requestedKg = Number.parseFloat(size);
+  const cylinderProduct = products.find((p) => {
+    if (p.type !== "cylinder" || !p.isAvailable || p.stock < 1) return false;
+    const exactSize = String(p.size ?? "").replace(/\s/g, "").toLowerCase()
+      === size.replace(/\s/g, "").toLowerCase();
+    const exactWeight = Number(p.weight) === requestedKg;
+    const exactName = new RegExp(`\\b${requestedKg}\\s*kg\\b`, "i").test(p.name);
+    return exactSize || exactWeight || exactName;
+  });
 
   const cylinderPrice = cylinderProduct?.price || 0;
   const total = cylinderPrice + cartTotal;
@@ -54,7 +61,7 @@ export default function OrderSummaryScreen() {
     if (placing) return;
 
     // Build items array with real product UUIDs
-    const items: any[] = [];
+    const items: Array<{ productId: string; quantity: number }> = [];
 
     if (cylinderProduct) {
       items.push({ productId: cylinderProduct.id, quantity: 1 });
@@ -81,10 +88,10 @@ export default function OrderSummaryScreen() {
 
     const payload = {
       items,
-      deliveryAddress: deliveryAddress || "Customer address",
+      deliveryAddress: deliveryAddress.trim(),
       deliveryLatitude: deliveryLat,
       deliveryLongitude: deliveryLng,
-      paymentMethod: paymentMethod || "cod",
+      paymentMethod: "cash",
       notes: notes || `${orderType === "swap" ? "Swap Refill" : "Buy Full Kit"} — ${size}`,
     };
 
@@ -92,11 +99,12 @@ export default function OrderSummaryScreen() {
     setPlacing(true);
 
     try {
-      const res = await apiRequest("post", "/orders", payload);
+      const res = await apiRequest<Order>("post", "/orders", payload);
       if (res.success && res.data) {
+        const placedOrderId = res.data.id;
         console.log("[Order] Order placed successfully | id:", res.data.id);
-        Alert.alert("Order Placed!", `Your gas order has been placed successfully.\nOrder ID: ${res.data.id?.slice(0, 8)}`, [
-          { text: "Track Now", onPress: () => { reset(); clearCart(); router.push({ pathname: "/tracking", params: { orderId: res.data.id } }); } },
+        Alert.alert("Order Placed!", `Your gas order has been placed successfully.\nOrder ID: ${placedOrderId?.slice(0, 8)}`, [
+          { text: "Track Now", onPress: () => { reset(); clearCart(); router.push({ pathname: "/tracking", params: { orderId: placedOrderId } }); } },
           { text: "OK", onPress: () => { reset(); clearCart(); router.push("/(tabs)"); } },
         ]);
       } else {
@@ -143,7 +151,7 @@ export default function OrderSummaryScreen() {
         </Card>
 
         <TouchableOpacity style={styles.addCard} onPress={() => router.push("/accessories")} activeOpacity={0.8}>
-          <View style={styles.addIcon}><Text style={{ fontSize: 18 }}>🔥</Text></View>
+          <View style={styles.addIcon}><Icon name="fire" size={18} color="#1484FF" /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.addTitle}>Need a burner, regulator or hosepipe?</Text>
             <Text style={styles.addSub}>Browse accessories to add to this order</Text>
@@ -156,10 +164,10 @@ export default function OrderSummaryScreen() {
             <TouchableOpacity
               key={m.key}
               style={[styles.payOpt, paymentMethod === m.key && styles.payOptActive]}
-              onPress={() => setPaymentMethod(m.key)}
+              onPress={() => setPaymentMethod("cash")}
               activeOpacity={0.8}
             >
-              <Text style={{ fontSize: 18, width: 28 }}>{m.icon}</Text>
+              <View style={styles.paymentIcon}><Icon name={m.icon as any} size={23} color={COLORS.green} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.payTitle}>{m.title}</Text>
                 <Text style={styles.paySub}>{m.sub}</Text>
@@ -193,21 +201,22 @@ const styles = StyleSheet.create({
   step: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "#1E2A44" },
   stepActive: { backgroundColor: COLORS.accent },
   summary: { marginBottom: 14 },
-  summaryTitle: { color: "#fff", fontSize: 14, fontWeight: "600", marginBottom: 12 },
+  summaryTitle: { color: COLORS.green, fontSize: 14, fontWeight: "600", marginBottom: 12 },
   sline: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 7 },
   slabel: { color: COLORS.muted, fontSize: 13 },
-  svalue: { color: "#fff", fontSize: 13, fontWeight: "500" },
+  svalue: { color: COLORS.green, fontSize: 13, fontWeight: "500" },
   totalLine: { borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: 8, paddingTop: 14 },
-  totalLabel: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  totalLabel: { color: COLORS.green, fontSize: 15, fontWeight: "600" },
   totalValue: { color: COLORS.accent, fontSize: 15, fontWeight: "700" },
   addCard: { marginHorizontal: 16, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 14, flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 6 },
   addIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(245,158,11,0.12)", alignItems: "center", justifyContent: "center" },
-  addTitle: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  addTitle: { color: COLORS.green, fontSize: 13, fontWeight: "600" },
   addSub: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   label: { fontSize: 13, color: COLORS.text, marginHorizontal: 16, marginTop: 18, marginBottom: 10, fontWeight: "600" },
   payOpt: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 },
-  payOptActive: { borderColor: COLORS.accent },
-  payTitle: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  payOptActive: { borderColor: COLORS.accent, backgroundColor: "#FFF1E4" },
+  paymentIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#F1E7D8", alignItems: "center", justifyContent: "center" },
+  payTitle: { color: COLORS.green, fontSize: 14, fontWeight: "600" },
   paySub: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   row2: { flexDirection: "row", gap: 10, marginHorizontal: 16, marginTop: 16, marginBottom: 100 },
   ghostBtn: { flex: 1, backgroundColor: "transparent", borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
