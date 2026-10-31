@@ -141,7 +141,7 @@ export default function Reports() {
 
   const paidOrders = reportOrders.filter((order) => order.paymentStatus === 'paid');
   const totalOrderValue = reportOrders.filter((order) => !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-  const outstandingCash = reportOrders.filter((order) => order.paymentStatus !== 'paid' && !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  const outstandingCash = reportOrders.filter((order) => order.paymentStatus === 'pending' && !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const completedOrders = reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status));
   const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const averageOrderValue = paidOrders.length ? totalRevenue / paidOrders.length : 0;
