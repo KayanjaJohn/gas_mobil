@@ -32,7 +32,7 @@ const httpServer = createServer(app);
 // ── Socket.IO setup ──────────
 initializeSocket(httpServer);
 
-const PORT = process.env.PORT || 3200;
+const PORT = Number(process.env.PORT || 5000);
 
 // ── Ensure uploads directory exists ──────────
 const uploadsDir = path.join(__dirname, "../uploads/products");
@@ -44,8 +44,13 @@ if (!fs.existsSync(uploadsDir)) {
 // ── Security ─────────────────
 app.use(helmet());
 const allowedOrigins = [
+  'https://gas-mobil.com',
+  'https://www.gas-mobil.com',
   'https://gasmobil.ug',
   'https://app.gasmobil.ug',
+  process.env.CLIENT_URL,
+  process.env.ADMIN_URL,
+  process.env.AGENT_URL,
   'https://organic-engine-wp496r7gwqq39pw-3000.app.github.dev',
   'https://organic-engine-wp496r7gwqq39pw-3001.app.github.dev',
 ];
