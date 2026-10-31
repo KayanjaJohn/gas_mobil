@@ -1,4 +1,4 @@
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator,
@@ -107,7 +107,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Notifications' as never)}
             activeOpacity={0.7}
           >
-            <Icon name="bell" size={23} color="#0B3D2E" />
+            <Icon name="bell-ring" size={25} color="#0B3D2E" />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -244,8 +244,8 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 20, fontWeight: '700', color: '#FFF8EE' },
   subtitle: { fontSize: 13, color: '#D8E7DE', marginTop: 2 },
   bellBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF8EE',
-    borderWidth: 2, borderColor: '#F36A21', alignItems: 'center', justifyContent: 'center',
+    width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF8EE',
+    borderWidth: 2, borderColor: '#F36A21', alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
     position: 'relative',
   },
   badge: {
