@@ -14,7 +14,8 @@
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/database.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/database.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
-    "seed": "ts-node src/seeds/seedData.ts"
+    "seed": "ts-node src/seeds/seedData.ts",
+    "bootstrap:admin": "node dist/seeds/bootstrapAdmin.js"
   },
   "dependencies": {
     "axios": "^1.17.0",
