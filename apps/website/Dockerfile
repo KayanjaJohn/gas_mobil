@@ -4,6 +4,7 @@ COPY favicon.svg /usr/share/nginx/html/favicon.svg
 COPY favicon.png /usr/share/nginx/html/favicon.png
 COPY gasmobil-mark.svg /usr/share/nginx/html/gasmobil-mark.svg
 COPY gasmobil-icon.png /usr/share/nginx/html/gasmobil-icon.png
+COPY gasmobil-login-bg.jpg /usr/share/nginx/html/gasmobil-login-bg.jpg
 COPY gasmobil-cylinder-hero.jpg /usr/share/nginx/html/gasmobil-cylinder-hero.jpg
 COPY robots.txt /usr/share/nginx/html/robots.txt
 COPY sitemap.xml /usr/share/nginx/html/sitemap.xml
