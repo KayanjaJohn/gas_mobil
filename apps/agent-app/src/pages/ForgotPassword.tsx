@@ -30,7 +30,7 @@ export default function ForgotPassword() {
       minHeight: "100vh", display: "flex", alignItems: "center",
       justifyContent: { xs: "center", md: "flex-start" }, px: { xs: 2, sm: 4, md: "7vw" }, py: 4,
       boxSizing: "border-box",
-      backgroundImage: "linear-gradient(90deg, rgba(2,18,13,.93), rgba(2,18,13,.72) 52%, rgba(2,18,13,.2)), url('/gasmobil-login-bg.jpg')",
+      backgroundImage: "linear-gradient(90deg, rgba(2,18,13,.93), rgba(2,18,13,.72) 52%, rgba(2,18,13,.2)), url('/agent/gasmobil-login-bg.jpg')",
       backgroundSize: "cover", backgroundPosition: "center", backgroundColor: "#061D16",
     }}>
       <Box sx={{
