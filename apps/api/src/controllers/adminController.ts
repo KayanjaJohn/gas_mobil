@@ -583,9 +583,8 @@ export const addAgentToStation = async (req: Request, res: Response) => {
 				phone: agent.phone,
 				role: agent.role,
 				stationId: agent.stationId,
-				password: password || "Agent@123",
 			},
-			message: "Agent added to station successfully",
+			message: "Agent added to station successfully. Share credentials securely.",
 		});
 	} catch (error: any) {
 		res.status(500).json({ success: false, error: error.message });
