@@ -21,7 +21,7 @@ const AppDataSource = new DataSource({
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
   entities: [User, Station, Product, Order, OrderItem, Delivery, Wallet, Transaction, Notification, ProductCatalog],
-  migrations: ['src/migrations/*.ts'],
+  migrations: [__dirname + '/../migrations/*{.js,.ts}'],
   migrationsRun: true,
   subscribers: [],
 });
