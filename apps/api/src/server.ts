@@ -46,6 +46,8 @@ app.use(helmet());
 const allowedOrigins = [
   'https://gas-mobil.com',
   'https://www.gas-mobil.com',
+  'https://admin.gas-mobil.com',
+  'https://agent.gas-mobil.com',
   'https://gasmobil.ug',
   'https://app.gasmobil.ug',
   process.env.CLIENT_URL,
