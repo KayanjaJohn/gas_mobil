@@ -28,15 +28,15 @@ export default function ForgotPassword() {
   return (
     <Box component="main" sx={{
       minHeight: "100vh", display: "flex", alignItems: "center",
-      justifyContent: { xs: "center", md: "flex-start" }, px: { xs: 2, sm: 4, md: "7vw" }, py: 4,
+      justifyContent: "center", px: { xs: 2, sm: 3, md: 4 }, py: 4,
       boxSizing: "border-box",
       backgroundImage: "linear-gradient(90deg, rgba(2,18,13,.93), rgba(2,18,13,.72) 52%, rgba(2,18,13,.2)), url('/admin/gasmobil-login-bg.jpg')",
       backgroundSize: "cover", backgroundPosition: "center", backgroundColor: "#061D16",
     }}>
       <Box sx={{
         width: "100%", maxWidth: 460, p: { xs: 3, sm: 4 }, boxSizing: "border-box",
-        borderRadius: 4, color: "#FFF8EE", background: "rgba(4,25,19,.84)",
-        border: "1px solid rgba(255,248,238,.23)", backdropFilter: "blur(18px)",
+        borderRadius: 4, color: "#FFF8EE", background: "rgba(4,25,19,.68)",
+        border: "1px solid rgba(255,248,238,.23)", backdropFilter: "blur(24px)",
         boxShadow: "0 24px 80px rgba(0,0,0,.42)",
       }}>
         <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
