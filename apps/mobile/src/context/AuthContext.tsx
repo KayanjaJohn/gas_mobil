@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Route protection
   useEffect(() => {
     if (!isReady || isLoading) return;
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    const inAuthGroup = ['login', 'register', 'forgot-password'].includes(String(segments[0] || ''));
     if (__DEV__) console.log('[Auth] Route check | auth:', isAuthenticated, '| inAuth:', inAuthGroup);
 
     if (!isAuthenticated && !inAuthGroup) {
