@@ -329,8 +329,8 @@ export const resetPassword = async (req: Request, res: Response) => {
     if (!token || !password) {
       return res.status(400).json({ success: false, error: "Token and password required" });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, error: "Password must be at least 6 characters" });
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, error: "Password must be at least 8 characters" });
     }
 
     const resetSecret = process.env.RESET_TOKEN_SECRET;
@@ -359,14 +359,14 @@ export const resetPassword = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "User not found" });
     }
 
-    // Verify token hash to prevent replay
-    if (user.resetTokenHash && !(await bcrypt.compare(token, user.resetTokenHash))) {
-      return res.status(400).json({ success: false, error: "Token already used or invalid" });
+    // A valid signature alone is not enough: require the one-time stored hash and expiry.
+    if (!user.resetTokenHash || !user.resetTokenExpiry ||
+        !(await bcrypt.compare(token, user.resetTokenHash))) {
+      return res.status(400).json({ success: false, error: "Reset link is invalid or already used" });
     }
 
-    // Check expiry
-    if (user.resetTokenExpiry && new Date() > new Date(user.resetTokenExpiry)) {
-      return res.status(400).json({ success: false, error: "Token expired" });
+    if (new Date() > new Date(user.resetTokenExpiry)) {
+      return res.status(400).json({ success: false, error: "Reset link has expired" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
