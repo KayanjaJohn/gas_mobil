@@ -141,6 +141,10 @@ export default function Stations() {
       setSnackbar({ open: true, message: 'Name, address, coordinates, and station email are required', severity: 'error' });
       return;
     }
+    if (!editingStation && (!form.agentPassword || form.agentPassword.length < 8)) {
+      setSnackbar({ open: true, message: 'Set a unique agent password of at least 8 characters', severity: 'error' });
+      return;
+    }
 
     const payload = {
       ...form,
@@ -203,8 +207,8 @@ export default function Stations() {
   };
 
   const handleAddAgent = async () => {
-    if (!selectedStationId || !newAgentForm.email) {
-      setSnackbar({ open: true, message: 'Email is required', severity: 'error' });
+    if (!selectedStationId || !newAgentForm.email || !newAgentForm.password || newAgentForm.password.length < 8) {
+      setSnackbar({ open: true, message: 'Email and a unique password of at least 8 characters are required', severity: 'error' });
       return;
     }
 
@@ -515,7 +519,9 @@ export default function Stations() {
                     type="password"
                     value={form.agentPassword}
                     onChange={(e) => setForm({ ...form, agentPassword: e.target.value })}
-                    helperText="Default: Agent@123"
+                    required
+                inputProps={{ minLength: 8 }}
+                helperText="Use a unique password of at least 8 characters."
                   />
                 </Grid>
               </>
@@ -613,7 +619,9 @@ export default function Stations() {
                 type="password"
                 value={newAgentForm.password}
                 onChange={(e) => setNewAgentForm({ ...newAgentForm, password: e.target.value })}
-                helperText="Default: Agent@123"
+                required
+                inputProps={{ minLength: 8 }}
+                helperText="Use a unique password of at least 8 characters."
               />
             </Grid>
           </Grid>
