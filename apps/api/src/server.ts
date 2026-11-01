@@ -43,11 +43,17 @@ if (!fs.existsSync(uploadsDir)) {
 
 // ── Security ─────────────────
 app.use(helmet());
+const configuredOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   'https://gas-mobil.com',
   'https://www.gas-mobil.com',
   'https://admin.gas-mobil.com',
   'https://agent.gas-mobil.com',
+  'https://website.gas-mobil.com',
   'https://gasmobil.ug',
   'https://app.gasmobil.ug',
   process.env.CLIENT_URL,
@@ -55,7 +61,8 @@ const allowedOrigins = [
   process.env.AGENT_URL,
   'https://organic-engine-wp496r7gwqq39pw-3000.app.github.dev',
   'https://organic-engine-wp496r7gwqq39pw-3001.app.github.dev',
-];
+  ...configuredOrigins,
+].filter((origin): origin is string => Boolean(origin));
 
 app.use(cors({
   origin: (origin, callback) => {
