@@ -91,18 +91,17 @@ export default function Drivers() {
   };
 
   const createDriver = async () => {
-    if (!form.name || !form.email || !form.phone) {
+    if (!form.name || !form.email || !form.phone || !form.password) {
       setSnackbar({
         open: true,
-        message: 'Please fill name, email and phone',
+        message: 'Please fill name, email, phone and a unique driver password',
         severity: 'error'
       });
       return;
     }
     try {
       await axios.post(`${API_URL}/agent/drivers`, {
-        ...form,
-        password: form.password || 'Driver@123'
+        ...form
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -243,11 +242,13 @@ export default function Drivers() {
             />
             <TextField
               fullWidth
-              label="Password"
+              label="Driver password"
               type="password"
               value={form.password}
+              required
+              inputProps={{ minLength: 8 }}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              helperText="Default: Driver@123"
+              helperText="Set a unique password (at least 8 characters). Share it securely with the driver."
             />
             <TextField
               fullWidth
