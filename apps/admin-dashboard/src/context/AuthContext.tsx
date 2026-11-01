@@ -38,6 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
           const userData = res.data.data?.user || res.data.user || res.data.data;
+          if (userData?.role !== "admin") {
+            throw new Error("This portal is for authorised administrators only");
+          }
           if (userData) {
             setUser(userData);
             setError(null);
@@ -72,6 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const responseData = res.data.data || res.data;
       const newToken = responseData.token || responseData.accessToken;
       const newUser = responseData.user || responseData.data?.user || responseData;
+
+      if (newUser?.role !== "admin") {
+        throw new Error("This portal is for authorised administrators only");
+      }
 
       if (!newToken) {
         throw new Error("No token received from server");
