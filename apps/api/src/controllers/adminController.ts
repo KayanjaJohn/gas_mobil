@@ -149,6 +149,12 @@ export const createDriver = async (req: Request, res: Response) => {
         error: "Name, email, phone, password, and stationId are required",
       });
     }
+    if (typeof password !== "string" || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: "Driver password must be at least 8 characters",
+      });
+    }
 
     const existing = await userRepository.findOne({ where: [{ email }, { phone }] });
     if (existing) {
