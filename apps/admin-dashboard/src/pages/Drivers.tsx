@@ -149,7 +149,7 @@ export default function Drivers() {
             <Grid item xs={12}><TextField fullWidth label="Name" value={newDriver.name} onChange={(e) => setNewDriver({...newDriver, name: e.target.value})} required /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Email" type="email" value={newDriver.email} onChange={(e) => setNewDriver({...newDriver, email: e.target.value})} required /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Phone" value={newDriver.phone} onChange={(e) => setNewDriver({...newDriver, phone: e.target.value})} required /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Password" type="password" value={newDriver.password} onChange={(e) => setNewDriver({...newDriver, password: e.target.value})} required /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Driver password" type="password" value={newDriver.password} onChange={(e) => setNewDriver({...newDriver, password: e.target.value})} required inputProps={{ minLength: 8 }} helperText="Use a unique password of at least 8 characters and share it securely with the driver." /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Vehicle Number" value={newDriver.vehicleNumber} onChange={(e) => setNewDriver({...newDriver, vehicleNumber: e.target.value})} /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Vehicle Type" value={newDriver.vehicleType} onChange={(e) => setNewDriver({...newDriver, vehicleType: e.target.value})} /></Grid>
             <Grid item xs={12}>
