@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="GasMobil">
+  <path d="M32 4c-2.5 5.8-8 9.1-8 15a8 8 0 0 0 16 0c0-5.9-5.5-9.2-8-15Z" fill="#F36A21"/>
+  <path d="M29 17c-3 3-3 6-1 8 2-2 4-3 5-6 2 2 3 4 3 7 0 3-2 5-5 5-4 0-6-3-6-6 0-3 2-6 4-8Z" fill="#FFF8EE"/>
+  <path d="M22 27h20l3 5v21a7 7 0 0 1-7 7H26a7 7 0 0 1-7-7V32l3-5Z" fill="#F36A21"/>
+  <path d="M25 25h14v4H25zM27 35h10M27 41h10M27 47h10" fill="none" stroke="#FFF8EE" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M25 60v2m14-2v2" stroke="#A94317" stroke-width="3" stroke-linecap="round"/>
+</svg>
