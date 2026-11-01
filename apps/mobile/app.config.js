@@ -26,6 +26,7 @@ export default {
         backgroundColor: "#070b14",
       },
       package: "com.gasmobil.app",
+      versionCode: 1,
     },
     web: {
       favicon: "./assets/icon.png",
