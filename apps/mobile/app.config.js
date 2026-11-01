@@ -7,13 +7,13 @@ export default {
     owner: "gasmobil-uganda",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/gasmobil-icon.png",
     scheme: "gasmobil",
     userInterfaceStyle: "dark",
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
-      backgroundColor: "#070b14",
+      backgroundColor: "#061D16",
     },
     assetBundlePatterns: ["**/*"],
     ios: {
@@ -22,7 +22,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/gasmobil-icon.png",
         backgroundColor: "#070b14",
       },
       package: "com.gasmobil.app",
