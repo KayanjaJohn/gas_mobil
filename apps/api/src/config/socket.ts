@@ -59,9 +59,17 @@ export const initializeSocket = (server: HttpServer) => {
   io = new SocketServer(server, {
     cors: {
       origin: (origin, callback) => {
+        const productionOrigins = [
+          "https://gas-mobil.com",
+          "https://www.gas-mobil.com",
+          "https://admin.gas-mobil.com",
+          "https://agent.gas-mobil.com",
+        ];
+        const configuredOrigins =
+          process.env.ALLOWED_ORIGINS?.split(",").map((value) => value.trim()).filter(Boolean) || [];
         const allowedOrigins =
           process.env.NODE_ENV === "production"
-            ? process.env.ALLOWED_ORIGINS?.split(",").map((value) => value.trim()).filter(Boolean) || []
+            ? [...new Set([...productionOrigins, ...configuredOrigins])]
             : [
                 "http://localhost:8081",
                 "http://localhost:19006",
