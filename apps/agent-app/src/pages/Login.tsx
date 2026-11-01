@@ -33,6 +33,9 @@ export default function Login() {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#0B1120" }}>
       <Paper elevation={6} sx={{ p: 4, width: "100%", maxWidth: 420, bgcolor: "#151e2e", color: "#fff" }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+          <Box component="img" src="/agent/favicon.svg" alt="GasMobil" sx={{ width: 64, height: 64 }} />
+        </Box>
         <Typography variant="h4" align="center" fontWeight={700} sx={{ mb: 1 }}>
           GasMobil Agent
         </Typography>
