@@ -20,6 +20,7 @@ function Main() {
   const theme = useMemo(
     () =>
       createTheme({
+        typography: { fontFamily: '"DM Sans", sans-serif', h1: { fontFamily: '"DM Sans", sans-serif' }, h2: { fontFamily: '"DM Sans", sans-serif' }, h3: { fontFamily: '"DM Sans", sans-serif' }, h4: { fontFamily: '"DM Sans", sans-serif' }, h5: { fontFamily: '"DM Sans", sans-serif' }, h6: { fontFamily: '"DM Sans", sans-serif' }, button: { fontFamily: '"DM Sans", sans-serif', fontWeight: 800 } },
         palette: {
           mode,
           primary: { main: "#0B3D2E", contrastText: "#FFF8EE" },
