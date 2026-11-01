@@ -90,3 +90,15 @@ jobs:
       - name: Build shared package
         working-directory: packages/shared
         run: npm run build
+
+  combined-frontend-container:
+    name: Build combined public/admin/agent frontend image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production frontend container
+        run: |
+          docker build --pull --no-cache \
+            --build-arg VITE_API_URL=https://api.gas-mobil.com/api \
+            --file Dockerfile \
+            --tag gasmobil-combined-frontend:ci .
