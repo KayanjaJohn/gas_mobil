@@ -318,10 +318,14 @@ export const createStation = async (req: Request, res: Response) => {
 		const { name, address, latitude, longitude, phone, email, agentName, agentPassword } =
 			req.body;
 
-		if (!email) {
-			return res
-				.status(400)
-				.json({ success: false, error: "Station email is required for agent login" });
+		if (!name || !address || latitude === undefined || longitude === undefined || !phone || !email || !agentPassword) {
+			return res.status(400).json({
+				success: false,
+				error: "Station details and a unique agent password are required",
+			});
+		}
+		if (typeof agentPassword !== "string" || agentPassword.length < 8) {
+			return res.status(400).json({ success: false, error: "Agent password must be at least 8 characters" });
 		}
 
 		// Check if station email already exists as agent login
@@ -349,7 +353,7 @@ export const createStation = async (req: Request, res: Response) => {
 		await stationRepository.save(station);
 
 		// Create agent using station email as login
-		const hashedPassword = await bcryptjs.hash(agentPassword || "Agent@123", 12);
+		const hashedPassword = await bcryptjs.hash(agentPassword, 12);
 
 		const agent = userRepository.create({
 			name: agentName || `${name} Agent`,
@@ -376,7 +380,7 @@ export const createStation = async (req: Request, res: Response) => {
 					password: agentPassword || "Agent@123",
 				},
 			},
-			message: "Station and agent created successfully. Agent logs in with station email.",
+			message: "Station and agent created successfully. Share the agent's credentials securely.",
 		});
 	} catch (error: any) {
 		res.status(500).json({ success: false, error: error.message });
@@ -504,6 +508,9 @@ export const updateAgent = async (req: Request, res: Response) => {
 		if (isActive !== undefined) agent.isActive = isActive;
 
 		if (password) {
+			if (typeof password !== "string" || password.length < 8) {
+				return res.status(400).json({ success: false, error: "Agent password must be at least 8 characters" });
+			}
 			const hashedPassword = await bcryptjs.hash(password, 12);
 			agent.password = hashedPassword;
 		}
@@ -543,13 +550,17 @@ export const addAgentToStation = async (req: Request, res: Response) => {
 			return res.status(404).json({ success: false, error: "Station not found" });
 		}
 
+		if (!email || !password || typeof password !== "string" || password.length < 8) {
+			return res.status(400).json({ success: false, error: "Agent email and a password of at least 8 characters are required" });
+		}
+
 		// Check if email already exists
 		const existing = await userRepository.findOne({ where: { email } });
 		if (existing) {
 			return res.status(400).json({ success: false, error: "Email already in use" });
 		}
 
-		const hashedPassword = await bcryptjs.hash(password || "Agent@123", 12);
+		const hashedPassword = await bcryptjs.hash(password, 12);
 
 		const agent = userRepository.create({
 			name: name || `${station.name} Agent`,
