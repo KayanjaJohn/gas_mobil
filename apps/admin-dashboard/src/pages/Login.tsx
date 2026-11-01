@@ -28,6 +28,9 @@ export default function Login() {
   return (
     <Container maxWidth="sm" sx={{ mt: 10 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+          <Box component="img" src="/admin/favicon.svg" alt="GasMobil" sx={{ width: 64, height: 64 }} />
+        </Box>
         <Typography variant="h4" align="center" gutterBottom fontWeight={700}>
           GasMobil Admin
         </Typography>
