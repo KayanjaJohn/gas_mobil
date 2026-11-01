@@ -63,7 +63,8 @@ export default function Layout() {
 
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "#0B3D2E", color: "#FFF8EE", "& .MuiTypography-root": { color: "#FFF8EE" }, "& .MuiListItemIcon-root": { color: "#FFF8EE" }, "& .MuiDivider-root": { borderColor: "#315C4D" } }}>
-      <Toolbar sx={{ justifyContent: "center", bgcolor: "#0B3D2E" }}>
+      <Toolbar sx={{ justifyContent: "center", bgcolor: "#0B3D2E", gap: 1 }}>
+        <Box component="img" src="/agent/favicon.svg" alt="GasMobil" sx={{ width: 30, height: 30, borderRadius: 1 }} />
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {drawerCollapsed ? "GM" : "GasMobil"}
         </Typography>
