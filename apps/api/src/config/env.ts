@@ -1,49 +1,33 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-// Load the environment variables
+// Load environment variables supplied by the hosting platform or local .env.
 dotenv.config();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
-  PORT: z.coerce.number().int().positive().default(8000),
-  
-  // MySQL Database Config
-  DATABASE_URL: z.string().url(), // e.g., mysql://user:pass@host:3306/db
-  
-  // CORS Origins
+  PORT: z.coerce.number().int().positive().default(5000),
+
+  // The managed MySQL connection URL is the source of truth in production.
+  // Local development may continue using the individual DB_* variables.
+  DATABASE_URL: z.string().url(),
+
+  // CORS origins
   CLIENT_URL: z.string().url(),
   ADMIN_URL: z.string().url(),
   AGENT_URL: z.string().url(),
   DRIVER_APP_URL: z.string().url(),
-  
-  // Third-Party Secrets
-  
-  MTN_MOMO_API_USER: z.string(),
-  MTN_MOMO_API_KEY: z.string(),
-  MTN_MOMO_SUBSCRIPTION_KEY: z.string(),
-  MTN_MOMO_BASE_URL: z.string().url(),
-  MTN_MOMO_ENVIRONMENT: z.literal('production'),
-  
-  AIRTEL_MONEY_CLIENT_ID: z.string(),
-  AIRTEL_MONEY_CLIENT_SECRET: z.string(),
-  AIRTEL_MONEY_BASE_URL: z.string().url(),
-  
-  // Email & Utilities
-  SMTP_HOST: z.string(),
-  SMTP_PORT: z.string().transform((val) => parseInt(val, 10)),
-  SMTP_USER: z.string(),
-  SMTP_PASS: z.string(),
+
+  // Email (used for OTP and account notifications)
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number().int().positive(),
+  SMTP_USER: z.string().min(1),
+  SMTP_PASS: z.string().min(1),
   SMTP_FROM: z.string().email(),
-  
+
   LOG_LEVEL: z.enum(['error', 'warn', 'info']).default('warn'),
-  
-  REDIS_HOST: z.string(),
-  REDIS_PORT: z.string().transform((val) => parseInt(val, 10)),
-  REDIS_PASSWORD: z.string(),
 });
 
-// Parse and validate
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
