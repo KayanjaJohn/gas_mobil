@@ -68,9 +68,6 @@ export default function Login() {
           </Button>
         </Box>
 
-        <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mt: 2 }}>
-          Demo: admin@gasmobil.com / Admin@123
-        </Typography>
       </Paper>
     </Container>
   );
