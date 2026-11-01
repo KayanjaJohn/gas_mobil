@@ -23,11 +23,14 @@ FROM nginx:1.27-alpine AS production
 COPY nginx-sites.conf /etc/nginx/conf.d/default.conf
 COPY apps/website/index.html /usr/share/nginx/html/public/index.html
 COPY apps/website/favicon.svg /usr/share/nginx/html/public/favicon.svg
+COPY apps/website/favicon.png /usr/share/nginx/html/public/favicon.png
 COPY apps/website/gasmobil-mark.svg /usr/share/nginx/html/public/gasmobil-mark.svg
 COPY apps/website/robots.txt /usr/share/nginx/html/public/robots.txt
 COPY apps/website/sitemap.xml /usr/share/nginx/html/public/sitemap.xml
 COPY apps/website/favicon.svg /usr/share/nginx/html/admin/favicon.svg
+COPY apps/website/favicon.png /usr/share/nginx/html/admin/favicon.png
 COPY apps/website/favicon.svg /usr/share/nginx/html/agent/favicon.svg
+COPY apps/website/favicon.png /usr/share/nginx/html/agent/favicon.png
 COPY --from=admin-build /build/dist /usr/share/nginx/html/admin
 COPY --from=agent-build /build/dist /usr/share/nginx/html/agent
 
