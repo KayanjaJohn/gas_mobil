@@ -177,6 +177,10 @@ export default function Stations() {
 
   const handleAgentUpdate = async () => {
     if (!editingAgent) return;
+    if (agentForm.password && agentForm.password.length < 8) {
+      setSnackbar({ open: true, message: 'New password must be at least 8 characters', severity: 'error' });
+      return;
+    }
     
     try {
       const payload: any = {
@@ -557,7 +561,8 @@ export default function Stations() {
                 type="password"
                 value={agentForm.password}
                 onChange={(e) => setAgentForm({ ...agentForm, password: e.target.value })}
-                helperText="Leave blank to keep current password"
+                inputProps={{ minLength: 8 }}
+                helperText="Leave blank to keep current password. New passwords must be at least 8 characters."
               />
             </Grid>
             <Grid item xs={12}>
