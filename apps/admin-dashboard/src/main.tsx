@@ -55,7 +55,7 @@ function Main() {
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BrowserRouter>
+        <BrowserRouter basename="/admin">
           <App />
         </BrowserRouter>
       </ThemeProvider>
