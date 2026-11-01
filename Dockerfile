@@ -26,6 +26,8 @@ COPY apps/website/reset-password.html /usr/share/nginx/html/public/reset-passwor
 COPY apps/website/favicon.svg /usr/share/nginx/html/public/favicon.svg
 COPY apps/website/favicon.png /usr/share/nginx/html/public/favicon.png
 COPY apps/website/gasmobil-mark.svg /usr/share/nginx/html/public/gasmobil-mark.svg
+COPY apps/website/gasmobil-icon.png /usr/share/nginx/html/public/gasmobil-icon.png
+COPY apps/website/gasmobil-cylinder-hero.jpg /usr/share/nginx/html/public/gasmobil-cylinder-hero.jpg
 COPY apps/website/robots.txt /usr/share/nginx/html/public/robots.txt
 COPY apps/website/sitemap.xml /usr/share/nginx/html/public/sitemap.xml
 COPY apps/website/favicon.svg /usr/share/nginx/html/admin/favicon.svg
