@@ -1,16 +1,34 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 import AppDataSource from "../config/database";
 import { User } from "../entities/User";
 import { generateToken, generateRefreshToken } from "../middleware/auth";
 
 const userRepository = AppDataSource.getRepository(User);
 
-// Minimal email helper — swap for SendGrid/Resend in production
+// Send password-reset messages through the configured SMTP provider.
+// Credentials are read at runtime and must never be supplied as Docker build arguments.
 async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  console.log(`[Email] To: ${to} | Subject: ${subject}`);
-  // TODO: integrate nodemailer or transactional email API
+  const host = process.env.SMTP_HOST?.trim();
+  const port = Number(process.env.SMTP_PORT || 587);
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM?.trim() || user;
+
+  if (!host || !Number.isInteger(port) || !user || !pass || !from) {
+    throw new Error("Password recovery email is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and SMTP_FROM at runtime.");
+  }
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+
+  await transporter.sendMail({ from, to, subject, html });
 }
 
 export const register = async (req: Request, res: Response) => {
@@ -282,7 +300,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
       resetTokenExpiry: new Date(Date.now() + 15 * 60 * 1000),
     } as any);
 
-    const resetUrl = `${process.env.CLIENT_URL || "https://gasmobil.com"}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.CLIENT_URL || "https://gas-mobil.com"}/reset-password.html?token=${encodeURIComponent(resetToken)}`;
 
     await sendEmail({
       to: user.email,
