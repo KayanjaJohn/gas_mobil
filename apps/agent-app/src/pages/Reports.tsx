@@ -8,9 +8,9 @@ import { Assessment, Download, Event, Today, ViewWeek } from '@mui/icons-materia
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
-type ReportPeriod = 'daily' | 'weekly' | 'yearly';
+type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 interface Order {
   id: string;
@@ -26,6 +26,7 @@ interface Order {
 const periodOptions: Array<{ value: ReportPeriod; label: string; icon: JSX.Element }> = [
   { value: 'daily', label: 'Daily', icon: <Today /> },
   { value: 'weekly', label: 'Weekly', icon: <ViewWeek /> },
+  { value: 'monthly', label: 'Monthly', icon: <Event /> },
   { value: 'yearly', label: 'Yearly', icon: <Event /> },
 ];
 
@@ -52,6 +53,8 @@ const getPeriodStart = (period: ReportPeriod) => {
     date.setDate(date.getDate() + mondayOffset);
   }
 
+  if (period === 'monthly') date.setDate(1);
+
   if (period === 'yearly') {
     date.setMonth(0, 1);
   }
@@ -69,6 +72,7 @@ const formatPeriodLabel = (period: ReportPeriod, start: Date) => {
     return `${formatter.format(start)} - ${formatter.format(end)}`;
   }
 
+  if (period === 'monthly') return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(start);
   return String(start.getFullYear());
 };
 
@@ -105,6 +109,8 @@ export default function Reports() {
   }, [orders, periodStart]);
 
   const paidOrders = reportOrders.filter((order) => order.paymentStatus === 'paid');
+  const totalOrderValue = reportOrders.filter((order) => !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  const outstandingCash = reportOrders.filter((order) => order.paymentStatus === 'pending' && !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const completedOrders = reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status));
   const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const averageOrderValue = paidOrders.length ? totalRevenue / paidOrders.length : 0;
@@ -127,10 +133,13 @@ export default function Reports() {
       ['Generated At', new Date().toLocaleString()],
       ['Orders', String(reportOrders.length)],
       ['Completed Orders', String(completedOrders.length)],
+      ['Total Order Value', String(totalOrderValue)],
+      ['Paid Orders', String(paidOrders.length)],
       ['Paid Revenue', String(totalRevenue)],
+      ['COD Outstanding', String(outstandingCash)],
       ['Average Paid Order', String(Math.round(averageOrderValue))],
       [],
-      ['Order ID', 'Customer', 'Phone', 'Date', 'Status', 'Payment', 'Driver', 'Amount'],
+      ['Order ID', 'Customer', 'Phone', 'Date', 'Status', 'Payment Method', 'Payment Status', 'Driver', 'Amount'],
       ...(reportOrders.length > 0
         ? reportOrders.map((order) => [
             order.id,
@@ -138,11 +147,12 @@ export default function Reports() {
             order.user?.phone || '',
             new Date(order.createdAt).toLocaleString(),
             order.status,
-            order.paymentStatus || 'N/A',
+            'Cash on Delivery',
+            order.paymentStatus || 'pending',
             getDriverName(order),
             String(order.totalAmount),
           ])
-        : [['No orders found for this period', '', '', '', '', '', '', '']]),
+        : [['No orders found for this period', '', '', '', '', '', '', '', '']]),
     ];
 
     const csv = rows
@@ -164,7 +174,7 @@ export default function Reports() {
         <Box>
           <Typography variant="h4">Station Reports</Typography>
           <Typography variant="body2" color="textSecondary">
-            Generate daily, weekly, and yearly reports for {user?.station?.name || 'your station'}.
+            Generate daily, weekly, monthly, and yearly reports for {user?.station?.name || 'your station'}.
           </Typography>
         </Box>
         <Button variant="outlined" startIcon={<Download />} onClick={handleDownload}>
@@ -205,23 +215,35 @@ export default function Reports() {
             </Box>
 
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Orders</Typography>
-                <Typography variant="h5" fontWeight="bold">{reportOrders.length}</Typography>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Orders</Typography>
+                  <Typography variant="h5" fontWeight="bold">{reportOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Completed Deliveries</Typography>
+                  <Typography variant="h5" fontWeight="bold">{completedOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Completed Delivery Value</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0).toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Paid Orders</Typography>
+                  <Typography variant="h5" fontWeight="bold">{paidOrders.length}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Paid Revenue</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {totalRevenue.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">COD Outstanding</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {outstandingCash.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" color="textSecondary">Average Paid Order</Typography>
+                  <Typography variant="h5" fontWeight="bold">UGX {Math.round(averageOrderValue).toLocaleString()}</Typography>
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Completed</Typography>
-                <Typography variant="h5" fontWeight="bold">{completedOrders.length}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Paid Revenue</Typography>
-                <Typography variant="h5" fontWeight="bold">UGX {totalRevenue.toLocaleString()}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="textSecondary">Avg. Paid Order</Typography>
-                <Typography variant="h5" fontWeight="bold">UGX {Math.round(averageOrderValue).toLocaleString()}</Typography>
-              </Grid>
-            </Grid>
 
             <Box sx={{ display: 'flex', gap: 1, mt: 3, flexWrap: 'wrap' }}>
               {Object.entries(statusSummary).map(([status, count]) => (
@@ -241,7 +263,7 @@ export default function Reports() {
                   <TableCell>Customer</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Payment</TableCell>
+                  <TableCell>Payment / Collection</TableCell>
                   <TableCell>Driver</TableCell>
                   <TableCell align="right">Amount</TableCell>
                 </TableRow>
@@ -258,7 +280,10 @@ export default function Reports() {
                     <TableCell>
                       <Chip label={order.status.replace('_', ' ')} color={statusColors[order.status] || 'default'} size="small" />
                     </TableCell>
-                    <TableCell>{order.paymentStatus || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600}>Cash on Delivery</Typography>
+                      <Typography variant="caption" color="textSecondary">{order.paymentStatus || 'pending'}</Typography>
+                    </TableCell>
                     <TableCell>{getDriverName(order)}</TableCell>
                     <TableCell align="right">UGX {Number(order.totalAmount).toLocaleString()}</TableCell>
                   </TableRow>

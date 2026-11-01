@@ -1,16 +1,16 @@
 import { Request, Response } from 'express';
 import AppDataSource from '../config/database';
-import { Accessory } from '../entities/Accessory';
+import { Product } from '../entities/Product';
 
-const accessoryRepository = AppDataSource.getRepository(Accessory);
+const accessoryRepository = AppDataSource.getRepository(Product);
 
 export const getAccessories = async (req: Request, res: Response) => {
   try {
-    const { category } = req.query;
-    const queryBuilder = accessoryRepository.createQueryBuilder('accessory');
+    const category = req.query.category || 'accessory';
+    const queryBuilder = accessoryRepository.createQueryBuilder('product');
 
     if (category) {
-      queryBuilder.where('accessory.category = :category', { category });
+      queryBuilder.where('product.type = :category', { category });
     }
 
     const accessories = await queryBuilder.getMany();
@@ -27,7 +27,7 @@ export const getAccessories = async (req: Request, res: Response) => {
 export const getAccessoryById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const accessory = await accessoryRepository.findOneBy({ id });
+    const accessory = await accessoryRepository.findOneBy({ id, type: 'accessory' });
 
     if (!accessory) {
       return res.status(404).json({ success: false, error: 'Accessory not found' });

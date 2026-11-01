@@ -32,7 +32,7 @@ const httpServer = createServer(app);
 // ── Socket.IO setup ──────────
 initializeSocket(httpServer);
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT || 5000);
 
 // ── Ensure uploads directory exists ──────────
 const uploadsDir = path.join(__dirname, "../uploads/products");
@@ -43,11 +43,40 @@ if (!fs.existsSync(uploadsDir)) {
 
 // ── Security ─────────────────
 app.use(helmet());
+const allowedOrigins = [
+  'https://gas-mobil.com',
+  'https://www.gas-mobil.com',
+  'https://gasmobil.ug',
+  'https://app.gasmobil.ug',
+  process.env.CLIENT_URL,
+  process.env.ADMIN_URL,
+  process.env.AGENT_URL,
+  'https://organic-engine-wp496r7gwqq39pw-3000.app.github.dev',
+  'https://organic-engine-wp496r7gwqq39pw-3001.app.github.dev',
+];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://gasmobil.ug', 'https://app.gasmobil.ug']
-    : true,
+  origin: (origin, callback) => {
+    // Allow requests without an Origin header, such as health checks
+    // and direct server-to-server requests.
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Keep Codespaces origins available during development.
+    const isDevelopmentOrigin =
+      process.env.NODE_ENV !== 'production' &&
+      /^https:\/\/organic-engine-wp496r7gwqq39pw-300[01]\.app\.github\.dev$/.test(origin);
+
+    if (allowedOrigins.includes(origin) || isDevelopmentOrigin) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Origin not allowed by CORS'));
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // ── Rate Limiting ──────────────

@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
@@ -19,7 +20,7 @@ export default function CartScreen() {
 
         {items.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={{ fontSize: 50, marginBottom: 10, opacity: 0.4 }}>🛒</Text>
+            <Text style={{ fontSize: 50, marginBottom: 10, opacity: 0.4 }}><Icon name="cart-outline" size={50} color={COLORS.muted} /></Text>
             <Text style={styles.emptyText}>Your cart is empty</Text>
             <TouchableOpacity style={styles.browseBtn} onPress={() => router.push("/accessories")} activeOpacity={0.85}>
               <Text style={styles.browseText}>Browse Accessories</Text>
@@ -29,7 +30,7 @@ export default function CartScreen() {
           <View style={{ paddingHorizontal: 16, paddingBottom: 100 }}>
             {items.map((item, i) => (
               <View key={`${item.product.id}-${i}`} style={styles.cartRow}>
-                <View style={styles.img}><Text style={{ fontSize: 24 }}>🔧</Text></View>
+                <View style={styles.img}><Text style={{ fontSize: 24 }}><Icon name="tools" size={24} color={COLORS.accent} /></Text></View>
                 <View style={styles.info}>
                   <Text style={styles.infoName}>{item.product.name}</Text>
                   <Text style={styles.infoPrice}>UGX {item.product.price.toLocaleString()}</Text>
@@ -39,7 +40,7 @@ export default function CartScreen() {
                   <Text style={styles.qtyVal}>{item.quantity}</Text>
                   <TouchableOpacity onPress={() => updateQuantity(item.product.id, item.quantity + 1)} style={styles.qtyBtn}><Text style={styles.qtyText}>+</Text></TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => removeItem(item.product.id)} style={styles.delBtn}><Text style={{ color: COLORS.danger }}>🗑️</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => removeItem(item.product.id)} style={styles.delBtn}><Text style={{ color: COLORS.danger }}><Icon name="delete-outline" size={20} color={COLORS.danger} /></Text></TouchableOpacity>
               </View>
             ))}
 
@@ -49,7 +50,7 @@ export default function CartScreen() {
               <View style={[styles.sline, styles.totalLine]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>UGX {total.toLocaleString()}</Text></View>
             </View>
 
-            <TouchableOpacity style={styles.checkoutBtn} onPress={() => router.push("/order-summary")} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.checkoutBtn} onPress={() => router.push("/order-loc")} activeOpacity={0.85}>
               <Text style={styles.checkoutText}>Proceed to Checkout</Text>
             </TouchableOpacity>
           </View>

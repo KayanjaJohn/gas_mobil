@@ -1,34 +1,26 @@
-import express from 'express';
-import {
-  initiateMobilePayment,
-  checkPaymentStatus,
-  payWithWallet,
-  initiateCardPayment,
-  stripeWebhook,
-  momoCallback,
-  airtelCallback,
-  markCashOnDelivery,
-} from '../controllers/paymentController';
-import { authMiddleware } from '../middleware/auth';
+import express from "express";
+import { markCashOnDelivery } from "../controllers/paymentController";
+import { authMiddleware } from "../middleware/auth";
 
 const router = express.Router();
 
-// Mobile Money
-router.post('/mobile/initiate', authMiddleware, initiateMobilePayment);
-router.get('/mobile/status', authMiddleware, checkPaymentStatus);
+const onlinePaymentsDisabled: express.RequestHandler = (_req, res) => {
+  res.status(503).json({
+    success: false,
+    error: "Online payments are disabled. Please select cash on delivery.",
+  });
+};
 
-// Wallet
-router.post('/wallet/pay', authMiddleware, payWithWallet);
+// Cash on delivery remains available.
+router.post("/cash-on-delivery", authMiddleware, markCashOnDelivery);
 
-// Card (Stripe)
-router.post('/card/initiate', authMiddleware, initiateCardPayment);
-
-// Cash on Delivery
-router.post('/cash-on-delivery', authMiddleware, markCashOnDelivery);
-
-// Webhooks (no auth - called by payment providers)
-router.post('/webhook/momo', momoCallback);
-router.post('/webhook/airtel', airtelCallback);
-router.post('/webhook/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
+// Explicitly reject all online payment initiation, status checks, and provider callbacks.
+router.post("/mobile/initiate", authMiddleware, onlinePaymentsDisabled);
+router.get("/mobile/status", authMiddleware, onlinePaymentsDisabled);
+router.post("/wallet/pay", authMiddleware, onlinePaymentsDisabled);
+router.post("/card/initiate", authMiddleware, onlinePaymentsDisabled);
+router.post("/webhook/momo", onlinePaymentsDisabled);
+router.post("/webhook/airtel", onlinePaymentsDisabled);
+router.post("/webhook/stripe", onlinePaymentsDisabled);
 
 export default router;

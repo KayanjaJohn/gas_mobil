@@ -5,7 +5,7 @@ import { OrderItem } from './OrderItem';
 import { Delivery } from './Delivery';
 
 export type OrderStatus = 'pending' | 'confirmed' | 'driver_assigned' | 'picked_up' | 'in_transit' | 'nearby' | 'delivered' | 'completed' | 'cancelled' | 'failed' | 'refunded';
-export type PaymentMethod = 'cash' | 'wallet' | 'momo' | 'airtel' | 'card';
+export type PaymentMethod = 'cash';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 @Entity('orders')
@@ -13,7 +13,7 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   declare id: string;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', length: 36, nullable: false })
   @Index()
   declare userId: string;
 
@@ -21,7 +21,7 @@ export class Order {
   @JoinColumn({ name: 'userId' })
   declare user: User;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', length: 36, nullable: false })
   @Index()
   declare stationId: string;
 
@@ -50,7 +50,7 @@ export class Order {
   @Column({ type: 'enum', enum: ['pending', 'confirmed', 'driver_assigned', 'picked_up', 'in_transit', 'nearby', 'delivered', 'completed', 'cancelled', 'failed', 'refunded'], default: 'pending' })
   declare status: OrderStatus;
 
-  @Column({ type: 'enum', enum: ['cash', 'wallet', 'momo', 'airtel', 'card'], default: 'cash' })
+  @Column({ type: 'enum', enum: ['cash'], default: 'cash' })
   declare paymentMethod: PaymentMethod;
 
   @Column({ type: 'enum', enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' })

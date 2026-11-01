@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
@@ -42,7 +43,7 @@ export default function OrderLocScreen() {
   const fetchStations = async () => {
     setLoadingStations(true);
     try {
-      const res = await apiRequest<{ success: boolean; data: Station[] }>("get", "/stations");
+      const res = await apiRequest<Station[]>("get", "/stations");
       if (res.success && res.data) {
         setStations(res.data.filter((s) => s.latitude && s.longitude));
       }
@@ -62,7 +63,7 @@ export default function OrderLocScreen() {
     setDetecting(true);
     try {
       // Try to get device location
-      const { Location } = await import("expo-location");
+      const Location = await import("expo-location");
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission denied", "Location permission is needed to find the nearest station.");
@@ -107,11 +108,16 @@ export default function OrderLocScreen() {
   };
 
   const handleContinue = () => {
-    if (!address) {
-      Alert.alert("Address required", "Please enter a delivery address.");
+    const fullAddress = `${address.trim()}${city.trim() ? ", " + city.trim() : ""}`;
+    if (address.trim().length < 5) {
+      Alert.alert("Address required", "Please enter a delivery address of at least 5 characters.");
       return;
     }
-    setDeliveryAddress(`${address}${city ? ", " + city : ""}`);
+    if (useOrderStore.getState().deliveryLat == null || useOrderStore.getState().deliveryLng == null) {
+      Alert.alert("Location required", "Enable device location and tap Auto-detect again before continuing.");
+      return;
+    }
+    setDeliveryAddress(fullAddress);
     router.push("/order-summary");
   };
 
@@ -157,7 +163,7 @@ export default function OrderLocScreen() {
             activeOpacity={0.8}
           >
             <Text style={[styles.modeText, mode === "auto" && styles.modeTextActive]}>
-              📍 Auto-detect
+              <Icon name="crosshairs-gps" size={17} color={COLORS.accent} />  Auto-detect
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -166,7 +172,7 @@ export default function OrderLocScreen() {
             activeOpacity={0.8}
           >
             <Text style={[styles.modeText, mode === "manual" && styles.modeTextActive]}>
-              🏪 Manual Select
+              <Icon name="store-outline" size={17} color={COLORS.accent} />  Manual Select
             </Text>
           </TouchableOpacity>
         </View>

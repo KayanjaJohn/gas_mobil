@@ -57,7 +57,13 @@ export class User {
   @Column({ type: "varchar", length: 50, nullable: true })
   vehicleType!: string | null;
 
-  @Column({ type: "varchar", nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
+  resetTokenHash!: string | null;
+
+  @Column({ type: "timestamp", nullable: true })
+  resetTokenExpiry!: Date | null;
+
+  @Column({ type: "varchar", length: 36, nullable: true })
   stationId!: string | null;
 
   @ManyToOne(() => Station, (station) => station.agents, { nullable: true })

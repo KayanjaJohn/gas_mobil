@@ -1,11 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, type NavigationProp } from '@react-navigation/native';
+import { useDriverLocation } from '../hooks/useDriverLocation';
 import { useAuth } from '../context/AuthContext';
 import { useDriverNotifications } from '../hooks/useDriverNotifications';
 import api from '../services/api';
+
+type DriverStackParamList = {
+  Login: undefined;
+  Home: undefined;
+  OrderDetail: { orderId: string };
+  Delivery: undefined;
+  Earnings: undefined;
+  Profile: undefined;
+  Notifications: undefined;
+};
 
 interface Order {
   id: string;
@@ -24,7 +36,7 @@ interface Stats {
 }
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<DriverStackParamList>>();
   const { user, logout } = useAuth();
   const { unreadCount } = useDriverNotifications();
 
@@ -63,7 +75,23 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const activeOrders = orders.filter(o => ['in_transit', 'nearby'].includes(o.status));
   const pendingOrders = orders.filter(o => ['confirmed', 'driver_assigned', 'picked_up'].includes(o.status));
+  const activeOrderIds = useMemo(() => activeOrders.map((order) => order.id), [orders]);
+  const activeOrderKey = activeOrderIds.join(',');
+  const { startTracking, stopTracking, currentLocation } = useDriverLocation(activeOrderIds);
+
+  // Resume location sharing after app restart while an assigned delivery is active.
+  // Focus cleanup prevents Home and OrderDetail from running duplicate GPS watchers.
+  useFocusEffect(
+    useCallback(() => {
+      if (activeOrderIds.length === 0) return;
+      startTracking().catch((error: any) => {
+        console.error('[Home] Unable to resume active delivery GPS:', error?.message || error);
+      });
+      return () => stopTracking();
+    }, [activeOrderKey, startTracking, stopTracking])
+  );
 
   return (
     <View style={styles.container}>
@@ -79,7 +107,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Notifications' as never)}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 18 }}>🔔</Text>
+            <Icon name="bell-ring" size={25} color="#0B3D2E" />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -103,11 +131,11 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{stats.todayOrders}</Text>
-            <Text style={styles.statLabel}>Today's Orders</Text>
+            <Text style={styles.statLabel}>Orders Today</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{stats.todayCompleted}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statLabel}>Completed Today</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>UGX {stats.todayEarnings.toLocaleString()}</Text>
@@ -118,14 +146,50 @@ export default function HomeScreen() {
         {/* Quick Actions */}
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Earnings' as never)}>
-            <Text style={styles.actionIcon}>💰</Text>
+            <Icon name="cash-multiple" size={25} color="#F59E0B" style={styles.actionIcon} />
             <Text style={styles.actionText}>Earnings</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Profile' as never)}>
-            <Text style={styles.actionIcon}>⚙️</Text>
+            <Icon name="cog-outline" size={25} color="#F59E0B" style={styles.actionIcon} />
             <Text style={styles.actionText}>Settings</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Active delivery is separate from pending orders and restored after app restart. */}
+        <Text style={styles.sectionTitle}>Active Deliveries ({activeOrders.length})</Text>
+        {activeOrders.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyText}>No delivery currently in progress</Text>
+          </View>
+        ) : (
+          activeOrders.map(order => (
+            <TouchableOpacity
+              key={order.id}
+              style={[styles.orderCard, styles.activeOrderCard]}
+              onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+              activeOpacity={0.8}
+            >
+              <View style={styles.orderHeader}>
+                <Text style={styles.orderId}>Order #{order.id.slice(0, 8)}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: 'rgba(22,163,74,0.25)' }]}>
+                  <Text style={styles.statusText}>{order.status.replace(/_/g, ' ').toUpperCase()}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Icon name="map-marker-outline" size={17} color="#F36A21" />
+                <Text style={styles.orderAddress}> {order.deliveryAddress}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Icon name="crosshairs-gps" size={17} color={currentLocation ? '#22C55E' : '#F36A21'} />
+                <Text style={styles.orderCustomer}>
+                  {currentLocation ? 'Your live location is sharing' : 'Connecting to GPS…'}
+                </Text>
+              </View>
+              <Text style={styles.orderAmount}>UGX {Number(order.totalAmount || 0).toLocaleString()}</Text>
+              <Text style={styles.openDeliveryText}>VIEW LIVE DELIVERY  →</Text>
+            </TouchableOpacity>
+          ))
+        )}
 
         {/* Pending Orders */}
         <Text style={styles.sectionTitle}>Pending Orders ({pendingOrders.length})</Text>
@@ -140,7 +204,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={order.id}
               style={styles.orderCard}
-              onPress={() => navigation.navigate('OrderDetail' as never, { orderId: order.id } as never)}
+              onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
               activeOpacity={0.8}
             >
               <View style={styles.orderHeader}>
@@ -149,8 +213,8 @@ export default function HomeScreen() {
                   <Text style={styles.statusText}>{order.status.replace('_', ' ')}</Text>
                 </View>
               </View>
-              <Text style={styles.orderAddress}>📍 {order.deliveryAddress}</Text>
-              <Text style={styles.orderCustomer}>👤 {order.user?.name || 'Customer'}</Text>
+              <View style={styles.infoRow}><Icon name="map-marker-outline" size={17} color="#94A3B8" /><Text style={styles.orderAddress}> {order.deliveryAddress}</Text></View>
+              <View style={styles.infoRow}><Icon name="account-outline" size={17} color="#94A3B8" /><Text style={styles.orderCustomer}> {order.user?.name || 'Customer'}</Text></View>
               <Text style={styles.orderAmount}>UGX {order.totalAmount?.toLocaleString() || '0'}</Text>
             </TouchableOpacity>
           ))
@@ -172,56 +236,59 @@ function getStatusColor(status: string): string {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B1120' },
+  container: { flex: 1, backgroundColor: '#0B3D2E' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
   },
-  greeting: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  subtitle: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
+  greeting: { fontSize: 20, fontWeight: '700', color: '#FFF8EE' },
+  subtitle: { fontSize: 13, color: '#D8E7DE', marginTop: 2 },
   bellBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: '#1E293B',
-    borderWidth: 1, borderColor: '#334155', alignItems: 'center', justifyContent: 'center',
+    width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF8EE',
+    borderWidth: 2, borderColor: '#F36A21', alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
     position: 'relative',
   },
   badge: {
     position: 'absolute', top: -2, right: -2,
     minWidth: 18, height: 18, borderRadius: 9,
-    backgroundColor: '#dc2626', borderWidth: 2, borderColor: '#0B1120',
+    backgroundColor: '#D94343', borderWidth: 2, borderColor: '#0B3D2E',
     alignItems: 'center', justifyContent: 'center',
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  badgeText: { color: '#FFF8EE', fontSize: 10, fontWeight: '700' },
   profileBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: '#F59E0B',
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#F36A21',
     alignItems: 'center', justifyContent: 'center',
   },
-  profileText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
+  profileText: { color: '#FFF8EE', fontWeight: '700', fontSize: 16 },
+  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 18 },
   statCard: {
-    flex: 1, backgroundColor: '#1E293B', borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: '#334155', alignItems: 'center',
+    flex: 1, backgroundColor: '#FFF8EE', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8,
+    borderWidth: 1, borderColor: '#D8CDBB', alignItems: 'center',
   },
-  statNumber: { fontSize: 18, fontWeight: '700', color: '#F59E0B' },
-  statLabel: { fontSize: 11, color: '#94A3B8', marginTop: 4 },
+  statNumber: { fontSize: 18, fontWeight: '700', color: '#F36A21' },
+  statLabel: { fontSize: 11, color: '#68786F', marginTop: 4 },
   actionsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 20 },
   actionBtn: {
-    flex: 1, backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: '#334155', alignItems: 'center',
+    flex: 1, backgroundColor: '#FFF8EE', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#D8CDBB', alignItems: 'center',
   },
-  actionIcon: { fontSize: 24, marginBottom: 6 },
-  actionText: { color: '#fff', fontSize: 13, fontWeight: '500' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#fff', paddingHorizontal: 20, marginBottom: 12 },
+  actionIcon: { marginBottom: 6 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  actionText: { color: '#0B3D2E', fontSize: 13, fontWeight: '500' },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#FFF8EE', paddingHorizontal: 20, marginTop: 4, marginBottom: 12 },
   emptyBox: { paddingHorizontal: 20, paddingVertical: 30, alignItems: 'center' },
-  emptyText: { color: '#64748B', fontSize: 14 },
+  emptyText: { color: '#68786F', fontSize: 14 },
+  activeOrderCard: { borderColor: '#168447', borderWidth: 1.5, padding: 18, borderRadius: 17 },
+  openDeliveryText: { color: '#F36A21', fontSize: 12, fontWeight: '900', letterSpacing: 0.4, marginTop: 12 },
   orderCard: {
-    backgroundColor: '#1E293B', borderRadius: 14, padding: 16,
-    marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#FFF8EE', borderRadius: 14, padding: 16,
+    marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#D8CDBB',
   },
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  orderId: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  orderId: { color: '#0B3D2E', fontSize: 14, fontWeight: '600' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  statusText: { color: '#fff', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
-  orderAddress: { color: '#94A3B8', fontSize: 13, marginBottom: 4 },
-  orderCustomer: { color: '#94A3B8', fontSize: 13, marginBottom: 4 },
-  orderAmount: { color: '#F59E0B', fontSize: 14, fontWeight: '700' },
+  statusText: { color: '#0B3D2E', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  orderAddress: { color: '#68786F', fontSize: 13, marginBottom: 4 },
+  orderCustomer: { color: '#68786F', fontSize: 13, marginBottom: 4 },
+  orderAmount: { color: '#F36A21', fontSize: 14, fontWeight: '700' },
 });

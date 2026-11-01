@@ -63,8 +63,8 @@ export default function Layout() {
   }
 
   const drawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <Toolbar sx={{ justifyContent: "center" }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "#0B3D2E", color: "#FFF8EE", "& .MuiTypography-root": { color: "#FFF8EE" }, "& .MuiListItemIcon-root": { color: "#FFF8EE" }, "& .MuiDivider-root": { borderColor: "#315C4D" } }}>
+      <Toolbar sx={{ justifyContent: "center", bgcolor: "#0B3D2E" }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {drawerCollapsed ? "GM" : "GasMobil"}
         </Typography>
@@ -79,14 +79,16 @@ export default function Layout() {
                 selected={active}
                 onClick={() => { navigate(item.path); setMobileOpen(false); }}
                 sx={{
-                  borderRadius: 1,
+                  borderRadius: 2,
                   mb: 0.5,
+                  color: "#FFF8EE",
+                  "&:hover": { backgroundColor: "rgba(255,248,238,0.10)" },
                   justifyContent: drawerCollapsed ? "center" : "flex-start",
                   px: 2,
                   "&.Mui-selected": {
-                    backgroundColor: theme.palette.action.selected,
-                    color: theme.palette.primary.main,
-                    "& .MuiListItemIcon-root": { color: theme.palette.primary.main },
+                    backgroundColor: "rgba(243,106,33,0.20)",
+                    color: "#F36A21",
+                    "& .MuiListItemIcon-root": { color: "#F36A21" },
                   },
                 }}
               >
@@ -116,7 +118,7 @@ export default function Layout() {
       <CssBaseline />
       <AppBar
         position="fixed"
-        sx={{
+        sx={{ bgcolor: "#0B3D2E", color: "#FFF8EE",
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
           transition: theme.transitions.create(["width", "margin"], {
@@ -154,7 +156,7 @@ export default function Layout() {
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: "block", sm: "none" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: expandedDrawerWidth },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: expandedDrawerWidth, bgcolor: "#0B3D2E", color: "#FFF8EE", borderColor: "#315C4D" },
           }}
         >
           {drawer}
@@ -163,7 +165,7 @@ export default function Layout() {
           variant="permanent"
           sx={{
             display: { xs: "none", sm: "block" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth, transition: theme.transitions.create("width") },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth, transition: theme.transitions.create("width"), bgcolor: "#0B3D2E", color: "#FFF8EE", borderColor: "#315C4D" },
           }}
           open
         >

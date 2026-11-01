@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
@@ -11,27 +12,25 @@ import { apiRequest } from "../src/services/api";
 import { COLORS } from "../src/utils/constants";
 
 const ROLE_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  customer: { label: "Consumer Mode", color: "#1484FF", bg: "rgba(20,132,255,0.15)" },
-  driver:   { label: "Driver Mode",   color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
-  agent:    { label: "Agent Mode",    color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
-  admin:    { label: "Admin Mode",    color: "#ff4d4d", bg: "rgba(255,77,77,0.15)" },
+  customer: { label: "Consumer Mode", color: "#F36A21", bg: "rgba(243,106,33,0.14)" },
+  driver:   { label: "Driver Mode",   color: "#168447", bg: "rgba(11,61,46,0.10)" },
+  agent:    { label: "Agent Mode",    color: "#F36A21", bg: "rgba(243,106,33,0.14)" },
+  admin:    { label: "Admin Mode",    color: "#0B3D2E", bg: "rgba(11,61,46,0.10)" },
 };
 
 const MENU_ITEMS = [
-  { icon: "📦", title: "My Cylinders",    sub: "View & register your cylinders", route: "/cylinders" as const },
-  { icon: "💳", title: "Payment Methods", sub: "Wallet, M-Pesa, Airtel",       route: "/payments" as const },
-  { icon: "🔔", title: "Notifications",   sub: "Order updates & alerts",       route: "/(tabs)/notifications" as const },
-  { icon: "⚡", title: "Auto-Refill",     sub: "Never run out of gas",         route: "/auto-refill" as const },
-  { icon: "❓", title: "Help & Support",  sub: "FAQs, call us, report issue",  route: "/help" as const },
-  { icon: "🔧", title: "Settings",        sub: "Language, location, privacy",  route: "/settings" as const },
+  { icon: "package-variant", title: "My Cylinders",    sub: "View & register your cylinders", route: "/cylinders" as const },
+  { icon: "cash", title: "Payment Methods", sub: "Cash on delivery", route: "/payments" as const },
+  { icon: "bell-outline", title: "Notifications",   sub: "Order updates & alerts",       route: "/(tabs)/notifications" as const },
+  { icon: "lightning-bolt", title: "Auto-Refill",     sub: "Never run out of gas",         route: "/auto-refill" as const },
+  { icon: "help-circle-outline", title: "Help & Support",  sub: "FAQs, call us, report issue",  route: "/help" as const },
+  { icon: "cog-outline", title: "Settings",        sub: "Language, location, privacy",  route: "/settings" as const },
 ];
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, updateUser } = useAuth();
 
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [walletLoading, setWalletLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -51,10 +50,6 @@ export default function ProfileScreen() {
   const role = ROLE_STYLES[user?.role || "customer"] || ROLE_STYLES.customer;
 
   useEffect(() => {
-    fetchWallet();
-  }, []);
-
-  useEffect(() => {
     if (user) {
       setForm({
         name: user.name || "",
@@ -64,17 +59,6 @@ export default function ProfileScreen() {
       });
     }
   }, [user]);
-
-  const fetchWallet = async () => {
-    try {
-      const res = await apiRequest<{ success: boolean; data?: { balance: number } }>("get", "/wallet");
-      if (res.success && res.data) setWalletBalance(Number(res.data.balance) || 0);
-    } catch (err) {
-      console.error("[Profile] Wallet fetch error:", err);
-    } finally {
-      setWalletLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!form.name || !form.phone) {
@@ -123,21 +107,6 @@ export default function ProfileScreen() {
           <View style={[styles.roleBadge, { backgroundColor: role.bg }]}>
             <Text style={[styles.roleText, { color: role.color }]}>{role.label}</Text>
           </View>
-        </View>
-
-        {/* Wallet Card */}
-        <View style={styles.wallet}>
-          <Text style={styles.walletLabel}>GASMOBIL WALLET</Text>
-          <Text style={styles.walletBal}>
-            UGX {walletBalance.toLocaleString("en-UG")}
-          </Text>
-          <TouchableOpacity
-            style={styles.topupBtn}
-            activeOpacity={0.8}
-            onPress={() => Alert.alert("Coming Soon", "Wallet top-up will be available shortly.")}
-          >
-            <Text style={styles.topupText}>Top Up</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Personal Info Card */}
@@ -230,7 +199,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
               onPress={() => router.push(item.route as any)}
             >
-              <Text style={styles.menuIcon}>{item.icon}</Text>
+              <Icon name={item.icon as any} size={22} color={COLORS.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.menuTitle}>{item.title}</Text>
                 <Text style={styles.menuSub}>{item.sub}</Text>
@@ -256,7 +225,7 @@ const styles = StyleSheet.create({
   avatarSection: { alignItems: "center", paddingVertical: 28 },
   avatar: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   avatarText: { fontSize: 28, fontWeight: "800" },
-  name: { color: "#fff", fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
+  name: { color: "#FFF8EE", fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
   email: { color: COLORS.muted, fontSize: 13, marginTop: 4 },
   roleBadge: { marginTop: 10, paddingHorizontal: 14, paddingVertical: 5, borderRadius: 999 },
   roleText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
@@ -277,14 +246,14 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.border,
   },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  cardTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  cardTitle: { color: COLORS.text, fontSize: 15, fontWeight: "700" },
   editLink: { color: COLORS.accent, fontSize: 13, fontWeight: "600" },
   field: { marginBottom: 14 },
   label: { color: COLORS.muted, fontSize: 11, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
-  value: { color: "#fff", fontSize: 14 },
+  value: { color: COLORS.text, fontSize: 14 },
   input: {
-    backgroundColor: "#0f172a", borderRadius: 10, padding: 12,
-    color: "#fff", fontSize: 14, borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: "#FFFFFF", borderRadius: 10, padding: 12,
+    color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border,
   },
   saveBtn: { backgroundColor: COLORS.accent, borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 4 },
   saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
@@ -297,10 +266,10 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: "row", alignItems: "center",
     paddingVertical: 14, paddingHorizontal: 12,
-    borderBottomWidth: 1, borderBottomColor: "#131d33",
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   menuIcon: { fontSize: 18, width: 32, textAlign: "center" },
-  menuTitle: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  menuTitle: { color: COLORS.text, fontSize: 14, fontWeight: "600" },
   menuSub: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   chev: { color: COLORS.muted, fontSize: 18 },
 

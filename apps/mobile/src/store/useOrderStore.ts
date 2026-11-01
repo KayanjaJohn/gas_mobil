@@ -7,13 +7,13 @@ interface OrderState {
   deliveryAddress: string;
   deliveryLat: number | null;
   deliveryLng: number | null;
-  paymentMethod: string;
+  paymentMethod: "cash";
   notes: string;
   setOrderType: (type: OrderType) => void;
   setSize: (size: string) => void;
   setDeliveryAddress: (address: string) => void;
   setLocation: (lat: number, lng: number) => void;
-  setPaymentMethod: (method: string) => void;
+  setPaymentMethod: (method: "cash") => void;
   setNotes: (notes: string) => void;
   reset: () => void;
 }
@@ -24,7 +24,7 @@ const initialState = {
   deliveryAddress: '',
   deliveryLat: null,
   deliveryLng: null,
-  paymentMethod: 'wallet',
+  paymentMethod: 'cash' as const,
   notes: '',
 };
 
@@ -34,7 +34,7 @@ export const useOrderStore = create<OrderState>((set) => ({
   setSize: (size) => set({ size }),
   setDeliveryAddress: (address) => set({ deliveryAddress: address }),
   setLocation: (lat, lng) => set({ deliveryLat: lat, deliveryLng: lng }),
-  setPaymentMethod: (method) => set({ paymentMethod: method }),
+  setPaymentMethod: (_method) => set({ paymentMethod: "cash" }),
   setNotes: (notes) => set({ notes }),
   reset: () => set(initialState),
 }));

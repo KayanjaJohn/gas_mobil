@@ -9,7 +9,7 @@ export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   declare id: string;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', length: 36, nullable: false })
   declare walletId: string;
 
   @ManyToOne(() => Wallet, wallet => wallet.transactions)

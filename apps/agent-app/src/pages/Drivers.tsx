@@ -8,7 +8,7 @@ import {
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Driver {
   id: string;
@@ -21,6 +21,36 @@ interface Driver {
   vehicleNumber?: string;
   vehicleType?: string;
   stationId: string;
+}
+
+function formatCoordinates(
+  latitude: unknown,
+  longitude: unknown
+): string {
+  if (
+    latitude === null ||
+    latitude === undefined ||
+    longitude === null ||
+    longitude === undefined ||
+    latitude === "" ||
+    longitude === ""
+  ) {
+    return "Unknown";
+  }
+
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 || lat > 90 ||
+    lng < -180 || lng > 180
+  ) {
+    return "Unknown";
+  }
+
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
 
 export default function Drivers() {
@@ -164,9 +194,10 @@ export default function Drivers() {
                     />
                   </TableCell>
                   <TableCell>
-                    {driver.currentLatitude
-                      ? `${driver.currentLatitude.toFixed(4)}, ${driver.currentLongitude?.toFixed(4)}`
-                      : 'Unknown'}
+                    {formatCoordinates(
+                      driver.currentLatitude,
+                      driver.currentLongitude
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

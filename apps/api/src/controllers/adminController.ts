@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { In } from "typeorm";
 import AppDataSource from "../config/database";
 import { Order } from "../entities/Order";
 import { User } from "../entities/User";
@@ -14,41 +15,50 @@ const stationRepository = AppDataSource.getRepository(Station);
 
 // GET /api/admin/dashboard
 export const getDashboardStats = async (req: Request, res: Response) => {
-	try {
-		const { user } = req as any;
-		if (user.role !== "admin") {
-			return res.status(403).json({ success: false, error: "Admin access only" });
-		}
+  try {
+    const { user } = req as any;
+    if (user.role !== "admin") {
+      return res.status(403).json({ success: false, error: "Admin access only" });
+    }
 
-		const totalOrders = await orderRepository.count();
-		const pendingOrders = await orderRepository.count({ where: { status: "pending" } });
-		const totalDrivers = await userRepository.count({ where: { role: "driver" } });
-		const totalProducts = await productRepository.count();
-		const totalStations = await stationRepository.count();
+    const [totalOrders, pendingOrders, totalDrivers, totalProducts, totalStations, orders, recentOrders] =
+      await Promise.all([
+        orderRepository.count(),
+        orderRepository.count({ where: { status: In(["pending", "confirmed", "driver_assigned"]) } }),
+        userRepository.count({ where: { role: "driver", isActive: true } }),
+        productRepository.count(),
+        stationRepository.count(),
+        orderRepository.find({ select: ["id", "totalAmount", "paymentStatus", "status", "createdAt"] }),
+        orderRepository.find({
+          relations: ["user", "station"],
+          order: { createdAt: "DESC" },
+          take: 6,
+        }),
+      ]);
 
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const todayOrders = await orderRepository
-			.createQueryBuilder("order")
-			.where("order.createdAt >= :today", { today })
-			.andWhere("order.paymentStatus = :status", { status: "paid" })
-			.getMany();
-		const todayRevenue = todayOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const todayOrders = orders.filter((order) => new Date(order.createdAt) >= startOfDay);
+    const totalOrderValue = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+    const todayOrderValue = todayOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+    const todayRevenue = todayOrders
+      .filter((order) => order.paymentStatus === "paid")
+      .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+    const outstandingCash = orders
+      .filter((order) => order.paymentStatus === "pending" && !["cancelled", "failed", "refunded"].includes(order.status))
+      .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 
-		res.json({
-			success: true,
-			data: {
-				totalOrders,
-				pendingOrders,
-				totalDrivers,
-				totalProducts,
-				totalStations,
-				todayRevenue,
-			},
-		});
-	} catch (error: any) {
-		res.status(500).json({ success: false, error: error.message });
-	}
+    res.json({
+      success: true,
+      data: {
+        totalOrders, pendingOrders, totalDrivers, totalProducts, totalStations,
+        totalRevenue: totalOrderValue, totalOrderValue, todayOrderValue, todayRevenue,
+        outstandingCash, recentOrders,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 };
 
 // GET /api/admin/orders

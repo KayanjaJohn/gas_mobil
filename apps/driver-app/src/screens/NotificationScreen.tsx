@@ -3,26 +3,37 @@ import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl,
   ActivityIndicator, SafeAreaView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type NavigationProp } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverNotifications, DriverNotification } from '../hooks/useDriverNotifications';
 
+type DriverStackParamList = {
+  Login: undefined;
+  Home: undefined;
+  OrderDetail: { orderId: string };
+  Delivery: undefined;
+  Earnings: undefined;
+  Profile: undefined;
+  Notifications: undefined;
+};
+
 const ICONS: Record<string, string> = {
-  new_order_assigned: '📦',
-  order_placed: '🛒',
-  order_confirmed: '✅',
-  driver_assigned: '🚚',
-  picked_up: '📦',
-  in_transit: '🚛',
-  nearby: '📍',
-  delivered: '🏠',
-  cancelled: '❌',
-  payment_received: '💰',
-  payment_failed: '💳',
-  system_announcement: '📢',
+  new_order_assigned: 'package-variant',
+  order_placed: 'cart-outline',
+  order_confirmed: 'check-circle-outline',
+  driver_assigned: 'truck-delivery-outline',
+  picked_up: 'package-variant-closed',
+  in_transit: 'truck-fast-outline',
+  nearby: 'map-marker-radius-outline',
+  delivered: 'home-check-outline',
+  cancelled: 'close-circle-outline',
+  payment_received: 'cash-check',
+  payment_failed: 'alert-circle-outline',
+  system_announcement: 'bullhorn-outline',
 };
 
 export default function NotificationsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<DriverStackParamList>>();
   const {
     notifications,
     unreadCount,
@@ -46,13 +57,13 @@ export default function NotificationsScreen() {
       onPress={() => {
         if (!item.isRead) markAsRead(item.id);
         if (item.orderId) {
-          navigation.navigate('OrderDetail' as never, { orderId: item.orderId } as never);
+          navigation.navigate('OrderDetail', { orderId: item.orderId });
         }
       }}
       style={[styles.item, !item.isRead && styles.itemUnread]}
     >
       <View style={styles.iconBox}>
-        <Text style={{ fontSize: 22 }}>{ICONS[item.type] || '🔔'}</Text>
+        <Icon name={ICONS[item.type] || 'bell-outline'} size={23} color="#F59E0B" />
       </View>
       <View style={styles.content}>
         <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
@@ -74,7 +85,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
+          <Icon name="arrow-left" size={22} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
         {unreadCount > 0 && (
@@ -101,7 +112,7 @@ export default function NotificationsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>🔔</Text>
+              <Icon name="bell-outline" size={44} color="#F59E0B" style={styles.emptyIcon} />
               <Text style={styles.emptyTitle}>No notifications</Text>
               <Text style={styles.emptySub}>You'll see order updates here.</Text>
             </View>
@@ -113,33 +124,33 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B1120' },
+  container: { flex: 1, backgroundColor: '#0B3D2E' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#1E293B',
+    borderBottomWidth: 1, borderBottomColor: '#FFF8EE',
   },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E293B', alignItems: 'center', justifyContent: 'center' },
-  backIcon: { color: '#fff', fontSize: 18 },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700', flex: 1, marginLeft: 12 },
-  markAll: { color: '#F59E0B', fontSize: 13, fontWeight: '600' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,248,238,0.12)', alignItems: 'center', justifyContent: 'center' },
+  backIcon: { color: '#0B3D2E', fontSize: 18 },
+  headerTitle: { color: '#FFF8EE', fontSize: 18, fontWeight: '700', flex: 1, marginLeft: 12 },
+  markAll: { color: '#F36A21', fontSize: 13, fontWeight: '600' },
   unreadBar: { backgroundColor: 'rgba(245,158,11,0.1)', paddingHorizontal: 20, paddingVertical: 8 },
-  unreadText: { color: '#F59E0B', fontSize: 12, fontWeight: '600' },
+  unreadText: { color: '#F36A21', fontSize: 12, fontWeight: '600' },
   item: {
     flexDirection: 'row', alignItems: 'flex-start',
     padding: 16, marginHorizontal: 16, marginTop: 10,
-    backgroundColor: '#1E293B', borderRadius: 14, borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#FFF8EE', borderRadius: 14, borderWidth: 1, borderColor: '#D8CDBB',
   },
-  itemUnread: { borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.06)' },
-  iconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  itemUnread: { borderColor: '#F36A21', backgroundColor: 'rgba(243,106,33,0.08)' },
+  iconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F0E5D3', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   content: { flex: 1 },
-  title: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  title: { color: '#0B3D2E', fontSize: 14, fontWeight: '600' },
   titleUnread: { fontWeight: '700' },
-  message: { color: '#94A3B8', fontSize: 12, marginTop: 3, lineHeight: 18 },
-  time: { color: '#64748B', fontSize: 11, marginTop: 6 },
-  deleteBtn: { color: '#64748B', fontSize: 20, paddingHorizontal: 4 },
+  message: { color: '#68786F', fontSize: 12, marginTop: 3, lineHeight: 18 },
+  time: { color: '#68786F', fontSize: 11, marginTop: 6 },
+  deleteBtn: { color: '#68786F', fontSize: 20, paddingHorizontal: 4 },
   empty: { alignItems: 'center', marginTop: 80 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  emptySub: { color: '#64748B', fontSize: 13, marginTop: 4 },
+  emptyIcon: { marginBottom: 12 },
+  emptyTitle: { color: '#0B3D2E', fontSize: 16, fontWeight: '600' },
+  emptySub: { color: '#68786F', fontSize: 13, marginTop: 4 },
 });

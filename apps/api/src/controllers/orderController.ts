@@ -7,6 +7,7 @@ import { User } from "../entities/User";
 import { Station } from "../entities/Station";
 import { Delivery } from "../entities/Delivery";
 import { createSystemNotification } from "../services/notificationService";
+import { NotificationType } from "../entities/Notification";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const productRepository = AppDataSource.getRepository(Product);
@@ -49,20 +50,44 @@ export const createOrder = async (req: Request, res: Response) => {
     const { user } = req as any;
 
     if (user.role !== "customer") {
+      await queryRunner.rollbackTransaction();
       return res.status(403).json({ success: false, error: "Only customers can place orders" });
     }
 
-    if (!deliveryLatitude || !deliveryLongitude) {
+    // GasMobil launch policy: cash on delivery only.
+    if (paymentMethod && paymentMethod !== "cash") {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({
         success: false,
-        error: "Device GPS location is required. Please enable location services in the app and retry.",
+        error: "Cash on delivery is the only supported payment method.",
       });
     }
 
-    const lat = parseFloat(deliveryLatitude);
-    const lng = parseFloat(deliveryLongitude);
+    if (
+      deliveryLatitude === undefined || deliveryLatitude === null ||
+      deliveryLongitude === undefined || deliveryLongitude === null ||
+      deliveryAddress?.trim().length < 5
+    ) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({
+        success: false,
+        error: "A valid delivery address and GPS location are required.",
+      });
+    }
+
+    const lat = Number(deliveryLatitude);
+    const lng = Number(deliveryLongitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({
+        success: false,
+        error: "GPS coordinates must be valid numbers.",
+      });
+    }
 
     if (lat < -1.5 || lat > 4.5 || lng < 29.5 || lng > 35.0) {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({
         success: false,
         error: "Invalid location coordinates. Location must be within Uganda.",
@@ -71,6 +96,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const stations = await stationRepository.find({ where: { isActive: true } });
     if (stations.length === 0) {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({ success: false, error: "No active stations available" });
     }
 
@@ -127,8 +153,8 @@ export const createOrder = async (req: Request, res: Response) => {
       deliveryLatitude: lat,
       deliveryLongitude: lng,
       locationAccuracy: req.body.accuracy || null,
-      paymentMethod: paymentMethod || "cash",
-      paymentStatus: paymentMethod === "wallet" ? "paid" : "pending",
+      paymentMethod: "cash",
+      paymentStatus: "pending",
       status: "pending",
       notes,
       items: orderItems,
@@ -152,7 +178,9 @@ export const createOrder = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, data: order });
   } catch (error: any) {
-    await queryRunner.rollbackTransaction();
+    if (queryRunner.isTransactionActive) {
+      await queryRunner.rollbackTransaction();
+    }
     console.error("[createOrder]", error);
     res.status(500).json({ success: false, error: error.message });
   } finally {
@@ -301,7 +329,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     order.status = status;
     await orderRepository.save(order);
 
-    const statusMessages: Record<string, { title: string; message: string; type: string }> = {
+    const statusMessages: Record<string, { title: string; message: string; type: NotificationType }> = {
       confirmed: {
         title: "Order Confirmed",
         message: `Your order #${id.slice(0, 8).toUpperCase()} has been confirmed and is being prepared.`,

@@ -1,6 +1,5 @@
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useAuth } from "../src/context/AuthContext";
-import { COLORS } from "../src/utils/constants";
 
 /**
  * Root entry point for the app.
@@ -19,7 +18,7 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
+      <ActivityIndicator size="large" color="#F59E0B" />
     </View>
   );
 }
@@ -27,7 +26,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "#0B1120",
     justifyContent: "center",
     alignItems: "center",
   },

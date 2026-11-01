@@ -1,75 +1,44 @@
-import { useEffect, useRef, useCallback } from "react";
-import { io, Socket } from "socket.io-client";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const rawUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
-const SOCKET_URL = rawUrl.replace(/\/api\/?$/, "");
+import { useEffect } from "react";
+import { initializeSocket, getSocket } from "../services/socketService";
 
 export function useSocket(onNotification?: (data: any) => void) {
-  const socketRef = useRef<Socket | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    let activeSocket: ReturnType<typeof getSocket> = null;
 
-  const connect = useCallback(async () => {
-    const token = await AsyncStorage.getItem("access_token");
-    if (!token) return;
+    const handleNotification = (data: any) => onNotification?.(data);
+    const handleProductCreated = (data: any) =>
+      onNotification?.({ ...data, type: "product_created" });
+    const handleProductUpdated = (data: any) =>
+      onNotification?.({ ...data, type: "product_updated" });
+    const handleProductDeleted = (data: any) =>
+      onNotification?.({ ...data, type: "product_deleted" });
 
-    const socket = io(SOCKET_URL, {
-      transports: ["polling", "websocket"],
-      auth: { token },
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
-    });
+    const attach = async () => {
+      const connectedSocket = await initializeSocket();
+      if (!mounted || !connectedSocket) return;
+      activeSocket = connectedSocket;
 
-    socket.on("connect", () => {
-      console.log("[Socket] Connected:", socket.id);
-    });
+      activeSocket.on("notification", handleNotification);
+      activeSocket.on("order_status_changed", handleNotification);
+      activeSocket.on("order_status_update", handleNotification);
+      activeSocket.on("product_created", handleProductCreated);
+      activeSocket.on("product_updated", handleProductUpdated);
+      activeSocket.on("product_deleted", handleProductDeleted);
+    };
 
-    socket.on("notification", (data) => {
-      console.log("[Socket] Notification:", data);
-      onNotification?.(data);
-    });
-
-    socket.on("order_status_changed", (data) => {
-      console.log("[Socket] Order status:", data);
-      onNotification?.(data);
-    });
-
-    socket.on("product_created", (data) => {
-      console.log("[Socket] Product created:", data);
-      onNotification?.({ type: "product_created", ...data });
-    });
-
-    socket.on("product_updated", (data) => {
-      console.log("[Socket] Product updated:", data);
-      onNotification?.({ type: "product_updated", ...data });
-    });
-
-    socket.on("product_deleted", (data) => {
-      console.log("[Socket] Product deleted:", data);
-      onNotification?.({ type: "product_deleted", ...data });
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log("[Socket] Disconnected:", reason);
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("[Socket] Connect error:", err.message);
-    });
-
-    socketRef.current = socket;
+    attach();
+    return () => {
+      mounted = false;
+      activeSocket?.off("notification", handleNotification);
+      activeSocket?.off("order_status_changed", handleNotification);
+      activeSocket?.off("order_status_update", handleNotification);
+      activeSocket?.off("product_created", handleProductCreated);
+      activeSocket?.off("product_updated", handleProductUpdated);
+      activeSocket?.off("product_deleted", handleProductDeleted);
+      // Feature hooks unsubscribe only; the authenticated session owns disconnect.
+    };
   }, [onNotification]);
 
-  const disconnect = useCallback(() => {
-    socketRef.current?.disconnect();
-    socketRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    connect();
-    return () => disconnect();
-  }, [connect, disconnect]);
-
-  return { socket: socketRef.current, connect, disconnect };
+  return { socket: getSocket(), connect: initializeSocket };
 }

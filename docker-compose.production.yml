@@ -1,0 +1,64 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME}
+      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks: [gasmobil]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  api:
+    image: ghcr.io/kayanjajohn/gas-mobil-api:latest
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:?Set DB_NAME}
+      DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      REFRESH_SECRET: ${REFRESH_SECRET:?Set REFRESH_SECRET}
+      CLIENT_URL: ${CLIENT_URL:?Set CLIENT_URL}
+      ADMIN_URL: ${ADMIN_URL:-}
+      AGENT_URL: ${AGENT_URL:-}
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - api_uploads:/app/uploads
+    networks: [gasmobil]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  website:
+    image: ghcr.io/kayanjajohn/gas-mobil-website:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    networks: [gasmobil]
+
+volumes:
+  mysql_data:
+  api_uploads:
+
+networks:
+  gasmobil:
+    driver: bridge

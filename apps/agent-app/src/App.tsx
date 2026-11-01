@@ -23,7 +23,15 @@ function App() {
           <Route path="/drivers" element={<Drivers />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/notifications" element={<NotificationPage />} />
+          <Route
+            path="/notifications"
+            element={
+              <NotificationPage
+                token={localStorage.getItem('agent_token') || ''}
+                userRole="agent"
+              />
+            }
+          />
         </Route>
       </Routes>
     </AuthProvider>

@@ -1,14 +1,15 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { usePathname, useRouter } from 'expo-router';
-import { COLORS } from '../utils/constants';
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
+import { usePathname, useRouter } from "expo-router";
+import { COLORS } from "../utils/constants";
 
 const TABS = [
-  { key: 'home', label: 'Home', icon: '🏠', route: '/(tabs)' },
-  { key: 'cart', label: 'Cart', icon: '🛒', route: '/cart' },
-  { key: 'tracking', label: 'Track', icon: '📍', route: '/tracking' },
-  { key: 'green', label: 'Green', icon: '🌱', route: '/green' },
-  { key: 'profile', label: 'Profile', icon: '👤', route: '/profile' },
+  { key: "home", label: "Home", icon: "home-variant-outline", route: "/(tabs)" },
+  { key: "cart", label: "Cart", icon: "cart-outline", route: "/cart" },
+  { key: "tracking", label: "Track", icon: "map-marker-path", route: "/tracking" },
+  { key: "green", label: "Green", icon: "leaf", route: "/green" },
+  { key: "profile", label: "Profile", icon: "account-outline", route: "/profile" },
 ];
 
 export default function BottomNav() {
@@ -16,8 +17,9 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   const isActive = (route: string) => {
-    if (route === '/(tabs)' && (pathname === '/' || pathname === '/(tabs)')) return true;
-    return pathname.includes(route.replace('/(tabs)', ''));
+    if (route === "/(tabs)") return pathname === "/" || pathname === "/(tabs)";
+    if (route === "/tracking") return pathname.startsWith("/tracking");
+    return pathname === route || pathname.startsWith(`${route}/`);
   };
 
   return (
@@ -27,11 +29,20 @@ export default function BottomNav() {
         return (
           <TouchableOpacity
             key={tab.key}
-            style={[styles.item, active && styles.itemActive]}
+            accessibilityRole="button"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: active }}
+            style={styles.item}
             onPress={() => router.push(tab.route as any)}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.icon, active && styles.iconActive]}>{tab.icon}</Text>
+            <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+              <Icon
+                name={tab.icon as any}
+                size={22}
+                color={active ? COLORS.accent : "#FFF8EE"}
+              />
+            </View>
             <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
           </TouchableOpacity>
         );
@@ -42,46 +53,36 @@ export default function BottomNav() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    paddingBottom: 28,
-    backgroundColor: 'rgba(8,12,22,0.92)',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingTop: 10,
+    paddingBottom: 25,
+    backgroundColor: COLORS.green,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: "#245747",
     zIndex: 60,
+    elevation: 12,
   },
   item: {
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
     flex: 1,
   },
-  itemActive: {
-    // Active styling handled by icon/label
+  iconWrap: {
+    width: 38,
+    height: 30,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  icon: {
-    fontSize: 20,
-    opacity: 0.5,
-  },
-  iconActive: {
-    opacity: 1,
-    backgroundColor: 'rgba(20,132,255,0.15)',
-    padding: 7,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  label: {
-    fontSize: 10.5,
-    color: COLORS.muted,
-  },
-  labelActive: {
-    color: COLORS.accent,
-  },
+  iconWrapActive: { backgroundColor: "rgba(243,106,33,0.20)", borderRadius: 12 },
+  label: { fontSize: 11, color: "#FFF8EE", fontWeight: "500" },
+  labelActive: { color: COLORS.accent, fontWeight: "800" },
 });

@@ -7,14 +7,14 @@ export class OrderItem {
   @PrimaryGeneratedColumn('uuid')
   declare id: string;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', length: 36, nullable: false })
   declare orderId: string;
 
   @ManyToOne(() => Order, order => order.items)
   @JoinColumn({ name: 'orderId' })
   declare order: Order;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', length: 36, nullable: false })
   declare productId: string;
 
   @ManyToOne(() => Product)

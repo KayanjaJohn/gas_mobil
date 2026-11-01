@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 interface User {
   id: string;
@@ -17,6 +17,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  error: string | null;
   login: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  error: null,
   login: async () => ({ success: false, error: "AuthProvider not mounted" }),
   logout: () => {},
 });
@@ -169,6 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       isLoading,
       isAuthenticated: !!user,
+       error: null,
       login,
       logout,
     }}>

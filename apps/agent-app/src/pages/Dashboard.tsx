@@ -5,12 +5,12 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Dashboard() {
   const { token, user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalDrivers: 0, totalProducts: 0 });
+  const [stats, setStats] = useState({ totalOrders: 0, todayOrders: 0, pendingOrders: 0, totalDrivers: 0, totalProducts: 0, totalOrderValue: 0, outstandingCash: 0, todayRevenue: 0, recentOrders: [] as any[] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,10 +31,14 @@ export default function Dashboard() {
   };
 
   const cards = [
-    { title: "Station Orders", value: stats.totalOrders, icon: <ShoppingCart />, color: "#7380ec" },
-    { title: "Pending", value: stats.pendingOrders, icon: <TrendingUp />, color: "#ffbb55" },
-    { title: "Drivers", value: stats.totalDrivers, icon: <LocalShipping />, color: "#41f1b6" },
-    { title: "Products", value: stats.totalProducts, icon: <Inventory />, color: "#ff7782" },
+    { title: "Station Orders", value: stats.totalOrders, icon: <ShoppingCart />, color: "#0B3D2E" },
+    { title: "Pending", value: stats.pendingOrders, icon: <TrendingUp />, color: "#D97706" },
+    { title: "Drivers", value: stats.totalDrivers, icon: <LocalShipping />, color: "#21865D" },
+    { title: "Products", value: stats.totalProducts, icon: <Inventory />, color: "#F36A21" },
+    { title: "Today’s Orders", value: stats.todayOrders, icon: <TrendingUp />, color: "#F36A21" },
+    { title: "Station Order Value", value: "UGX " + Number(stats.totalOrderValue || 0).toLocaleString(), icon: <Assessment />, color: "#21865D" },
+    { title: "COD Outstanding", value: "UGX " + Number(stats.outstandingCash || 0).toLocaleString(), icon: <Assessment />, color: "#D97706" },
+    { title: "Collected Today", value: "UGX " + Number(stats.todayRevenue || 0).toLocaleString(), icon: <Assessment />, color: "#21865D" },
   ];
 
   return (
@@ -53,6 +57,7 @@ export default function Dashboard() {
           <CircularProgress />
         </Box>
       ) : (
+        <>
         <Grid container spacing={3}>
           {cards.map((card) => (
             <Grid item xs={12} sm={6} md={3} key={card.title}>
@@ -66,6 +71,20 @@ export default function Dashboard() {
             </Grid>
           ))}
         </Grid>
+        <Paper sx={{ mt: 4, p: 3 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>Recent Station Orders</Typography>
+          {stats.recentOrders.map((order: any) => (
+            <Box key={order.id} sx={{ p: 2, mb: 1, bgcolor: "background.default", borderRadius: 1, display: "flex", justifyContent: "space-between", gap: 2 }}>
+              <Box>
+                <Typography fontWeight={600}>Order #{order.id?.slice(0, 8)}</Typography>
+                <Typography variant="body2" color="text.secondary">{order.user?.name || "Customer"} • {order.status}</Typography>
+              </Box>
+              <Typography fontWeight={700}>UGX {Number(order.totalAmount || 0).toLocaleString()}</Typography>
+            </Box>
+          ))}
+          {stats.recentOrders.length === 0 && <Typography color="text.secondary" align="center" sx={{ py: 3 }}>No station orders yet</Typography>}
+        </Paper>
+        </>
       )}
     </Box>
   );

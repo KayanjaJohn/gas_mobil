@@ -11,7 +11,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import ImageUpload from '../components/ImageUpload';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Product {
   id: string;
@@ -339,7 +339,7 @@ export default function Products() {
         <DialogTitle>{editing ? 'Edit Product' : 'Add New Product'}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
-            <ImageUpload value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} token={token} />
+            <ImageUpload value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} token={token || ''} />
           </Box>
           <TextField label="Name" fullWidth margin="dense" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} required />
           <TextField label="Description" fullWidth margin="dense" value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} multiline rows={2} />
@@ -372,7 +372,7 @@ export default function Products() {
         <DialogTitle>Add Catalog Template</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
-            <ImageUpload value={catalogForm.imageUrl} onChange={(url) => setCatalogForm({ ...catalogForm, imageUrl: url })} label="Catalog Image" token={token} />
+            <ImageUpload value={catalogForm.imageUrl} onChange={(url) => setCatalogForm({ ...catalogForm, imageUrl: url })} label="Catalog Image" token={token || ''} />
           </Box>
           <TextField label="Name" fullWidth margin="dense" value={catalogForm.name} onChange={(e) => setCatalogForm({...catalogForm, name: e.target.value})} required />
           <TextField label="Description" fullWidth margin="dense" value={catalogForm.description} onChange={(e) => setCatalogForm({...catalogForm, description: e.target.value})} />
@@ -398,7 +398,7 @@ export default function Products() {
         <DialogTitle>Add "{selectedCatalog?.name}" to Station</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
-            <ImageUpload value={stationForm.imageUrl} onChange={(url) => setStationForm({ ...stationForm, imageUrl: url })} label="Override Image (optional)" token={token} />
+            <ImageUpload value={stationForm.imageUrl} onChange={(url) => setStationForm({ ...stationForm, imageUrl: url })} label="Override Image (optional)" token={token || ''} />
           </Box>
           <FormControl fullWidth margin="dense">
             <InputLabel>Station</InputLabel>

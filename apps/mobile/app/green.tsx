@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React from "react";
 import {
   View, Text, StyleSheet, ScrollView,
@@ -9,10 +10,10 @@ import BottomNav from "../src/components/BottomNav";
 import { COLORS } from "../src/utils/constants";
 
 const STATS = [
-  { icon: "🌳", value: "14", label: "Trees equivalent" },
-  { icon: "♻️", value: "8", label: "Cylinders recycled" },
-  { icon: "⚡", value: "320", label: "kWh clean energy" },
-  { icon: "💧", value: "1,200L", label: "Water saved" },
+  { icon: "tree", value: "14", label: "Trees equivalent" },
+  { icon: "recycle", value: "8", label: "Cylinders recycled" },
+  { icon: "lightning-bolt", value: "320", label: "kWh clean energy" },
+  { icon: "water", value: "1,200L", label: "Water saved" },
 ];
 
 export default function GreenScreen() {
@@ -24,7 +25,7 @@ export default function GreenScreen() {
         <TopBar title="Green Impact" showBack onBack={() => router.push("/(tabs)")} />
 
         <Card style={styles.ecoStat}>
-          <Text style={{ fontSize: 42, marginBottom: 8 }}>🌱</Text>
+          <Icon name="sprout" size={42} color="#34D399" style={{ marginBottom: 8 }} />
           <Text style={styles.big}>128 kg</Text>
           <Text style={styles.lbl}>CO₂ SAVED THIS YEAR</Text>
         </Card>
@@ -40,7 +41,7 @@ export default function GreenScreen() {
         </View>
 
         <Card style={{ marginTop: 14 }}>
-          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", marginBottom: 10 }}>🏆 Eco Champion</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}><Icon name="trophy-outline" size={18} color="#34D399" /><Text style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}>  Eco Champion</Text></View>
           <Text style={{ color: COLORS.muted, fontSize: 12, lineHeight: 18 }}>
             You're in the top 5% of greenest customers in Kampala. Keep refilling instead of buying new!
           </Text>

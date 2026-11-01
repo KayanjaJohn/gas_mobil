@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from "react-native";
 import TopBar from "../src/components/TopBar";
 
@@ -7,7 +8,7 @@ export default function HelpScreen() {
       <TopBar title="Help & Support" showBack />
       <ScrollView style={{ padding: 16 }}>
         <View style={styles.card}>
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}>📞 Contact Us</Text>
+          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}><Icon name="phone-outline" size={20} color="#FFFFFF" /> Contact Us</Text>
           <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("tel:+256785796333")}>
             <Text style={styles.rowText}>+256 785 796 333</Text>
           </TouchableOpacity>
@@ -19,14 +20,14 @@ export default function HelpScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.card}>
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}>❓ Frequently Asked Questions</Text>
+          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}><Icon name="help-circle-outline" size={20} color="#FFFFFF" /> Frequently Asked Questions</Text>
           <Text style={styles.faqQ}>How fast is delivery?</Text>
           <Text style={styles.faqA}>We guarantee 2-hour delivery in Kampala. If we're late, you get 10% off your next refill.</Text>
           <Text style={styles.faqQ}>What sizes do you offer?</Text>
           <Text style={styles.faqA}>6kg, 12kg, and 45kg cylinders — both swap refills and full kit purchases.</Text>
         </View>
         <View style={styles.card}>
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}>📍 Visit Us</Text>
+          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}><Icon name="map-marker-outline" size={20} color="#FFFFFF" /> Visit Us</Text>
           <Text style={styles.faqA}>Plot 12, Kampala Road, Kampala, Uganda</Text>
         </View>
       </ScrollView>

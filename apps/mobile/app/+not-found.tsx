@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { COLORS } from "../src/utils/constants";
@@ -6,7 +7,7 @@ export default function NotFoundScreen() {
   const router = useRouter();
   return (
     <View style={styles.container}>
-      <Text style={{ fontSize: 64, marginBottom: 16 }}>🔥</Text>
+      <Icon name="fire" size={64} color="#1484FF" style={{ marginBottom: 16 }} />
       <Text style={styles.title}>Page Not Found</Text>
       <Text style={styles.subtitle}>The screen you're looking for doesn't exist.</Text>
       <TouchableOpacity style={styles.btn} onPress={() => router.replace("/(tabs)")} activeOpacity={0.85}>

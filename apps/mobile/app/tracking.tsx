@@ -1,3 +1,4 @@
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert,
@@ -11,14 +12,14 @@ import { apiRequest } from "../src/services/api";
 import { useOrderTracking } from "../src/hooks/useOrderTracking";
 
 const STATUS_MAP: Record<string, { label: string; icon: string; done: boolean }> = {
-  pending: { label: "Order confirmed", icon: "✓", done: true },
-  confirmed: { label: "Order confirmed", icon: "✓", done: true },
-  driver_assigned: { label: "Driver assigned", icon: "🚚", done: true },
-  picked_up: { label: "Picked up from station", icon: "📦", done: true },
-  in_transit: { label: "On the way", icon: "🚚", done: true },
-  nearby: { label: "Driver nearby", icon: "📍", done: true },
-  delivered: { label: "Delivered", icon: "🏠", done: true },
-  cancelled: { label: "Cancelled", icon: "✕", done: false },
+  pending: { label: "Order confirmed", icon: "check-circle", done: true },
+  confirmed: { label: "Order confirmed", icon: "check-circle", done: true },
+  driver_assigned: { label: "Driver assigned", icon: "truck-fast-outline", done: true },
+  picked_up: { label: "Picked up from station", icon: "package-variant", done: true },
+  in_transit: { label: "On the way", icon: "truck-fast-outline", done: true },
+  nearby: { label: "Driver nearby", icon: "map-marker", done: true },
+  delivered: { label: "Delivered", icon: "home-outline", done: true },
+  cancelled: { label: "Cancelled", icon: "close-circle", done: false },
 };
 
 const TIMELINE_KEYS = ["pending", "picked_up", "in_transit", "delivered"];
@@ -60,7 +61,7 @@ export default function TrackingScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiRequest<{ success: boolean; data: Order; error?: string }>("get", `/orders/${orderId}`);
+      const res = await apiRequest<Order>("get", `/orders/${orderId}`);
       if (res.success && res.data) {
         setOrder(res.data);
         setError(null);
@@ -78,7 +79,7 @@ export default function TrackingScreen() {
   const fetchOrders = async () => {
     setOrdersLoading(true);
     try {
-      const res = await apiRequest<{ success: boolean; data: Order[]; error?: string }>("get", "/orders");
+      const res = await apiRequest<Order[]>("get", "/orders");
       if (res.success && res.data) {
         const active = res.data.filter((o: Order) => o.status !== "delivered" && o.status !== "cancelled");
         setOrders(active);
@@ -111,7 +112,7 @@ export default function TrackingScreen() {
     const status = order?.status || "pending";
     const statusIndex = TIMELINE_KEYS.indexOf(status);
     return TIMELINE_KEYS.map((key, i) => {
-      const mapped = STATUS_MAP[key] || { label: key, icon: "•", done: false };
+      const mapped = STATUS_MAP[key] || { label: key, icon: "circle-outline", done: false };
       const isDone = i <= statusIndex && status !== "cancelled";
       return {
         status: mapped.label,
@@ -129,7 +130,16 @@ export default function TrackingScreen() {
   };
 
   const activeOrder = orderId && order;
-  const hasDeliveryCoords = activeOrder && order.deliveryLatitude && order.deliveryLongitude;
+  const latitude = Number(order?.deliveryLatitude);
+  const longitude = Number(order?.deliveryLongitude);
+  const hasDeliveryCoords = Boolean(
+    activeOrder &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 && latitude <= 90 &&
+    longitude >= -180 && longitude <= 180 &&
+    (latitude !== 0 || longitude !== 0)
+  );
 
   return (
     <View style={styles.container}>
@@ -141,18 +151,21 @@ export default function TrackingScreen() {
           <View style={styles.mapContainer}>
             <LiveTrackingMap
               orderId={order.id}
-              deliveryLatitude={order.deliveryLatitude!}
-              deliveryLongitude={order.deliveryLongitude!}
+              deliveryLatitude={latitude}
+              deliveryLongitude={longitude}
+              driverLocation={driverLocation}
+              orderStatus={orderStatus}
+              isConnected={isConnected}
             />
             <View style={styles.connectionBadge}>
               <Text style={styles.connectionText}>
-                {isConnected ? "🟢 Live" : "🔴 Offline"}
+                {isConnected ? <><Icon name="wifi" size={14} color={COLORS.success} /> Live</> : <><Icon name="wifi-off" size={14} color={COLORS.danger} /> Offline</>}
               </Text>
             </View>
           </View>
         ) : activeOrder ? (
           <View style={[styles.mapContainer, styles.mapFallback]}>
-            <Text style={styles.mapFallbackText}>🗺️ Waiting for delivery coordinates...</Text>
+            <View style={{ alignItems: "center" }}><Icon name="map-outline" size={28} color={COLORS.accent} /><Text style={styles.mapFallbackText}>Waiting for delivery coordinates...</Text></View>
           </View>
         ) : null}
 
@@ -182,7 +195,7 @@ export default function TrackingScreen() {
               )}
               {driverLocation && (
                 <Text style={styles.driver}>
-                  📍 Driver at: {driverLocation.latitude.toFixed(5)}, {driverLocation.longitude.toFixed(5)}
+                  Driver at: {driverLocation.latitude.toFixed(5)}, {driverLocation.longitude.toFixed(5)}
                 </Text>
               )}
               <Text style={[styles.statusBadge, { color: order.status === "cancelled" ? COLORS.danger : COLORS.accent }]}>
@@ -194,7 +207,7 @@ export default function TrackingScreen() {
               {timeline.map((item, i) => (
                 <View key={item.status} style={styles.tl}>
                   <View style={[styles.tlIcon, item.done && styles.tlIconDone]}>
-                    <Text>{item.icon}</Text>
+                    <Icon name={item.icon as any} size={18} color={item.done ? "#FFFFFF" : COLORS.muted} />
                   </View>
                   <View style={styles.tlText}>
                     <Text style={styles.tlTitle}>{item.status}</Text>
@@ -210,7 +223,7 @@ export default function TrackingScreen() {
         ) : (
           /* No orderId — show list of active orders */
           <>
-            <Text style={styles.sectionTitle}>📦 Active Orders</Text>
+            <Text style={styles.sectionTitle}>Active Orders</Text>
             {ordersLoading ? (
               <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.accent} />
             ) : orders.length === 0 ? (
@@ -237,7 +250,7 @@ export default function TrackingScreen() {
                     {(o.status || "pending").replace("_", " ").toUpperCase()}
                   </Text>
                   {o.deliveryAddress && (
-                    <Text style={styles.orderCardAddr}>📍 {o.deliveryAddress}</Text>
+                    <Text style={styles.orderCardAddr}>{o.deliveryAddress}</Text>
                   )}
                   <Text style={styles.orderCardAmount}>UGX {o.totalAmount?.toLocaleString()}</Text>
                 </TouchableOpacity>
@@ -265,7 +278,7 @@ const styles = StyleSheet.create({
   retryBtn: { backgroundColor: COLORS.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999, marginTop: 16 },
   retryText: { color: "#fff", fontWeight: "600" },
   card: { marginHorizontal: 16, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 16, marginBottom: 14 },
-  orderId: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  orderId: { color: COLORS.text, fontSize: 14, fontWeight: "700" },
   driver: { color: COLORS.muted, fontSize: 12, marginTop: 4 },
   statusBadge: { fontSize: 12, fontWeight: "700", marginTop: 8 },
   timeline: { marginHorizontal: 16, marginTop: 8 },
@@ -281,7 +294,7 @@ const styles = StyleSheet.create({
   emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
   emptySub: { color: COLORS.muted, fontSize: 13, marginTop: 4 },
   orderCard: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 16, marginHorizontal: 16, marginBottom: 10 },
-  orderCardId: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  orderCardId: { color: COLORS.text, fontSize: 14, fontWeight: "700" },
   orderCardStatus: { color: COLORS.accent, fontSize: 11, fontWeight: "700", marginTop: 4, textTransform: "uppercase" },
   orderCardAddr: { color: COLORS.muted, fontSize: 12, marginTop: 4 },
   orderCardAmount: { color: COLORS.accent, fontSize: 14, fontWeight: "700", marginTop: 6 },

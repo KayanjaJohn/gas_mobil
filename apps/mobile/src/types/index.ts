@@ -1,3 +1,5 @@
+export type OrderType = "swap" | "new";
+
 export interface User {
   id: string;
   email: string;

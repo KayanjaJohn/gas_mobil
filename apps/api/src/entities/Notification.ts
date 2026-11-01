@@ -22,7 +22,7 @@ export class Notification {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ type: "varchar" })
+  @Column({ type: "varchar", length: 36 })
   @Index()
   userId!: string;
 

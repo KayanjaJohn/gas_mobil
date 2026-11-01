@@ -129,23 +129,46 @@ export const getAgentDashboard = async (req: Request, res: Response) => {
     const stationId = await getAgentStationId(req);
     if (!stationId)
       return res.status(400).json({ success: false, error: "Agent has no station" });
-    const orders = await orderRepo().find({ where: { stationId } } as any);
+
+    const [orders, drivers, products] = await Promise.all([
+      orderRepo().find({
+        where: { stationId } as any,
+        order: { createdAt: "DESC" },
+        relations: ["user", "station", "deliveries"],
+      } as any),
+      userRepo().find({ where: { role: "driver", stationId, isActive: true } as any }),
+      productRepo().find({ where: { stationId } }),
+    ]);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayOrders = orders.filter((o: any) => new Date(o.createdAt) >= today);
-    const totalRevenue = orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
-    const pendingOrders = orders.filter((o: any) => o.status === "pending").length;
-    const drivers = await userRepo().find({ where: { role: "driver", stationId } } as any);
-    const products = await productRepo().find({ where: { stationId } });
+    const todayOrders = orders.filter((order: any) => new Date(order.createdAt) >= today);
+    const pendingOrders = orders.filter((order: any) =>
+      ["pending", "confirmed", "driver_assigned"].includes(order.status)
+    ).length;
+    const totalOrderValue = orders.reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
+    const todayOrderValue = todayOrders.reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
+    const todayRevenue = todayOrders
+      .filter((order: any) => order.paymentStatus === "paid")
+      .reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
+    const outstandingCash = orders
+      .filter((order: any) => order.paymentStatus === "pending" && !["cancelled", "failed", "refunded"].includes(order.status))
+      .reduce((sum: number, order: any) => sum + Number(order.totalAmount || 0), 0);
+
     res.json({
       success: true,
       data: {
         totalOrders: orders.length,
         todayOrders: todayOrders.length,
-        totalRevenue,
         pendingOrders,
         totalDrivers: drivers.length,
         totalProducts: products.length,
+        totalRevenue: totalOrderValue,
+        totalOrderValue,
+        todayOrderValue,
+        todayRevenue,
+        outstandingCash,
+        recentOrders: orders.slice(0, 6),
       },
     });
   } catch (error) {
@@ -218,14 +241,14 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
     if (existing) {
       await dRepo.update(
         (existing as any).id,
-        { driverId, driverName: driver.name, driverPhone: driver.phone, status: "assigned" } as any
+        { driverId, driverName: driver.name, driverPhone: driver.phone, status: "driver_assigned" } as any
       );
       const updated = await dRepo.findOne({ where: { orderId } } as any);
       return res.json({ success: true, delivery: updated });
     }
     const delivery = dRepo.create({
       orderId, driverId, driverName: driver.name,
-      driverPhone: driver.phone, status: "assigned",
+      driverPhone: driver.phone, status: "driver_assigned",
     } as any);
     const result: any = await dRepo.save(delivery);
     const saved = Array.isArray(result) ? result[0] : result;

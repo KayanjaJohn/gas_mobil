@@ -3,7 +3,7 @@ import { Box, Button, CircularProgress, Typography, IconButton } from '@mui/mate
 import { CloudUpload, Delete, Image as ImageIcon } from '@mui/icons-material';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 
 interface ImageUploadProps {
   value: string;

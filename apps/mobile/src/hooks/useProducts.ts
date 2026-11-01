@@ -26,9 +26,7 @@ export function useProducts() {
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await apiRequest<{ success: boolean; data?: Product[] }>(
-        "get", "/products"
-      );
+      const res = await apiRequest<Product[]>("get", "/products");
       if (res.success && res.data) {
         setProducts(res.data);
       }

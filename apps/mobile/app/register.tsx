@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
   ActivityIndicator,
@@ -20,10 +20,11 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
-  if (isAuthenticated) {
-    router.replace("/(tabs)");
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated, router]);
 
   const validateStep1 = () => {
     if (!name || !email || !phone || !password || !confirmPassword) {

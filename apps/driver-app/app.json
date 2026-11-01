@@ -28,6 +28,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": []
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "f08f487f-63c6-4116-872a-3ce9f5917c8b"
+      }
+    },
+    "owner": "gasmobil-uganda"
   }
 }

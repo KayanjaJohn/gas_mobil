@@ -1,16 +1,14 @@
 import { Request, Response } from 'express';
 import AppDataSource from '../config/database';
-import { Cylinder } from '../entities/Cylinder';
+import { Product } from '../entities/Product';
 
-const cylinderRepository = AppDataSource.getRepository(Cylinder);
+const cylinderRepository = AppDataSource.getRepository(Product);
 
 export const getCylinders = async (req: Request, res: Response) => {
   try {
-    const cylinders = await cylinderRepository.findBy({ available: 0 }); // TypeORM: use findBy for simple conditions, or QueryBuilder for >
-    // Actually we need available > 0, so use QueryBuilder:
     const availableCylinders = await cylinderRepository
       .createQueryBuilder('cylinder')
-      .where('cylinder.available > 0')
+      .where('cylinder.stock > 0 AND cylinder.isAvailable = :isAvailable', { isAvailable: true })
       .getMany();
 
     res.json({
@@ -25,7 +23,7 @@ export const getCylinders = async (req: Request, res: Response) => {
 export const getCylinderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const cylinder = await cylinderRepository.findOneBy({ id });
+    const cylinder = await cylinderRepository.findOneBy({ id, type: 'cylinder' });
 
     if (!cylinder) {
       return res.status(404).json({ success: false, error: 'Cylinder not found' });

@@ -1,0 +1,54 @@
+name: Build mobile release binaries
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Mobile application to build
+        required: true
+        type: choice
+        options:
+          - customer
+          - driver
+          - both
+      platform:
+        description: Target platform
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - android
+          - ios
+      profile:
+        description: EAS build profile
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
+          - preview
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ inputs.app == 'both' && fromJSON('["customer","driver"]') || fromJSON(format('["{0}"]', inputs.app)) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.app == 'customer' && 'apps/mobile/package.json' || 'apps/driver-app/package.json' }}
+      - name: Install EAS CLI
+        run: npm install --global eas-cli
+      - name: Build app
+        working-directory: ${{ matrix.app == 'customer' && 'apps/mobile' || 'apps/driver-app' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then echo "Missing repository secret EAS_TOKEN"; exit 1; fi
+          eas build --platform "${{ inputs.platform }}" --profile "${{ inputs.profile }}" --non-interactive
