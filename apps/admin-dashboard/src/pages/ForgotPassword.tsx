@@ -46,7 +46,7 @@ export default function ForgotPassword() {
           Reset your <Box component="span" sx={{ color: "#F36A21" }}>password</Box>
         </Typography>
         <Typography align="center" sx={{ color: "#D0DED6", mt: 1, mb: 3 }}>
-          ${portal} account recovery
+          Administrator account recovery
         </Typography>
         {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
