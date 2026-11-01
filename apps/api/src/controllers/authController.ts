@@ -302,11 +302,17 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     const resetUrl = `${process.env.CLIENT_URL || "https://gas-mobil.com"}/reset-password.html?token=${encodeURIComponent(resetToken)}`;
 
-    await sendEmail({
-      to: user.email,
-      subject: "Password Reset — GasMobil",
-      html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. This link expires in 15 minutes.</p>`,
-    });
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Password Reset — GasMobil",
+        html: `<p>We received a request to reset your GasMobil password.</p><p><a href="${resetUrl}">Reset your password</a>. This link expires in 15 minutes and can only be used once.</p><p>If you did not request this, you can ignore this email.</p>`,
+      });
+    } catch (mailError: any) {
+      // Keep the public response identical to the unknown-account response.
+      // Inspect the server log and SMTP runtime configuration if delivery fails.
+      console.error("[FORGOT PASSWORD] SMTP delivery failed:", mailError?.message || "Unknown mail error");
+    }
 
     res.json({
       success: true,
