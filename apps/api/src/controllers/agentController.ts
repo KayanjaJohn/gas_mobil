@@ -183,13 +183,31 @@ export const createAgentDriver = async (req: Request, res: Response) => {
     if (!stationId)
       return res.status(400).json({ success: false, error: "Agent has no station" });
     const { name, email, phone, password, vehicleNumber, vehicleType } = req.body;
+    const cleanName = typeof name === "string" ? name.trim() : "";
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const cleanPhone = typeof phone === "string" ? phone.trim() : "";
+    if (!cleanName || !cleanEmail || !cleanPhone || typeof password !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "Name, email, phone, and a unique password are required",
+      });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: "Driver password must be at least 8 characters",
+      });
+    }
+
     const repo = userRepo();
-    const existing = await repo.findOne({ where: [{ email }, { phone }] } as any);
+    const existing = await repo.findOne({
+      where: [{ email: cleanEmail }, { phone: cleanPhone }],
+    } as any);
     if (existing)
-      return res.status(400).json({ success: false, error: "Driver already exists" });
-    const hashed = await bcrypt.hash(password || "Driver@123", 12);
+      return res.status(409).json({ success: false, error: "A user already exists with this email or phone" });
+    const hashed = await bcrypt.hash(password, 12);
     const driver = repo.create({
-      name, email, phone,
+      name: cleanName, email: cleanEmail, phone: cleanPhone,
       password: hashed,
       role: "driver",
       stationId,
