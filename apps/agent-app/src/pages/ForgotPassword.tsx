@@ -40,7 +40,7 @@ export default function ForgotPassword() {
         boxShadow: "0 24px 80px rgba(0,0,0,.42)",
       }}>
         <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
-          <Box component="img" src="/gasmobil-icon.png" alt="GasMobil Uganda" sx={{ width: 76, height: 76 }} />
+          <Box component="img" src="/agent/gasmobil-icon.png" alt="GasMobil Uganda" sx={{ width: 76, height: 76 }} />
         </Box>
         <Typography variant="h4" align="center" sx={{ color: "#FFF8EE", fontWeight: 800 }}>
           Reset your <Box component="span" sx={{ color: "#F36A21" }}>password</Box>
