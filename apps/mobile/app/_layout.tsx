@@ -14,7 +14,7 @@ function RootLayoutInner() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === "(tabs)";
-    const inLoginGroup = segments[0] === "login" || segments[0] === "register";
+    const inLoginGroup = ["login", "register", "forgot-password"].includes(String(segments[0] || ""));
 
     // Defer navigation to avoid setState-during-render errors
     const timer = setTimeout(() => {
@@ -43,6 +43,7 @@ function RootLayoutInner() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="light" />
