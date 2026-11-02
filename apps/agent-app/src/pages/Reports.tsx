@@ -12,15 +12,28 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
+interface ReportOrderItem {
+  id?: string;
+  quantity: number;
+  price: number | string;
+  subtotal: number | string;
+  product?: { name?: string; type?: string; size?: string | null; weight?: number | string | null; description?: string | null };
+}
 interface Order {
   id: string;
   status: string;
   totalAmount: number | string;
   paymentStatus?: string;
+  paymentMethod?: string;
   createdAt: string;
-  user?: { name: string; phone?: string };
+  deliveryAddress?: string;
+  deliveryCity?: string | null;
+  notes?: string | null;
+  user?: { name: string; phone?: string; email?: string; address?: string; city?: string };
   driver?: { name: string };
-  deliveries?: Array<{ driverName?: string }>;
+  station?: { name: string };
+  items?: ReportOrderItem[];
+  deliveries?: Array<{ driverName?: string; driverPhone?: string; vehicleNumber?: string }>;
 }
 
 const periodOptions: Array<{ value: ReportPeriod; label: string; icon: JSX.Element }> = [
@@ -60,6 +73,29 @@ const getPeriodStart = (period: ReportPeriod) => {
   }
 
   return date;
+};
+
+const getTotalQuantity = (order: Order) =>
+  (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+
+const getCODOutstanding = (order: Order) => {
+  const excluded = ['cancelled', 'failed', 'refunded'].includes(order.status);
+  const isCash = !order.paymentMethod || order.paymentMethod.toLowerCase() === 'cash';
+  return !excluded && isCash && (order.paymentStatus || 'pending') === 'pending'
+    ? Number(order.totalAmount || 0) : 0;
+};
+
+const getProductDetails = (order: Order) => {
+  if (!order.items?.length) return 'Item details unavailable';
+  return order.items.map((item) => {
+    const product = item.product;
+    const attributes = [product?.type, product?.size, product?.weight ? `${product.weight} kg` : null]
+      .filter(Boolean).join(' / ');
+    return [product?.name || 'Product', attributes ? `[${attributes}]` : '',
+      `Qty ${Number(item.quantity || 0)}`,
+      `Unit UGX ${Number(item.price || 0).toLocaleString()}`,
+      `Line UGX ${Number(item.subtotal || 0).toLocaleString()}`].filter(Boolean).join(' · ');
+  }).join(' | ');
 };
 
 const formatPeriodLabel = (period: ReportPeriod, start: Date) => {
@@ -110,7 +146,7 @@ export default function Reports() {
 
   const paidOrders = reportOrders.filter((order) => order.paymentStatus === 'paid');
   const totalOrderValue = reportOrders.filter((order) => !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-  const outstandingCash = reportOrders.filter((order) => order.paymentStatus === 'pending' && !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  const outstandingCash = reportOrders.reduce((sum, order) => sum + getCODOutstanding(order), 0);
   const completedOrders = reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status));
   const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const averageOrderValue = paidOrders.length ? totalRevenue / paidOrders.length : 0;
@@ -126,44 +162,68 @@ export default function Reports() {
 
   const handleDownload = () => {
     const stationName = user?.station?.name || 'Station';
+    const summaryHeaders = [
+      'Report', 'Station', 'Period', 'Generated At', 'Orders', 'Completed Orders',
+      'Total Order Value', 'Paid Orders', 'Paid Revenue', 'COD Outstanding', 'Average Paid Order',
+    ];
+    const summaryValues = [
+      `${periodOptions.find((option) => option.value === period)?.label} Agent Station Report`,
+      stationName,
+      formatPeriodLabel(period, periodStart),
+      new Date().toLocaleString(),
+      String(reportOrders.length),
+      String(completedOrders.length),
+      String(totalOrderValue),
+      String(paidOrders.length),
+      String(totalRevenue),
+      String(outstandingCash),
+      String(Math.round(averageOrderValue)),
+    ];
+    const orderHeaders = [
+      'Order ID', 'Order Date', 'Order Status', 'Customer Name', 'Customer Phone',
+      'Customer Email', 'Delivery Address', 'Delivery City', 'Station',
+      'Driver Name', 'Driver Phone', 'Payment Method', 'Payment Status',
+      'Ordered Products (type, size, weight, unit price, line total)',
+      'Total Quantity', 'Order Total (UGX)', 'COD Outstanding (UGX)', 'Order Notes',
+    ];
     const rows = [
-      ['Report', `${periodOptions.find((option) => option.value === period)?.label} Agent Station Report`],
-      ['Station', stationName],
-      ['Period', formatPeriodLabel(period, periodStart)],
-      ['Generated At', new Date().toLocaleString()],
-      ['Orders', String(reportOrders.length)],
-      ['Completed Orders', String(completedOrders.length)],
-      ['Total Order Value', String(totalOrderValue)],
-      ['Paid Orders', String(paidOrders.length)],
-      ['Paid Revenue', String(totalRevenue)],
-      ['COD Outstanding', String(outstandingCash)],
-      ['Average Paid Order', String(Math.round(averageOrderValue))],
+      summaryHeaders,
+      summaryValues,
       [],
-      ['Order ID', 'Customer', 'Phone', 'Date', 'Status', 'Payment Method', 'Payment Status', 'Driver', 'Amount'],
+      orderHeaders,
       ...(reportOrders.length > 0
         ? reportOrders.map((order) => [
             order.id,
-            order.user?.name || 'N/A',
-            order.user?.phone || '',
             new Date(order.createdAt).toLocaleString(),
             order.status,
-            'Cash on Delivery',
-            order.paymentStatus || 'pending',
+            order.user?.name || 'N/A',
+            order.user?.phone || '',
+            order.user?.email || '',
+            order.deliveryAddress || '',
+            order.deliveryCity || '',
+            order.station?.name || stationName,
             getDriverName(order),
-            String(order.totalAmount),
+            order.deliveries?.[0]?.driverPhone || '',
+            order.paymentMethod || 'cash',
+            order.paymentStatus || 'pending',
+            getProductDetails(order),
+            String(getTotalQuantity(order)),
+            String(Number(order.totalAmount || 0)),
+            String(getCODOutstanding(order)),
+            order.notes || '',
           ])
-        : [['No orders found for this period', '', '', '', '', '', '', '', '']]),
+        : [['No orders found for this period', ...Array(orderHeaders.length - 1).fill('')]]),
     ];
 
     const csv = rows
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      .join('\\n');
+    const blob = new Blob(['\\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = `${stationName}-${period}-report.csv`.replace(/\s+/g, '-').toLowerCase();
+    link.download = `${stationName}-${period}-report.csv`.replace(/\\s+/g, '-').toLowerCase();
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -261,11 +321,13 @@ export default function Reports() {
                 <TableRow>
                   <TableCell>Order ID</TableCell>
                   <TableCell>Customer</TableCell>
+                  <TableCell>Ordered products &amp; quantities</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Payment / Collection</TableCell>
                   <TableCell>Driver</TableCell>
                   <TableCell align="right">Amount</TableCell>
+                  <TableCell align="right">COD outstanding</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -275,6 +337,17 @@ export default function Reports() {
                     <TableCell>
                       {order.user?.name || 'N/A'}
                       <Typography variant="caption" color="textSecondary" display="block">{order.user?.phone}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 260, maxWidth: 360 }}>
+                      {order.items?.length ? order.items.map((item, index) => (
+                        <Box key={item.id || index} sx={{ mb: .6 }}>
+                          <Typography variant="body2" fontWeight={700}>{item.product?.name || 'Product'} × {Number(item.quantity || 0)}</Typography>
+                          <Typography variant="caption" color="textSecondary" display="block">
+                            {[item.product?.type, item.product?.size, item.product?.weight ? `${item.product.weight} kg` : null]
+                              .filter(Boolean).join(' · ')} · UGX {Number(item.subtotal || 0).toLocaleString()}
+                          </Typography>
+                        </Box>
+                      )) : <Typography variant="caption" color="textSecondary">Item details unavailable</Typography>}
                     </TableCell>
                     <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
@@ -286,11 +359,14 @@ export default function Reports() {
                     </TableCell>
                     <TableCell>{getDriverName(order)}</TableCell>
                     <TableCell align="right">UGX {Number(order.totalAmount).toLocaleString()}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: getCODOutstanding(order) > 0 ? 'warning.main' : 'success.main' }}>
+                      UGX {getCODOutstanding(order).toLocaleString()}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {reportOrders.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                       <Typography color="textSecondary">No report orders found for this period</Typography>
                     </TableCell>
                   </TableRow>
