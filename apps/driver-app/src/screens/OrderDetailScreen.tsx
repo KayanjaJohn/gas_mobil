@@ -5,6 +5,7 @@ import {
 import { useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import api from '../services/api';
+import DriverLiveMap from '../components/DriverLiveMap';
 import { useThemedAlert } from '../hooks/useThemedAlert';
 import { Order } from '../types';
 import { useDriverLocation } from '../hooks/useDriverLocation';
@@ -120,20 +121,11 @@ export default function OrderDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.mapCard}>
-        <View style={styles.mapPlaceholder}>
-          <Icon name="map-marker-radius-outline" size={42} color="#F36A21" />
-          <Text style={styles.mapPlaceholderTitle}>Delivery location</Text>
-          <Text style={styles.mapPlaceholderText}>
-            {destination
-              ? `Customer destination: ${destination.latitude.toFixed(5)}, ${destination.longitude.toFixed(5)}`
-              : 'No valid customer delivery pin is available'}
-          </Text>
-          <Text style={styles.mapPlaceholderText}>
-            {currentLocation
-              ? `Your GPS: ${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`
-              : 'Your live GPS position will appear when delivery starts'}
-          </Text>
-        </View>
+        <DriverLiveMap
+          destination={destination}
+          driverLocation={currentLocation}
+          status={order.status}
+        />
       </View>
 
       <View style={styles.card}>
