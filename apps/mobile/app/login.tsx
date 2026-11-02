@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator, Alert, Image, ImageBackground, KeyboardAvoidingView,
+  ActivityIndicator, Image, ImageBackground, KeyboardAvoidingView,
   Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
+import { useThemedAlert } from "../src/hooks/useThemedAlert";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { isAuthenticated, login } = useAuth();
+  const { showAlert, alertModal } = useThemedAlert();
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +23,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!emailOrPhone.trim() || !password) {
-      Alert.alert("Missing details", "Enter your email or phone number and password.");
+      showAlert("Sign-in details required", "Enter your email or phone number and password.", "warning");
       return;
     }
     setLoading(true);
@@ -29,7 +31,7 @@ export default function LoginScreen() {
       await login({ emailOrPhone: emailOrPhone.trim(), password });
       router.replace("/(tabs)");
     } catch (error: any) {
-      Alert.alert("Sign in failed", error?.response?.data?.error || error?.message || "Please try again.");
+      showAlert("Sign in failed", error?.response?.data?.error || error?.message || "Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -82,6 +84,7 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {alertModal}
     </ImageBackground>
   );
 }
