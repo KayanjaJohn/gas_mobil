@@ -87,7 +87,7 @@ export const updateDriverStatus = async (req: Request, res: Response) => {
     }
     if (status === "offline") {
       const activeDelivery = await deliveryRepository.findOne({
-        where: { driverId: user.id, status: In(["driver_assigned", "picked_up", "in_transit", "nearby"]) } as any,
+        where: { driverId: user.id, status: In(["pending", "driver_assigned", "picked_up", "in_transit", "nearby"]) } as any,
       });
       if (activeDelivery) {
         return res.status(409).json({ success: false, error: "Complete your active delivery before going offline." });
