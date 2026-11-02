@@ -377,7 +377,13 @@ export default function Reports() {
                           <Typography variant="body2" fontWeight={700}>{item.product?.name || 'Product'} × {Number(item.quantity || 0)}</Typography>
                           <Typography variant="caption" color="textSecondary" display="block">
                             {[item.product?.type, item.product?.size, item.product?.weight ? `${item.product.weight} kg` : null]
-                              .filter(Boolean).join(' · ')} · UGX {Number(item.subtotal || 0).toLocaleString()}
+                              .filter(Boolean).join(' · ')}
+                          </Typography>
+                          {!!item.product?.description && (
+                            <Typography variant="caption" color="textSecondary" display="block">{item.product.description}</Typography>
+                          )}
+                          <Typography variant="caption" color="textSecondary" display="block">
+                            UGX {Number(item.price || 0).toLocaleString()} each · Line total UGX {Number(item.subtotal || 0).toLocaleString()}
                           </Typography>
                         </Box>
                       )) : <Typography variant="caption" color="textSecondary">Item details unavailable</Typography>}
