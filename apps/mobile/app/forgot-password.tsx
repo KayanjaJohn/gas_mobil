@@ -1,24 +1,26 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import api from "../src/services/api";
+import { useThemedAlert } from "../src/hooks/useThemedAlert";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { showAlert, alertModal } = useThemedAlert();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
   const submit = async () => {
-    if (!email.trim()) { Alert.alert("Email required", "Enter the email address on your GasMobil account."); return; }
+    if (!email.trim()) { showAlert("Email required", "Enter the email address on your GasMobil account.", "warning"); return; }
     setLoading(true);
     try {
       const response = await api.post("/auth/forgot-password", { email: email.trim() });
       setSent(true);
-      Alert.alert("Check your email", response.data?.message || "If the account exists, reset instructions have been sent.");
+      showAlert("Check your email", response.data?.message || "If the account exists, reset instructions have been sent.", "success");
     } catch (error: any) {
-      Alert.alert("Recovery unavailable", error?.response?.data?.error || "Please try again later or contact GasMobil support.");
+      showAlert("Recovery unavailable", error?.response?.data?.error || "Please try again later or contact GasMobil support.", "error");
     } finally { setLoading(false); }
   };
 
@@ -47,6 +49,7 @@ export default function ForgotPasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {alertModal}
     </ImageBackground>
   );
 }
