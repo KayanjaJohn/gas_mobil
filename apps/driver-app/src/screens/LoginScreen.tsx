@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ImageBackground,
+  KeyboardAvoidingView, Platform, ScrollView, Image, ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useThemedAlert } from '../hooks/useThemedAlert';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
   const { login } = useAuth();
+  const { showAlert, alertModal } = useThemedAlert();
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,14 +19,14 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!emailOrPhone.trim() || !password) {
-      Alert.alert('Missing details', 'Enter your email or phone number and password.');
+      showAlert("Sign-in details required", "Enter your email or phone number and password.", "warning");
       return;
     }
     setLoading(true);
     const result = await login(emailOrPhone.trim(), password);
     setLoading(false);
     if (!result.success) {
-      Alert.alert('Sign in failed', result.error || 'Please check your credentials and try again.');
+      showAlert("Sign in failed", result.error || "Please check your credentials and try again.", "error");
     }
   };
 
@@ -68,6 +70,7 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {alertModal}
     </ImageBackground>
   );
 }
