@@ -155,7 +155,7 @@ export const getDriverProfile = async (req: Request, res: Response) => {
 export const updateDeliveryStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status, deliveryPhoto, customerSignature, deliveryNotes, rating } = req.body;
+    const { status, deliveryPhoto, customerSignature, deliveryNotes, rating, paymentStatus } = req.body;
     const user = (req as any).user;
 
     if (user.role !== "driver") {
@@ -171,6 +171,10 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: "Delivery not found" });
     }
 
+    if (paymentStatus !== undefined && paymentStatus !== "paid") {
+      return res.status(400).json({ success: false, error: "Invalid payment confirmation" });
+    }
+
     const result = await updateDeliveryStatusUnified({
       deliveryId: id,
       status,
@@ -181,6 +185,7 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       customerSignature: customerSignature || null,
       notes: deliveryNotes || null,
       rating: rating !== undefined ? Number(rating) : null,
+      paymentStatus,
     });
 
     res.json({
