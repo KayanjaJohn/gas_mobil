@@ -96,6 +96,8 @@ export const register = async (req: Request, res: Response) => {
           email: user.email,
           phone: user.phone,
           role: user.role,
+          address: user.address,
+          city: user.city,
         },
       },
     });
@@ -144,6 +146,8 @@ export const login = async (req: Request, res: Response) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      address: user.address,
+      city: user.city,
     };
 
     console.log(`[LOGIN] Success: user=${user.email}`);
@@ -210,6 +214,10 @@ export const getCurrentUser = async (req: Request, res: Response) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      address: user.address,
+      city: user.city,
+      latitude: user.latitude,
+      longitude: user.longitude,
       station: user.station,
     };
 
@@ -426,6 +434,8 @@ export const updateProfile = async (req: Request, res: Response) => {
       email: user!.email,
       phone: user!.phone,
       role: user!.role,
+      address: user!.address,
+      city: user!.city,
     };
 
     res.json({ success: true, data: userResponse });
