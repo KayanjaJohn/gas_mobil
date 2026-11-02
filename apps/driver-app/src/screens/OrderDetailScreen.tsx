@@ -46,7 +46,7 @@ export default function OrderDetailScreen() {
   useEffect(() => {
     if (order && ['picked_up', 'in_transit', 'nearby'].includes(order.status)) {
       startTracking().catch((error: any) =>
-        showAlert('Live GPS unavailable', error?.message || 'Enable location permission and retry.', 'warning');
+        showAlert('Live GPS unavailable', error?.message || 'Enable location permission and retry.', 'warning')
       );
     } else {
       stopTracking();
@@ -188,7 +188,7 @@ export default function OrderDetailScreen() {
         )}
         {isMoving && (
           <TouchableOpacity style={[styles.actionBtn, styles.greenButton]} disabled={updating} onPress={confirmPaymentAndDelivery}>
-            <Text style={styles.actionText}>{updating ? 'Updating…' : 'Mark as Delivered'}</Text>
+            <Text style={styles.actionText}>{updating ? 'Updating…' : 'Confirm Cash Payment & Deliver'}</Text>
           </TouchableOpacity>
         )}
       </View>
