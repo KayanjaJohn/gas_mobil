@@ -344,6 +344,18 @@ export const updateAgentDriverStatus = async (req: Request, res: Response) => {
       });
     }
 
+    if (status === "offline") {
+      const activeDelivery = await deliveryRepo().findOne({
+        where: { driverId: id, status: In(["pending", "driver_assigned", "picked_up", "in_transit", "nearby"]) } as any,
+      });
+      if (activeDelivery) {
+        return res.status(409).json({
+          success: false,
+          error: "This driver has an active assignment. Complete or release that delivery before setting them offline.",
+        });
+      }
+    }
+
     driver.driverStatus = status as any;
     await userRepo().save(driver);
 
