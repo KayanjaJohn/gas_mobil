@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity ActivityIndicator, Linking,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverLocation } from '../hooks/useDriverLocation';
