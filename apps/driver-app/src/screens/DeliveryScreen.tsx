@@ -5,6 +5,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverLocation } from '../hooks/useDriverLocation';
 import api from '../services/api';
+import DriverLiveMap from '../components/DriverLiveMap';
 import { useThemedAlert } from '../hooks/useThemedAlert';
 import { Order } from '../types';
 
@@ -111,20 +112,11 @@ export default function DeliveryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.map}>
-        <View style={styles.mapPlaceholder}>
-          <Icon name="map-marker-radius-outline" size={42} color="#F36A21" />
-          <Text style={styles.mapPlaceholderTitle}>Delivery location</Text>
-          <Text style={styles.mapPlaceholderText}>
-            {destination
-              ? `Destination: ${destination.latitude.toFixed(5)}, ${destination.longitude.toFixed(5)}`
-              : 'Waiting for a valid customer delivery pin'}
-          </Text>
-          <Text style={styles.mapPlaceholderText}>
-            {currentLocation
-              ? `Your GPS: ${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`
-              : 'Your GPS position will appear when tracking starts'}
-          </Text>
-        </View>
+        <DriverLiveMap
+          destination={destination}
+          driverLocation={currentLocation}
+          status={activeOrder.status}
+        />
       </View>
 
       <View style={styles.liveBadge}>
