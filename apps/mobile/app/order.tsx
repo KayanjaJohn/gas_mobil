@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   TextInput,
   SafeAreaView,
   StatusBar,
@@ -39,6 +38,7 @@ const ORDER_TYPES = [
 export default function OrderScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { showAlert, alertModal } = useThemedAlert();
   const { location, loading: locLoading, error: locError, getCurrentLocation, clearLocation } = useLocation();
 
   const [orderType, setOrderType] = useState('swap');
@@ -74,41 +74,41 @@ export default function OrderScreen() {
   const totalAmount = (selectedSize?.price || 0) * quantity;
 
   const handleGetLocation = useCallback(async () => {
-    const gps = await getCurrentLocation({ showAlerts: true });
+    const gps = await getCurrentLocation({ showAlerts: false });
     if (!gps) {
-      Alert.alert(
-        'Location Required',
-        'We need your exact GPS location to deliver gas safely. Please enable location services and try again.',
+      showAlert(
+        "Location required",
+        "We need your GPS location to deliver gas safely. Enable location services and try again.",
+        "warning",
         [
-          { text: 'Retry', onPress: handleGetLocation },
-          { text: 'Cancel', style: 'cancel' },
+          { label: "Try again", tone: "primary", onPress: () => { void getCurrentLocation({ showAlerts: false }); } },
+          { label: "Cancel", tone: "secondary" },
         ]
       );
     }
-  }, [getCurrentLocation]);
+  }, [getCurrentLocation, showAlert]);
 
   const handlePlaceOrder = async () => {
     if (!location) {
-      Alert.alert(
-        'Location Missing',
-        'Please tap "Use My Location" to capture your delivery address before placing the order.',
-        [{ text: 'Get Location', onPress: handleGetLocation }]
-      );
+      showAlert("Delivery location missing", "Capture your delivery address before placing the order.", "warning", [
+        { label: "Get location", tone: "primary", onPress: handleGetLocation },
+        { label: "Cancel", tone: "secondary" },
+      ]);
       return;
     }
 
     if (location.latitude < -1.5 || location.latitude > 4.5 || location.longitude < 29.5 || location.longitude > 35.0) {
-      Alert.alert('Invalid Location', 'Your location appears to be outside Uganda. Please check your GPS and try again.');
+      showAlert("Check your location", "The GPS coordinates appear to be outside Uganda. Check your location settings and try again.", "error");
       return;
     }
 
     if (!location.address?.trim() ||
         !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
-      Alert.alert("Delivery details required", "Please capture a valid delivery address and GPS location.");
+      showAlert("Delivery details required", "Please capture a valid delivery address and GPS location.", "warning");
       return;
     }
     if (!cylinderProduct) {
-      Alert.alert("Cylinder unavailable", `No available ${cylinderSize} cylinder matches your selection.`);
+      showAlert("Cylinder unavailable", `No available ${cylinderSize} cylinder matches your selection. Try another size or contact the station.`, "warning");
       return;
     }
 
@@ -137,26 +137,28 @@ export default function OrderScreen() {
 
       if (res.success && res.data) {
         const placedOrderId = res.data.id;
-        Alert.alert(
-          'Order Placed!',
-          `Order #${placedOrderId.slice(0, 8).toUpperCase()} placed successfully.\n\nDelivering to: ${location.address}`,
+        showAlert(
+          "Order placed successfully",
+          `Order #${placedOrderId.slice(0, 8).toUpperCase()} is confirmed. Delivering to: ${location.address}`,
+          "success",
           [
             {
-              text: 'Track Order',
+              label: "Track order",
+              tone: "primary",
               onPress: () => router.push({ pathname: "/tracking", params: { orderId: placedOrderId } } as any),
             },
-            { text: 'OK', style: 'cancel' },
+            { label: "Done", tone: "secondary" },
           ]
         );
         clearLocation();
         setNotes('');
       } else {
-        Alert.alert('Order Failed', res.error || 'Something went wrong. Please try again.');
+        showAlert("Order not placed", res.error || "Something went wrong. Please try again.", "error");
       }
     } catch (err: any) {
       console.error('[Order] Place order error:', err);
       const msg = err.response?.data?.error || err.message || 'Network error. Please check your connection and try again.';
-      Alert.alert('Order Failed', msg);
+      showAlert("Order not placed", msg, "error");
     } finally {
       setPlacing(false);
     }
@@ -341,6 +343,7 @@ export default function OrderScreen() {
           )}
         </View>
       </ScrollView>
+      {alertModal}
     </SafeAreaView>
   );
 }
