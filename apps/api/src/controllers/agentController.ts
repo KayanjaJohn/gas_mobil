@@ -312,3 +312,53 @@ export const cancelOrder = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 };
+
+
+export const updateAgentDriverStatus = async (req: Request, res: Response) => {
+  try {
+    const stationId = await getAgentStationId(req);
+    if (!stationId) {
+      return res.status(400).json({ success: false, error: "Agent has no station" });
+    }
+
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!["online", "offline"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Agents can set a driver to online or offline only.",
+      });
+    }
+
+    const driver = await userRepo().findOne({
+      where: { id, role: "driver", stationId },
+    } as any);
+    if (!driver) {
+      return res.status(404).json({ success: false, error: "Driver not found at this station" });
+    }
+
+    if (["busy", "on_break"].includes(String(driver.driverStatus || ""))) {
+      return res.status(409).json({
+        success: false,
+        error: "This driver is busy or on break. Their current status cannot be overridden.",
+      });
+    }
+
+    driver.driverStatus = status as any;
+    await userRepo().save(driver);
+
+    res.json({
+      success: true,
+      data: {
+        id: driver.id,
+        name: driver.name,
+        driverStatus: driver.driverStatus,
+        stationId: driver.stationId,
+      },
+      message: `${driver.name} is now ${status}.`,
+    });
+  } catch (error) {
+    console.error("updateAgentDriverStatus error:", error);
+    res.status(500).json({ success: false, error: "Failed to update driver availability" });
+  }
+};
