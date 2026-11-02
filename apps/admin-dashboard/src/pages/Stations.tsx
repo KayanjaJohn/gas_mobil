@@ -175,7 +175,7 @@ export default function Stations() {
       return;
     }
 
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(form.email.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       setSnackbar({ open: true, message: 'Enter a valid station email address.', severity: 'error' });
       return;
     }
