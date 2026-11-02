@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from "react-native-maps";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import type { LocationPoint } from "../types";
 
 type Coordinate = { latitude: number; longitude: number };
@@ -11,7 +11,7 @@ interface Props {
   status: string;
 }
 
-const KAMPALA: Region = {
+const KAMPALA = {
   latitude: 0.3136,
   longitude: 32.5811,
   latitudeDelta: 0.12,
