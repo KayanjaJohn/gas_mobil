@@ -15,6 +15,7 @@ interface ImageUploadProps {
 export default function ImageUpload({ value, onChange, label = "Product Image", token }: ImageUploadProps) {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(value);
+  const [localPreview, setLocalPreview] = useState('');
   const [uploadError, setUploadError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +44,11 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
 
     // Local preview (base64) — shows immediately
     const reader = new FileReader();
-    reader.onload = (ev) => setPreview(ev.target?.result as string);
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setLocalPreview(dataUrl);
+      setPreview(dataUrl);
+    };
     reader.readAsDataURL(file);
 
     // Upload
@@ -60,8 +65,8 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
 
       if (res.data.success && res.data.data?.imageUrl) {
         const imageUrl = res.data.data.imageUrl;
-        onChange(imageUrl);
-        // The browser owns the multipart boundary. Display the public file URL returned by the API.
+        // Keep the selected file as a fallback. We only commit the remote URL
+        // to the form after the browser confirms that the uploaded image loads.
         setPreview(imageUrl);
       } else {
         throw new Error(res.data.error || 'Upload failed');
@@ -104,11 +109,16 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
               borderRadius: 8,
               border: '1px solid #e0e0e0',
             }}
+            onLoad={() => {
+              if (!isBase64 && preview) {
+                onChange(preview);
+                setUploadError('');
+              }
+            }}
             onError={() => {
-              // If server URL fails to load, show error and fallback
               if (!isBase64) {
-                setUploadError('Image URL failed to load. Please re-upload.');
-                setPreview('');
+                setUploadError('The image was uploaded, but its public URL could not be reached. Check the API public URL and try again.');
+                setPreview(localPreview || '');
               }
             }}
           />
