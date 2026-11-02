@@ -1,5 +1,6 @@
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useEffect, useState } from "react";
+import { Linking } from "react-native";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from "react-native";
@@ -14,10 +15,65 @@ interface Station {
   name: string;
   address: string;
   city: string;
-  region: string;
+  region?: string;
   isActive: boolean;
   latitude: number;
   longitude: number;
+}
+
+
+// Station records currently expose city and address, but the API entity does not
+// persist a separate region field. Use the real location text first, then Uganda
+// coordinates as a fallback so all station filters work with existing records.
+function inferStationRegion(station: Station): string {
+  const explicit = String(station.region || "").trim().toLowerCase();
+  if (explicit) {
+    for (const region of ["central", "western", "eastern", "northern"]) {
+      if (explicit.includes(region)) return region;
+    }
+  }
+
+  const location = `${station.city || ""} ${station.address || ""}`.toLowerCase();
+  const regions: Record<string, RegExp> = {
+    central: /kampala|wakiso|mukono|mpigi|masaka|mityana|mubende|luwero|nakaseke|kayunga|buikwe|gomba|butambala|kalangala|kyotera|rakai|ssembabule|kassanda|kyankwanzi|kira|ente?bbe/,
+    western: /mbarara|hoima|fort portal|fort-portal|kabale|kasese|bushenyi|ibanda|ntungamo|rukungiri|kanungu|kisoro|bundibugyo|kabarole|kagadi|kibaale|kiryandongo|masindi|mitooma|rubirizi|sheema|buhweju|kiruhura|kamwenge/,
+    eastern: /jinja|iganga|kamuli|mbale|tororo|busia|bugiri|mayuge|namutumba|buyende|pallisa|budaka|bududa|sironko|bulambuli|kapchorwa|kumi|katakwi|amuria|kaberamaido|serere|ngora|bukedea|butaleja|manat/,
+    northern: /gulu|lira|arua|kitgum|pader|agago|amuru|nwo?ya|omoro|otuke|ale?t|kole|dokolo|apac|nebbi|zombo|moyo|obongi|adjumani|yumbe|koboko|maracha|lamwo|karenga|kaabong|kotido|moroto|napak|nakapiripirit|abim/,
+  };
+  for (const [region, pattern] of Object.entries(regions)) {
+    if (pattern.test(location)) return region;
+  }
+
+  const latitude = Number(station.latitude);
+  const longitude = Number(station.longitude);
+  if (
+    Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    latitude >= -1.5 && latitude <= 4.5 &&
+    longitude >= 29.5 && longitude <= 35.0
+  ) {
+    if (latitude >= 1.5) return "northern";
+    if (longitude >= 33.0) return "eastern";
+    if (longitude <= 31.0) return "western";
+    return "central";
+  }
+
+  return "other";
+}
+
+function openStationLocation(station: Station) {
+  const latitude = Number(station.latitude);
+  const longitude = Number(station.longitude);
+  const hasCoordinates =
+    Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    latitude >= -90 && latitude <= 90 &&
+    longitude >= -180 && longitude <= 180 &&
+    (latitude !== 0 || longitude !== 0);
+
+  const query = hasCoordinates
+    ? `${latitude},${longitude}`
+    : [station.name, station.address, station.city].filter(Boolean).join(", ");
+  if (!query) return;
+  void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
 }
 
 const REGIONS = ["All", "Central", "Western", "Eastern", "Northern"];
@@ -47,11 +103,13 @@ export default function StationsScreen() {
     }
   };
 
-  const filtered = stations.filter((s) => {
-    const matchesRegion = region === "All" || (s.region || "").toLowerCase() === region.toLowerCase();
-    const matchesSearch = s.name?.toLowerCase().includes(search.toLowerCase()) || 
-                          s.city?.toLowerCase().includes(search.toLowerCase()) ||
-                          s.address?.toLowerCase().includes(search.toLowerCase());
+  const filtered = stations.filter((station) => {
+    const matchesRegion = region === "All" || inferStationRegion(station) === region.toLowerCase();
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query ||
+      station.name?.toLowerCase().includes(query) ||
+      station.city?.toLowerCase().includes(query) ||
+      station.address?.toLowerCase().includes(query);
     return matchesRegion && matchesSearch;
   });
 
@@ -108,9 +166,9 @@ export default function StationsScreen() {
                       </View>
                     </View>
                     <Text style={styles.stationSub}>{station.city || station.address}</Text>
-                    <Text style={styles.stationSold}>{station.region || "Uganda"}</Text>
+                    <Text style={styles.stationSold}>{inferStationRegion(station) === "other" ? "Uganda" : `${inferStationRegion(station).replace(/^./, (c) => c.toUpperCase())} Region`}</Text>
                   </View>
-                  <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7}><Icon name="map-marker-outline" size={20} color={COLORS.accent} /></TouchableOpacity>
+                  <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7} onPress={() => openStationLocation(station)} accessibilityRole="button" accessibilityLabel={`Open ${station.name} on map`}><Icon name="map-marker-outline" size={20} color={COLORS.accent} /></TouchableOpacity>
                 </View>
               ))}
               {filtered.length === 0 && (
