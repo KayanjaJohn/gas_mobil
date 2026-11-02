@@ -190,7 +190,7 @@ export default function TrackingScreen() {
               )}
               {driverLocation && (
                 <Text style={styles.driver}>
-                  Driver at: {driverLocation.latitude.toFixed(5)}, {driverLocation.longitude.toFixed(5)}
+                  Driver GPS is updating on the live map
                 </Text>
               )}
               <Text style={[styles.statusBadge, { color: order.status === "cancelled" ? COLORS.danger : COLORS.accent }]}>
