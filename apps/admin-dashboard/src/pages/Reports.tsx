@@ -154,20 +154,31 @@ export default function Reports() {
   const handleDownload = () => {
     if (!selectedStation) return;
 
+    // Keep every value directly below its header when opened in Excel.
+    // The previous vertical key/value layout made the report difficult to scan.
+    const summaryHeaders = [
+      'Report', 'Station', 'Period', 'Generated At', 'Orders', 'Completed Orders',
+      'Total Order Value', 'Paid Orders', 'Paid Revenue', 'COD Outstanding', 'Average Paid Order',
+    ];
+    const summaryValues = [
+      `${periodOptions.find((option) => option.value === period)?.label} Station Report`,
+      selectedStation.name,
+      formatPeriodLabel(period, periodStart),
+      new Date().toLocaleString(),
+      String(reportOrders.length),
+      String(completedOrders.length),
+      String(totalOrderValue),
+      String(paidOrders.length),
+      String(totalRevenue),
+      String(outstandingCash),
+      String(Math.round(averageOrderValue)),
+    ];
+    const orderHeaders = ['Order ID', 'Customer', 'Date', 'Status', 'Payment', 'Amount'];
     const rows = [
-      ['Report', `${periodOptions.find((option) => option.value === period)?.label} Station Report`],
-      ['Station', selectedStation.name],
-      ['Period', formatPeriodLabel(period, periodStart)],
-      ['Generated At', new Date().toLocaleString()],
-      ['Orders', String(reportOrders.length)],
-      ['Completed Orders', String(completedOrders.length)],
-      ['Total Order Value', String(totalOrderValue)],
-      ['Paid Orders', String(paidOrders.length)],
-      ['Paid Revenue', String(totalRevenue)],
-      ['COD Outstanding', String(outstandingCash)],
-      ['Average Paid Order', String(Math.round(averageOrderValue))],
+      summaryHeaders,
+      summaryValues,
       [],
-      ['Order ID', 'Customer', 'Date', 'Status', 'Payment', 'Amount'],
+      orderHeaders,
       ...(reportOrders.length > 0
         ? reportOrders.map((order) => [
             order.id,
@@ -183,7 +194,8 @@ export default function Reports() {
     const csv = rows
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
       .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    // UTF-8 BOM ensures Excel opens names and report text correctly.
+    const blob = new Blob([\uFEFF + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
