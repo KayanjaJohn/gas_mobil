@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking,
+  View, Text, StyleSheet, TouchableOpacity ActivityIndicator, Linking,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDriverLocation } from '../hooks/useDriverLocation';
 import api from '../services/api';
+import { useThemedAlert } from '../hooks/useThemedAlert';
 import { Order } from '../types';
 
 
 export default function DeliveryScreen() {
+  const { showAlert, alertModal } = useThemedAlert();
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -32,7 +34,7 @@ export default function DeliveryScreen() {
       setActiveOrder(active || null);
     } catch (error) {
       console.error('[DriverDelivery] Fetch active delivery error:', error);
-      Alert.alert('Delivery unavailable', 'Could not load your assigned delivery. Please retry.');
+      showAlert('Delivery unavailable', 'Could not load your assigned delivery. Please retry.', 'error');
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ export default function DeliveryScreen() {
   useEffect(() => {
     if (activeOrder && ['in_transit', 'nearby'].includes(activeOrder.status)) {
       startTracking().catch((error: any) => {
-        Alert.alert('Live tracking unavailable', error?.message || 'Enable location and retry.');
+        showAlert('Live tracking unavailable', error?.message || 'Enable location and retry.', 'warning');
       });
     } else {
       stopTracking();
@@ -59,7 +61,7 @@ export default function DeliveryScreen() {
     if (!activeOrder || updating) return;
     const delivery = activeOrder.deliveries?.find((item) => item.driverId) || activeOrder.deliveries?.[0];
     if (!delivery?.id) {
-      Alert.alert('Delivery unavailable', 'No delivery assignment was found for this order.');
+      showAlert('Delivery unavailable', 'No delivery assignment was found for this order.', 'error');
       return;
     }
     setUpdating(true);
@@ -68,7 +70,7 @@ export default function DeliveryScreen() {
       // Refreshing activeOrder triggers the GPS lifecycle effect exactly once.
       await fetchActiveDelivery();
     } catch (error: any) {
-      Alert.alert('Could not update delivery', error.response?.data?.error || error.message || 'Please try again.');
+      showAlert('Could not update delivery', error.response?.data?.error || error.message || 'Please try again.', 'error');
     } finally {
       setUpdating(false);
     }
@@ -76,12 +78,12 @@ export default function DeliveryScreen() {
 
   const openNavigation = async () => {
     if (!destination) {
-      Alert.alert('Destination missing', 'This order does not have valid delivery coordinates. Contact the station agent to correct the address pin.');
+      showAlert('Destination missing', 'This order does not have valid delivery coordinates. Contact the station agent to correct the address pin.', 'warning');
       return;
     }
     const url = `https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}&travelmode=driving`;
     try { await Linking.openURL(url); }
-    catch { Alert.alert('Navigation unavailable', 'Could not open a maps application.'); }
+    catch { showAlert('Navigation unavailable', 'Could not open a maps application.', 'error'); }
   };
 
   if (loading) {
@@ -179,6 +181,7 @@ export default function DeliveryScreen() {
         </View>
         <Text style={styles.paymentText}>Cash on delivery · UGX {Number(activeOrder.totalAmount).toLocaleString()}</Text>
       </View>
+    {alertModal}
     </View>
   );
 }
