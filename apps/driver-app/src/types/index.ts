@@ -51,8 +51,11 @@ export interface OrderItem {
 export interface Product {
   id: string;
   name: string;
-  description: string;
+  description?: string | null;
   price: number;
+  type?: "cylinder" | "accessory";
+  size?: string | null;
+  weight?: number | string | null;
   imageUrl?: string;
 }
 
