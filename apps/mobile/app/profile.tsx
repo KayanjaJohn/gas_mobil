@@ -2,7 +2,7 @@ import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import TopBar from "../src/components/TopBar";
@@ -10,6 +10,7 @@ import BottomNav from "../src/components/BottomNav";
 import { useAuth } from "../src/context/AuthContext";
 import { apiRequest } from "../src/services/api";
 import { COLORS } from "../src/utils/constants";
+import { useThemedAlert } from "../src/hooks/useThemedAlert";
 
 const ROLE_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   customer: { label: "Consumer Mode", color: "#F36A21", bg: "rgba(243,106,33,0.14)" },
@@ -30,6 +31,7 @@ const MENU_ITEMS = [
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, updateUser } = useAuth();
+  const { showAlert, alertModal } = useThemedAlert();
 
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export default function ProfileScreen() {
 
   const handleSave = async () => {
     if (!form.name || !form.phone) {
-      Alert.alert("Missing fields", "Name and phone are required.");
+      showAlert("Missing information", "Name and phone are required.", "warning");
       return;
     }
     setLoading(true);
@@ -73,22 +75,22 @@ export default function ProfileScreen() {
         address: form.address,
         city: form.city,
       });
-      Alert.alert("Success", "Profile updated successfully");
+      showAlert("Profile updated", "Your personal information has been saved successfully.", "success");
       setEditing(false);
     } catch (err: any) {
-      Alert.alert("Error", err?.message || "Failed to update profile");
+      showAlert("Could not save profile", err?.message || "Please check your connection and try again.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign Out", style: "destructive", onPress: async () => {
-          await logout();
-          router.replace("/login");
-        }},
+    showAlert("Sign out of GasMobil?", "You will need to sign in again to access your orders and profile.", "confirm", [
+      { label: "Cancel", tone: "secondary" },
+      { label: "Sign out", tone: "danger", onPress: async () => {
+        await logout();
+        router.replace("/login");
+      }},
     ]);
   };
 
@@ -216,6 +218,7 @@ export default function ProfileScreen() {
       </ScrollView>
 
       <BottomNav />
+      {alertModal}
     </View>
   );
 }
