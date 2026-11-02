@@ -39,26 +39,11 @@ const verifyStationOrder = async (
 };
 
 const fetchOrdersWithDeliveries = async (where: any): Promise<Order[]> => {
-  try {
-    return await orderRepo().find({
-      where,
-      relations: ["deliveries", "user", "station", "items", "items.product"],
-      order: { createdAt: "DESC" },
-    } as any);
-  } catch {
-    try {
-      return await orderRepo().find({
-        where,
-        relations: ["deliveries", "user", "station"],
-        order: { createdAt: "DESC" },
-      } as any);
-    } catch {
-      return await orderRepo().find({
-        where,
-        order: { createdAt: "DESC" },
-      } as any);
-    }
-  }
+  return orderRepo().find({
+    where,
+    relations: ["deliveries", "user", "station", "items", "items.product"],
+    order: { createdAt: "DESC" },
+  } as any);
 };
 
 export const getAgentCustomers = async (req: Request, res: Response) => {
