@@ -41,7 +41,10 @@ interface Order {
   driver?: { name: string };
   station?: { id?: string; name: string };
   items?: ReportOrderItem[];
-  deliveries?: Array<{ driverName?: string; driverPhone?: string; vehicleNumber?: string }>;
+  deliveries?: Array<{
+    driverName?: string; driverPhone?: string; vehicleNumber?: string; status?: string;
+    pickedUpAt?: string | null; startedAt?: string | null; deliveredAt?: string | null; notes?: string | null;
+  }>;
 }
 
 const periodOptions: Array<{ value: ReportPeriod; label: string; icon: JSX.Element }> = [
@@ -191,9 +194,10 @@ export default function Reports() {
     ];
     const orderHeaders = [
       'Order ID', 'Order Date', 'Last Updated', 'Order Status',
-      'Customer ID', 'Customer Name', 'Customer Phone', 'Customer Email',
+      'Customer ID', 'Customer Name', 'Customer Phone', 'Customer Email', 'Customer Profile Address', 'Customer Profile City',
       'Delivery Address', 'Delivery City', 'Delivery Latitude', 'Delivery Longitude', 'GPS Accuracy (m)',
-      'Station ID', 'Station Name', 'Driver Name', 'Driver Phone', 'Driver Vehicle',
+      'Station ID', 'Station Name', 'Driver Name', 'Driver Phone', 'Driver Vehicle', 'Delivery Status',
+      'Picked Up At', 'Delivery Started At', 'Delivered At', 'Delivery Notes',
       'Payment Method', 'Payment Status',
       'Product IDs and Details (name, description, type, size, weight, quantity, unit price, line total)',
       'Total Quantity', 'Order Total (UGX)', 'COD Outstanding (UGX)',
@@ -214,6 +218,8 @@ export default function Reports() {
             order.user?.name || 'N/A',
             order.user?.phone || '',
             order.user?.email || '',
+            order.user?.address || '',
+            order.user?.city || '',
             order.deliveryAddress || '',
             order.deliveryCity || '',
             order.deliveryLatitude ?? '',
@@ -224,6 +230,11 @@ export default function Reports() {
             getDriverName(order),
             order.deliveries?.[0]?.driverPhone || '',
             order.deliveries?.[0]?.vehicleNumber || '',
+            order.deliveries?.[0]?.status || '',
+            order.deliveries?.[0]?.pickedUpAt ? new Date(order.deliveries[0].pickedUpAt).toLocaleString() : '',
+            order.deliveries?.[0]?.startedAt ? new Date(order.deliveries[0].startedAt).toLocaleString() : '',
+            order.deliveries?.[0]?.deliveredAt ? new Date(order.deliveries[0].deliveredAt).toLocaleString() : '',
+            order.deliveries?.[0]?.notes || '',
             order.paymentMethod || 'cash',
             order.paymentStatus || 'pending',
             getProductDetails(order),
