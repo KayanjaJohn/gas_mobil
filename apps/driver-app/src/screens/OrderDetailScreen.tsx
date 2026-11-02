@@ -152,13 +152,25 @@ export default function OrderDetailScreen() {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Items</Text>
-        {order.items?.map((item, index) => (
+        {order.items?.length ? order.items.map((item, index) => (
           <View key={item.id || index} style={styles.itemRow}>
-            <Text style={styles.itemName}>{item.product?.name || 'Product'}</Text>
-            <Text style={styles.itemQty}>x{item.quantity}</Text>
-            <Text style={styles.itemPrice}>UGX {Number(item.subtotal).toLocaleString()}</Text>
+            <View style={{ flex: 2 }}>
+              <Text style={styles.itemName}>{item.product?.name || 'Product'}</Text>
+              <Text style={styles.itemMeta}>
+                {[item.product?.type, item.product?.size, item.product?.weight ? `${item.product.weight} kg` : null]
+                  .filter(Boolean).join(' · ') || 'Product details'}
+              </Text>
+              <Text style={styles.itemMeta}>UGX {Number(item.price || 0).toLocaleString()} each</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={styles.itemQty}>Qty {Number(item.quantity || 0)}</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+              <Text style={styles.itemPrice}>UGX {Number(item.subtotal || 0).toLocaleString()}</Text>
+              <Text style={styles.itemMeta}>Line total</Text>
+            </View>
           </View>
-        ))}
+        )) : <Text style={styles.warningText}>No product line items were returned for this order.</Text>}
       </View>
 
       <View style={styles.card}>
@@ -221,7 +233,8 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#D8CDBB' },
   itemName: { color: '#0B3D2E', flex: 2, fontSize: 14 },
   itemQty: { flex: 1, textAlign: 'center', fontSize: 14, color: '#68786F' },
-  itemPrice: { flex: 1, textAlign: 'right', fontSize: 14, fontWeight: '500', color: '#F36A21' },
+  itemPrice: { textAlign: 'right', fontSize: 12, fontWeight: '800', color: '#F36A21' },
+  itemMeta: { color: '#68786F', fontSize: 10, marginTop: 3 },
   navigationButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: '#0B3D2E' },
   navigationText: { color: '#FFF8EE', fontWeight: '700', fontSize: 12 },
   warningText: { color: '#FDBA74', marginTop: 8, fontSize: 12 },
