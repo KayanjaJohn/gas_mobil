@@ -3,7 +3,7 @@ import { Delivery, DeliveryStatus } from '../entities/Delivery';
 import { Order } from '../entities/Order';
 import { User } from '../entities/User';
 import { createSystemNotification } from './notificationService';
-import { broadcastToAdmins } from '../config/socket';
+import { broadcastToAdmins, broadcastToOrder } from '../config/socket';
 
 const deliveryRepo = AppDataSource.getRepository(Delivery);
 const orderRepo = AppDataSource.getRepository(Order);
@@ -150,12 +150,24 @@ export async function updateDeliveryStatusUnified(input: UpdateDeliveryStatusInp
       });
     }
 
+    const timestamp = new Date().toISOString();
+
+    // Customers who have Track open are subscribed to this private room.
+    // Send the delivery status directly instead of relying on notification data.
+    broadcastToOrder(order.id, 'order_status_update', {
+      orderId: order.id,
+      status: input.status,
+      deliveryStatus: delivery.status,
+      message: cfg?.message,
+      timestamp,
+    });
+
     broadcastToAdmins('delivery_status_update', {
       orderId: order.id,
       driverId: input.driverId,
       driverName: input.driverName,
       status: input.status,
-      timestamp: new Date().toISOString(),
+      timestamp,
     });
 
     return { delivery, order };
