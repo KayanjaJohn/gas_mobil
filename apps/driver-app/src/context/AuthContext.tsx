@@ -35,6 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  const [token, setToken] = useState<string | null>(null);
  const [isLoading, setIsLoading] = useState(true);
 
+ const syncDriverAvailability = async (status: 'online' | 'offline') => {
+ try {
+ await api.put('/driver/status', { status });
+ } catch (error: any) {
+ // Availability must not prevent the driver from using the app if the
+ // network is briefly unavailable; retrying happens on the next app launch.
+ console.warn('[Auth] Could not sync driver availability:', error?.message);
+ }
+ };
+
  useEffect(() => {
  let mounted = true;
 
@@ -70,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  setUser(userData);
  setToken(storedToken);
  await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
+ void syncDriverAvailability('online');
  }
  } else {
  throw new Error('Invalid response');
@@ -120,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  await AsyncStorage.setItem('driver_user', JSON.stringify(userData));
  setToken(newToken);
  setUser(userData);
+ void syncDriverAvailability('online');
  return { success: true };
  }
 
@@ -142,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  };
 
  const logout = async () => {
+ await syncDriverAvailability('offline');
  disconnectSocket();
  await AsyncStorage.removeItem('driver_token');
  await AsyncStorage.removeItem('driver_refresh_token');
