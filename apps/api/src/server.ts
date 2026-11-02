@@ -42,7 +42,10 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // ── Security ─────────────────
-app.use(helmet());
+app.use(helmet({
+  // The public website and portals load product image files from api.gas-mobil.com.
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 const configuredOrigins = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
