@@ -48,7 +48,7 @@ export default function Login() {
       minHeight: "100vh", width: "100%", display: "flex", alignItems: "center",
       justifyContent: "center", px: { xs: 2, sm: 3, md: 4 },
       py: 4, boxSizing: "border-box",
-      backgroundImage: "linear-gradient(90deg, rgba(2,18,13,.93) 0%, rgba(2,18,13,.76) 48%, rgba(2,18,13,.18) 100%), url('/admin/gasmobil-login-bg.jpg')",
+      backgroundImage: "linear-gradient(90deg, rgba(2,18,13,.93) 0%, rgba(2,18,13,.76) 48%, rgba(2,18,13,.18) 100%), url('/admin/gasmobil-blue-cylinder.svg')",
       backgroundSize: "cover", backgroundPosition: "center",
       backgroundColor: "#061D16",
     }}>
