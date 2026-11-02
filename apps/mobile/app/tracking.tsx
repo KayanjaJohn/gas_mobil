@@ -1,7 +1,7 @@
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import TopBar from "../src/components/TopBar";
