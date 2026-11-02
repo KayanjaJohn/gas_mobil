@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { In } from "typeorm";
 import AppDataSource from "../config/database";
 import { Order } from "../entities/Order";
 import { User } from "../entities/User";
@@ -80,6 +81,17 @@ export const updateDriverStatus = async (req: Request, res: Response) => {
 
     if (user.role !== "driver") {
       return res.status(403).json({ success: false, error: "Driver access only" });
+    }
+    if (!["online", "offline"].includes(status)) {
+      return res.status(400).json({ success: false, error: "Driver availability must be online or offline." });
+    }
+    if (status === "offline") {
+      const activeDelivery = await deliveryRepository.findOne({
+        where: { driverId: user.id, status: In(["driver_assigned", "picked_up", "in_transit", "nearby"]) } as any,
+      });
+      if (activeDelivery) {
+        return res.status(409).json({ success: false, error: "Complete your active delivery before going offline." });
+      }
     }
 
     const driver = await userRepository.findOne({ where: { id: user.id } });
