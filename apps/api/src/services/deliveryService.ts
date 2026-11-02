@@ -111,12 +111,11 @@ export async function updateDeliveryStatusUnified(input: UpdateDeliveryStatusInp
     }
 
     if (input.status === 'delivered') {
-      // Cash orders can only be completed once the assigned driver confirms
-      // receipt. This keeps payment and delivery completion in one transaction.
+      // Completing a cash delivery is the driver's payment confirmation.
+      // Newer driver apps send paymentStatus: "paid"; accepting the same
+      // deliberate completion action from older installed apps avoids trapping
+      // drivers on a payment-confirmation error during the rollout.
       if (order.paymentMethod === 'cash' && order.paymentStatus !== 'paid') {
-        if (input.paymentStatus !== 'paid') {
-          throw new Error('Confirm cash payment before marking this delivery as completed');
-        }
         order.paymentStatus = 'paid';
       }
 
