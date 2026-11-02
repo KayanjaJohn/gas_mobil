@@ -4,20 +4,22 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useThemedAlert } from '../hooks/useThemedAlert';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { showAlert, alertModal } = useThemedAlert();
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+    showAlert(
+      "Sign out of GasMobil?",
+      "You will need to sign in again to receive and manage deliveries.",
+      "confirm",
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: logout },
+        { label: "Cancel", tone: "secondary" },
+        { label: "Sign out", tone: "danger", onPress: logout },
       ]
     );
   };
@@ -47,6 +49,7 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
+    {alertModal}
     </View>
   );
 }
