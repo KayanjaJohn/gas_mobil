@@ -42,7 +42,7 @@ export default function OrderDetailScreen() {
   // This is the screen containing the Start Delivery action: GPS starts here,
   // immediately after the status changes to in_transit.
   useEffect(() => {
-    if (order && ['in_transit', 'nearby'].includes(order.status)) {
+    if (order && ['picked_up', 'in_transit', 'nearby'].includes(order.status)) {
       startTracking().catch((error: any) =>
         Alert.alert('Live GPS unavailable', error?.message || 'Enable location permission and retry.')
       );
