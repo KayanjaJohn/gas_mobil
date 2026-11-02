@@ -27,6 +27,9 @@ export default {
       },
       package: "com.gasmobil.app",
       versionCode: 1,
+      ...(process.env.GOOGLE_MAPS_API_KEY
+        ? { config: { googleMaps: { apiKey: process.env.GOOGLE_MAPS_API_KEY } } }
+        : {}),
     },
     web: {
       favicon: "./assets/icon.png",
