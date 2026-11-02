@@ -28,6 +28,9 @@ COPY apps/website/favicon.png /usr/share/nginx/html/public/favicon.png
 COPY apps/website/gasmobil-mark.svg /usr/share/nginx/html/public/gasmobil-mark.svg
 COPY apps/website/gasmobil-icon.png /usr/share/nginx/html/public/gasmobil-icon.png
 COPY apps/website/gasmobil-login-bg.jpg /usr/share/nginx/html/public/gasmobil-login-bg.jpg
+COPY apps/website/gasmobil-blue-cylinder.svg /usr/share/nginx/html/public/gasmobil-blue-cylinder.svg
+COPY apps/website/gasmobil-blue-cylinder.svg /usr/share/nginx/html/admin/gasmobil-blue-cylinder.svg
+COPY apps/website/gasmobil-blue-cylinder.svg /usr/share/nginx/html/agent/gasmobil-blue-cylinder.svg
 COPY apps/website/gasmobil-cylinder-hero.jpg /usr/share/nginx/html/public/gasmobil-cylinder-hero.jpg
 COPY apps/website/robots.txt /usr/share/nginx/html/public/robots.txt
 COPY apps/website/sitemap.xml /usr/share/nginx/html/public/sitemap.xml
