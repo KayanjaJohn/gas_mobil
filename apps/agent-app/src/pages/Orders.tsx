@@ -26,7 +26,7 @@ interface Driver {
   id: string;
   name: string;
   phone: string;
-  status: string;
+  driverStatus: string;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -70,8 +70,8 @@ export default function Orders() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const driversData = data.data || data.drivers || [];
-      if (res.ok) setDrivers(driversData);
+      const driversData: Driver[] = data.data || data.drivers || [];
+      if (res.ok) setDrivers(driversData.filter((driver) => driver.driverStatus === "online"));
     } catch {
       console.error("Failed to fetch drivers");
     }
@@ -242,15 +242,16 @@ export default function Orders() {
         <DialogTitle>Assign Driver</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ mt: 1 }}>
-            <InputLabel sx={{ color: "#94A3B8" }}>Select Driver</InputLabel>
+            <InputLabel sx={{ color: "#94A3B8" }}>Available driver</InputLabel>
             <Select
               value={selectedDriver}
               onChange={(e) => setSelectedDriver(e.target.value)}
               sx={{ color: "#fff", ".MuiOutlinedInput-notchedOutline": { borderColor: "#334155" } }}
             >
+              {drivers.length === 0 && <MenuItem value="" disabled>No online drivers available</MenuItem>}
               {drivers.map((d) => (
                 <MenuItem key={d.id} value={d.id}>
-                  {d.name} ({d.phone})
+                  {d.name} · Available ({d.phone})
                 </MenuItem>
               ))}
             </Select>
@@ -260,7 +261,7 @@ export default function Orders() {
           <Button onClick={() => setDialogOpen(false)} sx={{ color: "#94A3B8" }}>
             Cancel
           </Button>
-          <Button onClick={handleAssign} variant="contained" sx={{ bgcolor: "#F59E0B", color: "#fff" }}>
+          <Button onClick={handleAssign} disabled={!selectedDriver} variant="contained" sx={{ bgcolor: "#F59E0B", color: "#fff" }}>
             Assign
           </Button>
         </DialogActions>
