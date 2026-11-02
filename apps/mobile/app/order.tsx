@@ -143,7 +143,7 @@ export default function OrderScreen() {
           [
             {
               text: 'Track Order',
-              onPress: () => router.push(`/tracking/${placedOrderId}` as any),
+              onPress: () => router.push({ pathname: "/tracking", params: { orderId: placedOrderId } } as any),
             },
             { text: 'OK', style: 'cancel' },
           ]
