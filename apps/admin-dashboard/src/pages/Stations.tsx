@@ -73,6 +73,11 @@ export default function Stations() {
     password: ''
   });
 
+  // Use functional updates so rapid field edits cannot overwrite another field's state.
+  const updateFormField = (field: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
   useEffect(() => { fetchStations(); }, []);
 
   const fetchStations = async () => {
@@ -137,19 +142,58 @@ export default function Stations() {
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.address || !form.latitude || !form.longitude || !form.email) {
-      setSnackbar({ open: true, message: 'Name, address, coordinates, and station email are required', severity: 'error' });
+    const requiredFields: Array<[string, string]> = [
+      ['station name', form.name],
+      ['address', form.address],
+      ['phone number', form.phone],
+      ['station email', form.email],
+      ['latitude', form.latitude],
+      ['longitude', form.longitude],
+    ];
+    const missingFields = requiredFields
+      .filter(([, value]) => !value.trim())
+      .map(([label]) => label);
+
+    if (missingFields.length > 0) {
+      setSnackbar({
+        open: true,
+        message: `Please complete the following fields: ${missingFields.join(', ')}.`,
+        severity: 'error'
+      });
       return;
     }
-    if (!editingStation && (!form.agentPassword || form.agentPassword.length < 8)) {
-      setSnackbar({ open: true, message: 'Set a unique agent password of at least 8 characters', severity: 'error' });
+
+    const latitude = Number(form.latitude.trim());
+    const longitude = Number(form.longitude.trim());
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+        latitude < -1.5 || latitude > 4.5 || longitude < 29.5 || longitude > 35) {
+      setSnackbar({
+        open: true,
+        message: 'Enter valid Uganda coordinates (latitude -1.5 to 4.5, longitude 29.5 to 35).',
+        severity: 'error'
+      });
+      return;
+    }
+
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(form.email.trim())) {
+      setSnackbar({ open: true, message: 'Enter a valid station email address.', severity: 'error' });
+      return;
+    }
+
+    if (!editingStation && form.agentPassword.length < 8) {
+      setSnackbar({ open: true, message: 'Set a unique agent password of at least 8 characters.', severity: 'error' });
       return;
     }
 
     const payload = {
-      ...form,
-      latitude: Number(form.latitude),
-      longitude: Number(form.longitude)
+      name: form.name.trim(),
+      address: form.address.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim().toLowerCase(),
+      agentName: form.agentName.trim(),
+      agentPassword: form.agentPassword,
+      latitude,
+      longitude
     };
 
     try {
@@ -444,7 +488,7 @@ export default function Stations() {
                 fullWidth
                 label="Station Name"
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) => updateFormField('name', e.target.value)}
                 required
               />
             </Grid>
@@ -453,7 +497,7 @@ export default function Stations() {
                 fullWidth
                 label="Address"
                 value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                onChange={(e) => updateFormField('address', e.target.value)}
                 required
               />
             </Grid>
@@ -462,7 +506,7 @@ export default function Stations() {
                 fullWidth
                 label="Phone"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                onChange={(e) => updateFormField('phone', e.target.value)}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -471,7 +515,7 @@ export default function Stations() {
                 label="Station Email *"
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={(e) => updateFormField('email', e.target.value)}
                 required
                 helperText="This email is used for the first agent login"
               />
@@ -482,7 +526,7 @@ export default function Stations() {
                 label="Latitude"
                 type="number"
                 value={form.latitude}
-                onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                onChange={(e) => updateFormField('latitude', e.target.value)}
                 required
               />
             </Grid>
@@ -492,7 +536,7 @@ export default function Stations() {
                 label="Longitude"
                 type="number"
                 value={form.longitude}
-                onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                onChange={(e) => updateFormField('longitude', e.target.value)}
                 required
               />
             </Grid>
@@ -512,8 +556,9 @@ export default function Stations() {
                     fullWidth
                     label="Agent Name"
                     value={form.agentName}
-                    onChange={(e) => setForm({ ...form, agentName: e.target.value })}
-                    placeholder="Auto-generated if empty"
+                    onChange={(e) => updateFormField('agentName', e.target.value)}
+                    placeholder="e.g. Kalerwe Agent"
+                    helperText="Display name for the agent. The Station Email above is the login email."
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -522,7 +567,7 @@ export default function Stations() {
                     label="Agent Password"
                     type="password"
                     value={form.agentPassword}
-                    onChange={(e) => setForm({ ...form, agentPassword: e.target.value })}
+                    onChange={(e) => updateFormField('agentPassword', e.target.value)}
                     required
                 inputProps={{ minLength: 8 }}
                 helperText="Use a unique password of at least 8 characters."
