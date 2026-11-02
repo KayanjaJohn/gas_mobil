@@ -56,7 +56,7 @@ export default function OrderDetailScreen() {
 
 
 
-  const updateDeliveryStatus = async (status: string) => {
+  const updateDeliveryStatus = async (status: string, paymentStatus?: 'paid') => {
     if (!order || updating) return;
     const delivery = order.deliveries?.[0];
     if (!delivery?.id) {
@@ -65,7 +65,10 @@ export default function OrderDetailScreen() {
     }
     setUpdating(true);
     try {
-      await api.put(`/driver/delivery/${delivery.id}/status`, { status });
+      await api.put(`/driver/delivery/${delivery.id}/status`, {
+        status,
+        ...(paymentStatus ? { paymentStatus } : {}),
+      });
       // The refreshed order status triggers the GPS effect once.
       await fetchOrder();
     } catch (error: any) {
@@ -73,6 +76,29 @@ export default function OrderDetailScreen() {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const confirmPaymentAndDelivery = () => {
+    if (!order || updating) return;
+
+    if (order.paymentStatus === 'paid') {
+      void updateDeliveryStatus('delivered');
+      return;
+    }
+
+    showAlert(
+      'Confirm cash payment',
+      `Have you received UGX ${Number(order.totalAmount).toLocaleString()} from the customer? Delivery will be completed only after you confirm.`,
+      'confirm',
+      [
+        { label: 'Cancel', tone: 'secondary' },
+        {
+          label: 'Cash received',
+          tone: 'primary',
+          onPress: () => { void updateDeliveryStatus('delivered', 'paid'); },
+        },
+      ]
+    );
   };
 
   const openNavigation = async () => {
@@ -161,12 +187,12 @@ export default function OrderDetailScreen() {
           </TouchableOpacity>
         )}
         {isMoving && (
-          <TouchableOpacity style={[styles.actionBtn, styles.greenButton]} disabled={updating} onPress={() => updateDeliveryStatus('delivered')}>
+          <TouchableOpacity style={[styles.actionBtn, styles.greenButton]} disabled={updating} onPress={confirmPaymentAndDelivery}>
             <Text style={styles.actionText}>{updating ? 'Updating…' : 'Mark as Delivered'}</Text>
           </TouchableOpacity>
         )}
       </View>
-      <Text style={styles.codNote}>Cash on delivery · Collect payment from the customer upon delivery.</Text>
+      <Text style={styles.codNote}>Cash on delivery · Confirm payment received before completing delivery.</Text>
     {alertModal}
       </ScrollView>
   );
