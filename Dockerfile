@@ -21,6 +21,8 @@ RUN npm run build
 # Serve all three web experiences from the existing frontend app slot
 FROM nginx:1.27-alpine AS production
 COPY nginx-sites.conf /etc/nginx/conf.d/default.conf
+# Copy the complete public website and its uploaded hero artwork.
+COPY apps/website/ /usr/share/nginx/html/public/
 COPY apps/website/index.html /usr/share/nginx/html/public/index.html
 COPY apps/website/reset-password.html /usr/share/nginx/html/public/reset-password.html
 COPY apps/website/favicon.svg /usr/share/nginx/html/public/favicon.svg
