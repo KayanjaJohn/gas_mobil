@@ -139,6 +139,22 @@ export default function DeliveryScreen() {
           <Icon name="account-circle-outline" size={20} color="#F36A21" />
           <Text style={styles.customerText}>{activeOrder.user?.name || 'Customer'} · {activeOrder.user?.phone || 'Phone unavailable'}</Text>
         </View>
+        <View style={styles.deliveryItems}>
+          <Text style={styles.deliveryItemsTitle}>ORDER ITEMS</Text>
+          {activeOrder.items?.length ? activeOrder.items.map((item, index) => (
+            <View key={item.id || index} style={styles.deliveryItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.deliveryItemName}>{item.product?.name || 'Gas product'}</Text>
+                <Text style={styles.deliveryItemMeta}>
+                  {[item.product?.size, item.product?.weight ? `${item.product.weight} kg` : null]
+                    .filter(Boolean).join(' · ') || item.product?.type || 'Product'}
+                </Text>
+              </View>
+              <Text style={styles.deliveryItemQty}>× {Number(item.quantity || 0)}</Text>
+              <Text style={styles.deliveryItemPrice}>UGX {Number(item.subtotal || 0).toLocaleString()}</Text>
+            </View>
+          )) : <Text style={styles.deliveryItemMeta}>Product details unavailable</Text>}
+        </View>
         <View style={styles.gpsRow}>
           <Icon name={hasDriverLocation ? 'crosshairs-gps' : 'crosshairs'} size={18} color={hasDriverLocation ? '#16A34A' : '#F36A21'} />
           <Text style={styles.gpsText}>
@@ -204,6 +220,13 @@ const styles = StyleSheet.create({
   statusText: { color: '#0B3D2E', fontSize: 9, fontWeight: '800' },
   customerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   customerText: { color: '#244B3D', fontSize: 12, fontWeight: '600', flex: 1 },
+  deliveryItems: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E8DDCF' },
+  deliveryItemsTitle: { color: '#68786F', fontSize: 9, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
+  deliveryItemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
+  deliveryItemName: { color: '#0B3D2E', fontSize: 11, fontWeight: '800' },
+  deliveryItemMeta: { color: '#68786F', fontSize: 9, marginTop: 2 },
+  deliveryItemQty: { color: '#0B3D2E', fontSize: 11, fontWeight: '800' },
+  deliveryItemPrice: { color: '#F36A21', fontSize: 10, fontWeight: '800' },
   gpsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   gpsText: { color: '#244B3D', fontSize: 11, flex: 1 },
   warningText: { color: '#A54112', fontSize: 11, marginTop: 8 },
