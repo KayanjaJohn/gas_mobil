@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import { Platform } from "react-native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import type { LocationPoint } from "../types";
@@ -66,7 +67,7 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
     <View style={styles.container}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
+        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
         style={StyleSheet.absoluteFillObject}
         initialRegion={initialRegion}
         showsCompass
