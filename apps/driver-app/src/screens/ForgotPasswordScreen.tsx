@@ -1,28 +1,30 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, Alert, Image, ImageBackground, KeyboardAvoidingView,
+  ActivityIndicator, Image, ImageBackground, KeyboardAvoidingView,
   Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import api from '../services/api';
+import { useThemedAlert } from '../hooks/useThemedAlert';
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation<any>();
+  const { showAlert, alertModal } = useThemedAlert();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
     if (!email.trim()) {
-      Alert.alert('Email required', 'Enter the email address on your GasMobil driver account.');
+      showAlert("Email required", "Enter the email address on your GasMobil driver account.", "warning");
       return;
     }
     setLoading(true);
     try {
       const response = await api.post('/auth/forgot-password', { email: email.trim() });
-      Alert.alert('Check your email', response.data?.message || 'If the account exists, reset instructions have been sent.');
+      showAlert("Check your email", response.data?.message || "If the account exists, reset instructions have been sent.", "success");
     } catch (error: any) {
-      Alert.alert('Recovery unavailable', error?.response?.data?.error || 'Please try again later or contact your administrator.');
+      showAlert("Recovery unavailable", error?.response?.data?.error || "Please try again later or contact your administrator.", "error");
     } finally {
       setLoading(false);
     }
@@ -52,6 +54,7 @@ export default function ForgotPasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {alertModal}
     </ImageBackground>
   );
 }
