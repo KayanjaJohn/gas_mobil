@@ -24,14 +24,35 @@ const STATUS_MAP: Record<string, { label: string; icon: string; done: boolean }>
 
 const TIMELINE_KEYS = ["pending", "picked_up", "in_transit", "delivered"];
 
+interface OrderItem {
+  id: string;
+  productId?: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+  product?: {
+    id?: string;
+    name?: string;
+    type?: string;
+    size?: string;
+    weight?: number | string | null;
+    description?: string | null;
+  };
+}
+
 interface Order {
   id: string;
   status: string;
   totalAmount: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
   deliveryAddress?: string;
+  deliveryCity?: string;
   deliveryLatitude?: number;
   deliveryLongitude?: number;
+  notes?: string;
   createdAt: string;
+  items?: OrderItem[];
   deliveries?: Array<{
     driverName?: string;
     driverPhone?: string;
@@ -198,6 +219,44 @@ export default function TrackingScreen() {
               </Text>
             </View>
 
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Ordered products</Text>
+              {order.items?.length ? (
+                <>
+                  {order.items.map((item, index) => (
+                    <View key={item.id || `${item.productId || "item"}-${index}`} style={styles.productRow}>
+                      <View style={styles.productCopy}>
+                        <Text style={styles.productName}>{item.product?.name || "Gas product"}</Text>
+                        <Text style={styles.productMeta}>
+                          {[item.product?.type, item.product?.size, item.product?.weight ? `${item.product.weight} kg` : null]
+                            .filter(Boolean).join(" · ") || "Product details"}
+                        </Text>
+                        <Text style={styles.productUnit}>
+                          UGX {Number(item.price || 0).toLocaleString()} each
+                        </Text>
+                      </View>
+                      <View style={styles.productTotals}>
+                        <Text style={styles.productQty}>Qty {Number(item.quantity || 0)}</Text>
+                        <Text style={styles.productSubtotal}>UGX {Number(item.subtotal || 0).toLocaleString()}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  <View style={styles.itemsSummary}>
+                    <Text style={styles.itemsSummaryLabel}>Total quantity</Text>
+                    <Text style={styles.itemsSummaryValue}>
+                      {order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)} item(s)
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.emptySub}>Product details were not returned for this order. Please refresh or contact the station.</Text>
+              )}
+              <View style={styles.itemsSummary}>
+                <Text style={styles.itemsSummaryLabel}>Order total · Cash on delivery</Text>
+                <Text style={styles.itemsSummaryValue}>UGX {Number(order.totalAmount || 0).toLocaleString()}</Text>
+              </View>
+            </View>
+
             <View style={styles.timeline}>
               {timeline.map((item, i) => (
                 <View key={item.status} style={styles.tl}>
@@ -247,7 +306,12 @@ export default function TrackingScreen() {
                   {o.deliveryAddress && (
                     <Text style={styles.orderCardAddr}>{o.deliveryAddress}</Text>
                   )}
-                  <Text style={styles.orderCardAmount}>UGX {o.totalAmount?.toLocaleString()}</Text>
+                  {!!o.items?.length && (
+                    <Text style={styles.orderCardAddr}>
+                      {o.items.map((item) => `${item.product?.name || "Product"} ×${item.quantity}`).join(" · ")}
+                    </Text>
+                  )}
+                  <Text style={styles.orderCardAmount}>UGX {Number(o.totalAmount || 0).toLocaleString()}</Text>
                 </TouchableOpacity>
               ))
             )}
@@ -293,4 +357,15 @@ const styles = StyleSheet.create({
   orderCardStatus: { color: COLORS.accent, fontSize: 11, fontWeight: "700", marginTop: 4, textTransform: "uppercase" },
   orderCardAddr: { color: COLORS.muted, fontSize: 12, marginTop: 4 },
   orderCardAmount: { color: COLORS.accent, fontSize: 14, fontWeight: "700", marginTop: 6 },
+  productRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  productCopy: { flex: 1 },
+  productName: { color: COLORS.text, fontSize: 14, fontWeight: "700" },
+  productMeta: { color: COLORS.muted, fontSize: 11, marginTop: 3, textTransform: "capitalize" },
+  productUnit: { color: COLORS.muted, fontSize: 10, marginTop: 4 },
+  productTotals: { alignItems: "flex-end", minWidth: 92 },
+  productQty: { color: COLORS.text, fontSize: 12, fontWeight: "700" },
+  productSubtotal: { color: COLORS.accent, fontSize: 12, fontWeight: "800", marginTop: 4 },
+  itemsSummary: { flexDirection: "row", justifyContent: "space-between", gap: 12, paddingTop: 12, marginTop: 8 },
+  itemsSummaryLabel: { color: COLORS.muted, fontSize: 11, flex: 1 },
+  itemsSummaryValue: { color: COLORS.text, fontSize: 12, fontWeight: "800", textAlign: "right" },
 });
