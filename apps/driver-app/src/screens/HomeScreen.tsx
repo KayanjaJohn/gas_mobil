@@ -46,12 +46,16 @@ export default function HomeScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [driverStatus, setDriverStatus] = useState<string>(user?.driverStatus || 'offline');
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [statusError, setStatusError] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
-      const [ordersRes, statsRes] = await Promise.all([
+      const [ordersRes, statsRes, profileRes] = await Promise.all([
         api.get('/driver/orders'),
         api.get('/driver/stats'),
+        api.get('/driver/profile'),
       ]);
 
       if (ordersRes.data?.success) {
@@ -59,6 +63,9 @@ export default function HomeScreen() {
       }
       if (statsRes.data?.success) {
         setStats(statsRes.data.data || { todayOrders: 0, todayCompleted: 0, todayEarnings: 0, totalDeliveries: 0 });
+      }
+      if (profileRes.data?.success) {
+        setDriverStatus(profileRes.data.data?.driverStatus || 'offline');
       }
     } catch (err: any) {
       console.error('[Home] Fetch error:', err.message);
@@ -77,6 +84,29 @@ export default function HomeScreen() {
 
   const activeOrders = orders.filter(o => ['in_transit', 'nearby'].includes(o.status));
   const pendingOrders = orders.filter(o => ['confirmed', 'driver_assigned', 'picked_up'].includes(o.status));
+  const handleAvailabilityToggle = async () => {
+    if (driverStatus === "busy" || driverStatus === "on_break") {
+      setStatusError("Your status is controlled by your current delivery or break.");
+      return;
+    }
+    if (driverStatus === "online" && activeOrders.length > 0) {
+      setStatusError("Complete your active delivery before going offline.");
+      return;
+    }
+    const nextStatus = driverStatus === "online" ? "offline" : "online";
+    setSavingStatus(true);
+    setStatusError("");
+    try {
+      const response = await api.put("/driver/status", { status: nextStatus });
+      if (!response.data?.success) throw new Error(response.data?.error || "Status update failed.");
+      setDriverStatus(nextStatus);
+    } catch (error: any) {
+      setStatusError(error?.response?.data?.error || error?.message || "Could not update your availability.");
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
   const activeOrderIds = useMemo(() => activeOrders.map((order) => order.id), [orders]);
   const activeOrderKey = activeOrderIds.join(',');
   const { startTracking, stopTracking, currentLocation } = useDriverLocation(activeOrderIds);
@@ -127,6 +157,31 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.availabilityCard}>
+          <View style={styles.availabilityCopy}>
+            <View style={styles.availabilityTitleRow}>
+              <View style={[styles.availabilityDot, { backgroundColor: driverStatus === "online" ? "#16A34A" : "#9CA3AF" }]} />
+              <Text style={styles.availabilityTitle}>Driver availability</Text>
+            </View>
+            <Text style={styles.availabilitySub}>
+              {driverStatus === "online" ? "You are available for new deliveries." :
+               driverStatus === "busy" ? "You are currently on a delivery." :
+               driverStatus === "on_break" ? "You are currently on a break." :
+               "You are offline and will not receive new assignments."}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.availabilityButton, (savingStatus || driverStatus === "busy" || driverStatus === "on_break") && styles.availabilityButtonDisabled]}
+            onPress={handleAvailabilityToggle}
+            disabled={savingStatus || driverStatus === "busy" || driverStatus === "on_break"}
+            activeOpacity={0.85}
+          >
+            {savingStatus ? <ActivityIndicator color="#FFFFFF" size="small" /> :
+              <Text style={styles.availabilityButtonText}>{driverStatus === "online" ? "Go offline" : "Go online"}</Text>}
+          </TouchableOpacity>
+          {!!statusError && <Text style={styles.availabilityError}>{statusError}</Text>}
+        </View>
+
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -260,6 +315,16 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   profileText: { color: '#FFF8EE', fontWeight: '700', fontSize: 16 },
+  availabilityCard: { marginHorizontal: 16, marginTop: 8, marginBottom: 18, padding: 15, borderRadius: 16, backgroundColor: '#FFF8EE', borderWidth: 1, borderColor: '#D8CDBB', flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  availabilityCopy: { flex: 1, minWidth: 170 },
+  availabilityTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  availabilityDot: { width: 9, height: 9, borderRadius: 5 },
+  availabilityTitle: { color: '#0B3D2E', fontSize: 14, fontWeight: '800' },
+  availabilitySub: { color: '#68786F', fontSize: 11, marginTop: 5, lineHeight: 15 },
+  availabilityButton: { minWidth: 100, minHeight: 42, paddingHorizontal: 13, borderRadius: 11, backgroundColor: '#138A43', alignItems: 'center', justifyContent: 'center' },
+  availabilityButtonDisabled: { backgroundColor: '#75847C', opacity: .75 },
+  availabilityButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  availabilityError: { width: '100%', color: '#B9362D', fontSize: 11, marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 18 },
   statCard: {
     flex: 1, backgroundColor: '#FFF8EE', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8,
