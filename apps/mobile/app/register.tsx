@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator, Alert, Image, ImageBackground, ScrollView, StyleSheet,
+  ActivityIndicator, Image, ImageBackground, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
+import { useThemedAlert } from "../src/hooks/useThemedAlert";
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { isAuthenticated, register } = useAuth();
+  const { showAlert, alertModal } = useThemedAlert();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -26,21 +28,21 @@ export default function RegisterScreen() {
 
   const validateStep1 = () => {
     if (!name.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword) {
-      Alert.alert("Missing fields", "Please complete all personal details."); return false;
+      showAlert("Personal details required", "Please complete all personal details.", "warning"); return false;
     }
-    if (password !== confirmPassword) { Alert.alert("Password mismatch", "Passwords don't match."); return false; }
-    if (password.length < 8) { Alert.alert("Weak password", "Use at least 8 characters."); return false; }
+    if (password !== confirmPassword) { showAlert("Password mismatch", "The passwords do not match.", "error"); return false; }
+    if (password.length < 8) { showAlert("Choose a stronger password", "Use at least 8 characters.", "warning"); return false; }
     return true;
   };
   const handleRegister = async () => {
-    if (!address.trim() || !city.trim()) { Alert.alert("Missing address", "Enter your delivery address and city."); return; }
+    if (!address.trim() || !city.trim()) { showAlert("Delivery address required", "Enter your delivery address and city.", "warning"); return; }
     setLoading(true);
     try {
       await register({ name, email, phone, password, address, city });
-      Alert.alert("Welcome to GasMobil", "Your customer account has been created.");
+      showAlert("Welcome to GasMobil", "Your customer account has been created successfully.", "success");
       router.replace("/(tabs)");
     } catch (error: any) {
-      Alert.alert("Registration failed", error?.response?.data?.error || error?.message || "Please try again.");
+      showAlert("Registration failed", error?.response?.data?.error || error?.message || "Please try again.", "error");
     } finally { setLoading(false); }
   };
 
@@ -112,6 +114,7 @@ export default function RegisterScreen() {
           </View>
         </View>
       </ScrollView>
+      {alertModal}
     </ImageBackground>
   );
 }
