@@ -195,7 +195,7 @@ export default function Reports() {
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
       .join('\n');
     // UTF-8 BOM ensures Excel opens names and report text correctly.
-    const blob = new Blob([\uFEFF + csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
