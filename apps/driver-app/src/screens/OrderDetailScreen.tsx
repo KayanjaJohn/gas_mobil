@@ -171,6 +171,12 @@ export default function OrderDetailScreen() {
             </View>
           </View>
         )) : <Text style={styles.warningText}>No product line items were returned for this order.</Text>}
+        {!!order.items?.length && (
+          <View style={[styles.detailRow, { marginTop: 8 }]}>
+            <Text style={styles.detailLabel}>Total quantity</Text>
+            <Text style={styles.detailValue}>{order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)} item(s)</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.card}>
