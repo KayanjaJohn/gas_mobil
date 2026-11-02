@@ -22,6 +22,7 @@ interface Station {
 
 interface ReportOrderItem {
   id?: string;
+  productId?: string;
   quantity: number;
   price: number | string;
   subtotal: number | string;
@@ -31,6 +32,7 @@ interface ReportOrderItem {
     size?: string | null;
     weight?: number | string | null;
     description?: string | null;
+    imageUrl?: string | null;
   };
 }
 
@@ -41,12 +43,18 @@ interface Order {
   paymentStatus: string;
   paymentMethod: string;
   createdAt: string;
+  userId?: string;
   deliveryAddress?: string;
   deliveryCity?: string | null;
+  deliveryLatitude?: number | string | null;
+  deliveryLongitude?: number | string | null;
+  locationAccuracy?: number | string | null;
   notes?: string | null;
+  cancellationReason?: string | null;
+  updatedAt?: string;
   stationId?: string;
   station?: { id?: string; name: string };
-  user?: { name: string; phone: string; email?: string; address?: string; city?: string };
+  user?: { id?: string; name: string; phone: string; email?: string; address?: string; city?: string };
   items?: ReportOrderItem[];
   deliveries?: Array<{ driverName?: string; driverPhone?: string; vehicleNumber?: string }>;
 }
@@ -115,6 +123,8 @@ const getProductDetails = (order: Order) => {
       `Qty ${Number(item.quantity || 0)}`,
       `Unit UGX ${Number(item.price || 0).toLocaleString()}`,
       `Line UGX ${Number(item.subtotal || 0).toLocaleString()}`,
+      product?.description || '',
+      item.productId ? `Product ID ${item.productId}` : '',
     ].filter(Boolean).join(' · ');
   }).join(' | ');
 };
@@ -220,11 +230,14 @@ export default function Reports() {
       String(Math.round(averageOrderValue)),
     ];
     const orderHeaders = [
-      'Order ID', 'Order Date', 'Order Status', 'Customer Name', 'Customer Phone',
-      'Customer Email', 'Delivery Address', 'Delivery City', 'Station',
-      'Driver Name', 'Driver Phone', 'Payment Method', 'Payment Status',
-      'Ordered Products (type, size, weight, unit price, line total)',
-      'Total Quantity', 'Order Total (UGX)', 'COD Outstanding (UGX)', 'Order Notes',
+      'Order ID', 'Order Date', 'Last Updated', 'Order Status',
+      'Customer ID', 'Customer Name', 'Customer Phone', 'Customer Email',
+      'Delivery Address', 'Delivery City', 'Delivery Latitude', 'Delivery Longitude', 'GPS Accuracy (m)',
+      'Station ID', 'Station Name', 'Driver Name', 'Driver Phone', 'Driver Vehicle',
+      'Payment Method', 'Payment Status',
+      'Product IDs and Details (name, description, type, size, weight, quantity, unit price, line total)',
+      'Total Quantity', 'Order Total (UGX)', 'COD Outstanding (UGX)',
+      'Order Notes', 'Cancellation Reason',
     ];
     const rows = [
       summaryHeaders,
@@ -235,15 +248,22 @@ export default function Reports() {
         ? reportOrders.map((order) => [
             order.id,
             new Date(order.createdAt).toLocaleString(),
+            order.updatedAt ? new Date(order.updatedAt).toLocaleString() : '',
             order.status,
+            order.userId || order.user?.id || '',
             order.user?.name || 'N/A',
             order.user?.phone || '',
             order.user?.email || '',
             order.deliveryAddress || '',
             order.deliveryCity || '',
+            order.deliveryLatitude ?? '',
+            order.deliveryLongitude ?? '',
+            order.locationAccuracy ?? '',
+            order.stationId || selectedStation.id,
             selectedStation.name,
             order.deliveries?.[0]?.driverName || 'Not assigned',
             order.deliveries?.[0]?.driverPhone || '',
+            order.deliveries?.[0]?.vehicleNumber || '',
             order.paymentMethod || 'cash',
             order.paymentStatus || 'pending',
             getProductDetails(order),
@@ -251,6 +271,7 @@ export default function Reports() {
             String(Number(order.totalAmount || 0)),
             String(getCODOutstanding(order)),
             order.notes || '',
+            order.cancellationReason || '',
           ])
         : [['No orders found for this period', ...Array(orderHeaders.length - 1).fill('')]]),
     ];
@@ -402,6 +423,7 @@ export default function Reports() {
                     <TableCell>Order ID</TableCell>
                     <TableCell>Customer</TableCell>
                     <TableCell>Ordered products &amp; quantities</TableCell>
+                    <TableCell align="right">Total Qty</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Payment</TableCell>
@@ -428,6 +450,7 @@ export default function Reports() {
                           </Box>
                         )) : <Typography variant="caption" color="textSecondary">Item details unavailable</Typography>}
                       </TableCell>
+                      <TableCell align="right">{getTotalQuantity(order)}</TableCell>
                       <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Chip label={order.status.replace('_', ' ')} color={statusColors[order.status] || 'default'} size="small" />
@@ -441,7 +464,7 @@ export default function Reports() {
                   ))}
                   {reportOrders.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                         <Typography color="textSecondary">
                           {selectedStation ? 'No report orders found for this period' : 'Select a station to generate a report'}
                         </Typography>
