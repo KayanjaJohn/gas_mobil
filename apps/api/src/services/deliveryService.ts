@@ -51,6 +51,7 @@ export interface UpdateDeliveryStatusInput {
   customerSignature?: string | null;
   notes?: string | null;
   rating?: number | null;
+  paymentStatus?: 'paid';
 }
 
 /**
@@ -110,11 +111,16 @@ export async function updateDeliveryStatusUnified(input: UpdateDeliveryStatusInp
     }
 
     if (input.status === 'delivered') {
-  (order as any).status = 'completed';
+      // Cash orders can only be completed once the assigned driver confirms
+      // receipt. This keeps payment and delivery completion in one transaction.
+      if (order.paymentMethod === 'cash' && order.paymentStatus !== 'paid') {
+        if (input.paymentStatus !== 'paid') {
+          throw new Error('Confirm cash payment before marking this delivery as completed');
+        }
+        order.paymentStatus = 'paid';
+      }
 
-  // Do not mark cash as paid automatically.
-  // Payment must be confirmed separately.
-
+      (order as any).status = 'completed';
 
       // Free up driver
       const driver = await queryRunner.manager.findOne(User, { where: { id: input.driverId } });
