@@ -10,6 +10,7 @@ import {
   assignDriverToOrder,
   cancelOrder,
   getAgentCustomers,
+  updateAgentDriverStatus,
 } from '../controllers/agentController';
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get('/drivers', getAgentDrivers);
 router.get('/products', getAgentProducts);
 router.get('/dashboard', getAgentDashboard);
 router.post('/drivers', createAgentDriver);
+router.put('/drivers/:id/status', updateAgentDriverStatus);
 router.post('/orders/:id/assign', assignDriverToOrder);
 router.post('/orders/:id/cancel', cancelOrder);
 router.get('/customers', getAgentCustomers);
