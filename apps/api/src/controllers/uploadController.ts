@@ -10,20 +10,17 @@ export const uploadImage = async (req: Request, res: Response) => {
       });
     }
 
-    // ── FIX: Use API_PUBLIC_URL for production; fallback to host header for proxies ──
-    // API_PUBLIC_URL should be the public-facing URL like https://api.gasmobil.ug
-    const publicUrl = process.env.API_PUBLIC_URL;
-    let baseUrl: string;
-
-    if (publicUrl) {
-      baseUrl = publicUrl.replace(/\/$/, ''); // trim trailing slash
-    } else {
-      // In dev or when no public URL is set, use the request's host header
-      // This respects reverse proxies (Nginx, CloudFlare, etc.)
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-      const host = req.headers['x-forwarded-host'] || req.headers.host || req.get('host');
-      baseUrl = `${protocol}://${host}`;
-    }
+    // The public API may be configured as either https://api.gas-mobil.com
+    // or https://api.gas-mobil.com/api. Uploaded files are served from /uploads,
+    // not /api/uploads, so use only the configured origin.
+    const configuredUrl = process.env.API_PUBLIC_URL?.trim();
+    const forwardedProtocol = req.headers["x-forwarded-proto"];
+    const forwardedHost = req.headers["x-forwarded-host"];
+    const protocol = (Array.isArray(forwardedProtocol) ? forwardedProtocol[0] : forwardedProtocol)?.split(",")[0]?.trim() || req.protocol;
+    const host = (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() || req.get("host");
+    const baseUrl = configuredUrl
+      ? new URL(configuredUrl).origin
+      : `${protocol}://${host}`;
 
     const relativePath = `/uploads/products/${path.basename(req.file.path)}`;
     const imageUrl = `${baseUrl}${relativePath}`;
