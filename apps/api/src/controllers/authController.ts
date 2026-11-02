@@ -185,6 +185,8 @@ export const verify = async (req: Request, res: Response) => {
           email: user.email,
           phone: user.phone,
           role: user.role,
+          address: user.address,
+          city: user.city,
         },
       },
     });
