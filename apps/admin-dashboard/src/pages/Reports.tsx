@@ -20,6 +20,20 @@ interface Station {
   agents?: Array<{ id: string; name: string; isActive: boolean }>;
 }
 
+interface ReportOrderItem {
+  id?: string;
+  quantity: number;
+  price: number | string;
+  subtotal: number | string;
+  product?: {
+    name?: string;
+    type?: string;
+    size?: string | null;
+    weight?: number | string | null;
+    description?: string | null;
+  };
+}
+
 interface Order {
   id: string;
   status: string;
@@ -27,9 +41,14 @@ interface Order {
   paymentStatus: string;
   paymentMethod: string;
   createdAt: string;
+  deliveryAddress?: string;
+  deliveryCity?: string | null;
+  notes?: string | null;
   stationId?: string;
   station?: { id?: string; name: string };
-  user?: { name: string; phone: string };
+  user?: { name: string; phone: string; email?: string; address?: string; city?: string };
+  items?: ReportOrderItem[];
+  deliveries?: Array<{ driverName?: string; driverPhone?: string; vehicleNumber?: string }>;
 }
 
 const periodOptions: Array<{ value: ReportPeriod; label: string; icon: JSX.Element }> = [
@@ -71,6 +90,33 @@ const getPeriodStart = (period: ReportPeriod) => {
   }
 
   return date;
+};
+
+const getTotalQuantity = (order: Order) =>
+  (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+
+const getCODOutstanding = (order: Order) => {
+  const excluded = ['cancelled', 'failed', 'refunded'].includes(order.status);
+  const isCash = !order.paymentMethod || order.paymentMethod.toLowerCase() === 'cash';
+  return !excluded && isCash && order.paymentStatus === 'pending'
+    ? Number(order.totalAmount || 0)
+    : 0;
+};
+
+const getProductDetails = (order: Order) => {
+  if (!order.items?.length) return 'Item details unavailable';
+  return order.items.map((item) => {
+    const product = item.product;
+    const attributes = [product?.type, product?.size, product?.weight ? `${product.weight} kg` : null]
+      .filter(Boolean).join(' / ');
+    return [
+      product?.name || 'Product',
+      attributes ? `[${attributes}]` : '',
+      `Qty ${Number(item.quantity || 0)}`,
+      `Unit UGX ${Number(item.price || 0).toLocaleString()}`,
+      `Line UGX ${Number(item.subtotal || 0).toLocaleString()}`,
+    ].filter(Boolean).join(' · ');
+  }).join(' | ');
 };
 
 const formatPeriodLabel = (period: ReportPeriod, start: Date) => {
@@ -141,7 +187,7 @@ export default function Reports() {
 
   const paidOrders = reportOrders.filter((order) => order.paymentStatus === 'paid');
   const totalOrderValue = reportOrders.filter((order) => !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-  const outstandingCash = reportOrders.filter((order) => order.paymentStatus === 'pending' && !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+  const outstandingCash = reportOrders.reduce((sum, order) => sum + getCODOutstanding(order), 0);
   const completedOrders = reportOrders.filter((order) => ['delivered', 'completed'].includes(order.status));
   const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
   const averageOrderValue = paidOrders.length ? totalRevenue / paidOrders.length : 0;
@@ -173,7 +219,13 @@ export default function Reports() {
       String(outstandingCash),
       String(Math.round(averageOrderValue)),
     ];
-    const orderHeaders = ['Order ID', 'Customer', 'Date', 'Status', 'Payment', 'Amount'];
+    const orderHeaders = [
+      'Order ID', 'Order Date', 'Order Status', 'Customer Name', 'Customer Phone',
+      'Customer Email', 'Delivery Address', 'Delivery City', 'Station',
+      'Driver Name', 'Driver Phone', 'Payment Method', 'Payment Status',
+      'Ordered Products (type, size, weight, unit price, line total)',
+      'Total Quantity', 'Order Total (UGX)', 'COD Outstanding (UGX)', 'Order Notes',
+    ];
     const rows = [
       summaryHeaders,
       summaryValues,
@@ -182,13 +234,25 @@ export default function Reports() {
       ...(reportOrders.length > 0
         ? reportOrders.map((order) => [
             order.id,
-            order.user?.name || 'N/A',
             new Date(order.createdAt).toLocaleString(),
             order.status,
-            order.paymentStatus,
-            String(order.totalAmount),
+            order.user?.name || 'N/A',
+            order.user?.phone || '',
+            order.user?.email || '',
+            order.deliveryAddress || '',
+            order.deliveryCity || '',
+            selectedStation.name,
+            order.deliveries?.[0]?.driverName || 'Not assigned',
+            order.deliveries?.[0]?.driverPhone || '',
+            order.paymentMethod || 'cash',
+            order.paymentStatus || 'pending',
+            getProductDetails(order),
+            String(getTotalQuantity(order)),
+            String(Number(order.totalAmount || 0)),
+            String(getCODOutstanding(order)),
+            order.notes || '',
           ])
-        : [['No orders found for this period', '', '', '', '', '']]),
+        : [['No orders found for this period', ...Array(orderHeaders.length - 1).fill('')]]),
     ];
 
     const csv = rows
@@ -337,10 +401,12 @@ export default function Reports() {
                   <TableRow>
                     <TableCell>Order ID</TableCell>
                     <TableCell>Customer</TableCell>
+                    <TableCell>Ordered products &amp; quantities</TableCell>
                     <TableCell>Date</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Payment</TableCell>
                     <TableCell align="right">Amount</TableCell>
+                    <TableCell align="right">COD outstanding</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -351,17 +417,31 @@ export default function Reports() {
                         {order.user?.name || 'N/A'}
                         <Typography variant="caption" color="textSecondary" display="block">{order.user?.phone}</Typography>
                       </TableCell>
+                      <TableCell sx={{ minWidth: 260, maxWidth: 360 }}>
+                        {order.items?.length ? order.items.map((item, index) => (
+                          <Box key={item.id || index} sx={{ mb: .6 }}>
+                            <Typography variant="body2" fontWeight={700}>{item.product?.name || 'Product'} × {Number(item.quantity || 0)}</Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {[item.product?.type, item.product?.size, item.product?.weight ? `${item.product.weight} kg` : null]
+                                .filter(Boolean).join(' · ')} · UGX {Number(item.subtotal || 0).toLocaleString()}
+                            </Typography>
+                          </Box>
+                        )) : <Typography variant="caption" color="textSecondary">Item details unavailable</Typography>}
+                      </TableCell>
                       <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Chip label={order.status.replace('_', ' ')} color={statusColors[order.status] || 'default'} size="small" />
                       </TableCell>
                       <TableCell>{order.paymentStatus}</TableCell>
                       <TableCell align="right">UGX {Number(order.totalAmount).toLocaleString()}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: getCODOutstanding(order) > 0 ? 'warning.main' : 'success.main' }}>
+                        UGX {getCODOutstanding(order).toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {reportOrders.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                         <Typography color="textSecondary">
                           {selectedStation ? 'No report orders found for this period' : 'Select a station to generate a report'}
                         </Typography>
