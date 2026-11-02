@@ -55,16 +55,14 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
       const res = await axios.post(`${API_URL}/upload`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
       });
 
       if (res.data.success && res.data.data?.imageUrl) {
         const imageUrl = res.data.data.imageUrl;
         onChange(imageUrl);
-        // Keep base64 preview until we verify the server URL loads
-        // We'll switch to server URL after a brief delay to avoid flicker
-        setTimeout(() => setPreview(imageUrl), 300);
+        // The browser owns the multipart boundary. Display the public file URL returned by the API.
+        setPreview(imageUrl);
       } else {
         throw new Error(res.data.error || 'Upload failed');
       }
