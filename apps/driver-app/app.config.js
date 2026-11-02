@@ -3,6 +3,20 @@ import "dotenv/config";
 export default ({ config }) => ({
   ...config,
   owner: "gasmobil-uganda",
+  android: {
+    ...config.android,
+    ...(process.env.GOOGLE_MAPS_API_KEY
+      ? {
+          config: {
+            ...config.android?.config,
+            googleMaps: {
+              ...config.android?.config?.googleMaps,
+              apiKey: process.env.GOOGLE_MAPS_API_KEY,
+            },
+          },
+        }
+      : {}),
+  },
   extra: {
     ...config.extra,
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
