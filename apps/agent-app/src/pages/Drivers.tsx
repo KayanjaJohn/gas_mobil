@@ -3,12 +3,12 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Typography, Chip, Box, Alert, CircularProgress, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Snackbar
+  Snackbar, FormControl, MenuItem, Select
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface Driver {
   id: string;
@@ -59,6 +59,7 @@ export default function Drivers() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
+  const [updatingDriverId, setUpdatingDriverId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -87,6 +88,40 @@ export default function Drivers() {
       setError(err.response?.data?.error || 'Failed to fetch drivers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateDriverStatus = async (driver: Driver, status: "online" | "offline") => {
+    if (driver.driverStatus === "busy" || driver.driverStatus === "on_break") {
+      setSnackbar({
+        open: true,
+        message: `${driver.name} is currently ${driver.driverStatus.replace("_", " ")}. Their status cannot be overridden.`,
+        severity: "error"
+      });
+      return;
+    }
+
+    setUpdatingDriverId(driver.id);
+    try {
+      const response = await axios.put(`${API_URL}/agent/drivers/${driver.id}/status`, { status }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDrivers((current) => current.map((item) =>
+        item.id === driver.id ? { ...item, driverStatus: response.data?.data?.driverStatus || status } : item
+      ));
+      setSnackbar({
+        open: true,
+        message: response.data?.message || `${driver.name} is now ${status}.`,
+        severity: "success"
+      });
+    } catch (err: any) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error || "Could not update driver availability.",
+        severity: "error"
+      });
+    } finally {
+      setUpdatingDriverId(null);
     }
   };
 
@@ -186,11 +221,27 @@ export default function Drivers() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={driver.driverStatus}
-                      color={getStatusColor(driver.driverStatus)}
-                      size="small"
-                    />
+                    {driver.driverStatus === "busy" || driver.driverStatus === "on_break" ? (
+                      <Chip
+                        label={driver.driverStatus.replace("_", " ")}
+                        color={getStatusColor(driver.driverStatus)}
+                        size="small"
+                      />
+                    ) : (
+                      <FormControl size="small" sx={{ minWidth: 128 }}>
+                        <Select
+                          value={driver.driverStatus === "online" ? "online" : "offline"}
+                          disabled={updatingDriverId === driver.id}
+                          onChange={(event) => void updateDriverStatus(driver, event.target.value as "online" | "offline")}
+                          sx={{ borderRadius: 2, fontSize: 13 }}
+                          inputProps={{ "aria-label": `Availability for ${driver.name}` }}
+                        >
+                          <MenuItem value="online">Online · Available</MenuItem>
+                          <MenuItem value="offline">Offline</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                    {updatingDriverId === driver.id && <CircularProgress size={14} sx={{ ml: 1 }} />}
                   </TableCell>
                   <TableCell>
                     {formatCoordinates(
