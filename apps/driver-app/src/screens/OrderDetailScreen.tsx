@@ -41,10 +41,10 @@ export default function OrderDetailScreen() {
 
   useEffect(() => { fetchOrder(); }, [fetchOrder]);
 
-  // This is the screen containing the Start Delivery action: GPS starts here,
-  // immediately after the status changes to in_transit.
+  // GPS begins as soon as pickup is confirmed and continues until delivery,
+  // so the customer can follow the full journey in Track.
   useEffect(() => {
-    if (order && ['in_transit', 'nearby'].includes(order.status)) {
+    if (order && ['picked_up', 'in_transit', 'nearby'].includes(order.status)) {
       startTracking().catch((error: any) =>
         showAlert('Live GPS unavailable', error?.message || 'Enable location permission and retry.', 'warning');
       );
@@ -152,7 +152,7 @@ export default function OrderDetailScreen() {
       <View style={styles.actions}>
         {order.status === 'driver_assigned' && (
           <TouchableOpacity style={[styles.actionBtn, styles.orangeButton]} disabled={updating} onPress={() => updateDeliveryStatus('picked_up')}>
-            <Text style={styles.actionText}>{updating ? 'Updating…' : 'Confirm Pickup'}</Text>
+            <Text style={styles.actionText}>{updating ? 'Updating…' : 'Confirm Pickup & Share Live Location'}</Text>
           </TouchableOpacity>
         )}
         {order.status === 'picked_up' && (
