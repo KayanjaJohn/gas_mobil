@@ -506,13 +506,14 @@ export default function Stations() {
                 fullWidth
                 label="Phone"
                 value={form.phone}
+                required
                 onChange={(e) => updateFormField('phone', e.target.value)}
               />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Station Email *"
+                label="Station Email"
                 type="email"
                 value={form.email}
                 onChange={(e) => updateFormField('email', e.target.value)}
