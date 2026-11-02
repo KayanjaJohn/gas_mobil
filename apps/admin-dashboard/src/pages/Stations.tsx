@@ -526,6 +526,7 @@ export default function Stations() {
                 fullWidth
                 label="Latitude"
                 type="number"
+                inputProps={{ step: 'any', min: -1.5, max: 4.5 }}
                 value={form.latitude}
                 onChange={(e) => updateFormField('latitude', e.target.value)}
                 required
@@ -536,6 +537,7 @@ export default function Stations() {
                 fullWidth
                 label="Longitude"
                 type="number"
+                inputProps={{ step: 'any', min: 29.5, max: 35 }}
                 value={form.longitude}
                 onChange={(e) => updateFormField('longitude', e.target.value)}
                 required
