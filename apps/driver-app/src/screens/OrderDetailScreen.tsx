@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity Linking, ActivityIndicator,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import api from '../services/api';
+import { useThemedAlert } from '../hooks/useThemedAlert';
 import { Order } from '../types';
 import { useDriverLocation } from '../hooks/useDriverLocation';
 
 
 export default function OrderDetailScreen() {
+  const { showAlert, alertModal } = useThemedAlert();
   const route = useRoute<any>();
   const { orderId } = route.params;
   const [order, setOrder] = useState<Order | null>(null);
@@ -31,7 +33,7 @@ export default function OrderDetailScreen() {
       const res = await api.get(`/orders/${orderId}`);
       setOrder(res.data.data);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load order details');
+      showAlert('Could not load order', 'Failed to load order details.', 'error');
     } finally {
       setLoading(false);
     }
@@ -44,7 +46,7 @@ export default function OrderDetailScreen() {
   useEffect(() => {
     if (order && ['in_transit', 'nearby'].includes(order.status)) {
       startTracking().catch((error: any) =>
-        Alert.alert('Live GPS unavailable', error?.message || 'Enable location permission and retry.')
+        showAlert('Live GPS unavailable', error?.message || 'Enable location permission and retry.', 'warning');
       );
     } else {
       stopTracking();
@@ -58,7 +60,7 @@ export default function OrderDetailScreen() {
     if (!order || updating) return;
     const delivery = order.deliveries?.[0];
     if (!delivery?.id) {
-      Alert.alert('Error', 'No delivery assignment was found for this order');
+      showAlert('Delivery unavailable', 'No delivery assignment was found for this order.', 'error');
       return;
     }
     setUpdating(true);
@@ -67,7 +69,7 @@ export default function OrderDetailScreen() {
       // The refreshed order status triggers the GPS effect once.
       await fetchOrder();
     } catch (error: any) {
-      Alert.alert('Update failed', error.response?.data?.error || error.message || 'Please try again.');
+      showAlert('Update failed', error.response?.data?.error || error.message || 'Please try again.', 'error');
     } finally {
       setUpdating(false);
     }
@@ -75,12 +77,12 @@ export default function OrderDetailScreen() {
 
   const openNavigation = async () => {
     if (!destination) {
-      Alert.alert('Destination missing', 'This order has no valid delivery map coordinates. Contact the station agent.');
+      showAlert('Destination missing', 'This order has no valid delivery map coordinates. Contact the station agent.', 'warning');
       return;
     }
     const url = `https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}&travelmode=driving`;
     try { await Linking.openURL(url); }
-    catch { Alert.alert('Navigation unavailable', 'Could not open a navigation app.'); }
+    catch { showAlert('Navigation unavailable', 'Could not open a navigation app.', 'error'); }
   };
 
   if (loading || !order) {
@@ -165,7 +167,8 @@ export default function OrderDetailScreen() {
         )}
       </View>
       <Text style={styles.codNote}>Cash on delivery · Collect payment from the customer upon delivery.</Text>
-    </ScrollView>
+    {alertModal}
+      </ScrollView>
   );
 }
 
