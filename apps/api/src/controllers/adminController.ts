@@ -122,7 +122,7 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 
 		const customers = await userRepository.find({
 			where: { role: "customer" },
-			select: ["id", "name", "email", "phone", "createdAt"],
+			select: ["id", "name", "email", "phone", "address", "city", "createdAt"],
 		});
 
 		res.json({ success: true, data: customers });
