@@ -59,13 +59,13 @@ function ReceiptPanel({receipt,notification}:{receipt?:OrderReceipt;notification
       </div>
       <div style={styles.tableWrap}>
         <table style={styles.table}>
-          <thead><tr><th style={{textAlign:"left"}}>Product</th><th>Qty</th><th style={{textAlign:"right"}}>Unit price</th><th style={{textAlign:"right"}}>Line total</th></tr></thead>
+          <thead><tr style={{background:"#F1F4EF",color:"#0B3D2E"}}><th style={{textAlign:"left",padding:"10px 12px"}}>Product</th><th style={{padding:"10px 12px"}}>Qty</th><th style={{textAlign:"right",padding:"10px 12px"}}>Unit price</th><th style={{textAlign:"right",padding:"10px 12px"}}>Line total</th></tr></thead>
           <tbody>
             {receipt.items.length ? receipt.items.map(item => (
-              <tr key={item.id}><td><strong>{item.productName}</strong>{(item.size||item.weight)&&<small style={styles.itemMeta}>{item.size||String(item.weight)+" kg"}</small>}</td><td>{item.quantity}</td><td style={{textAlign:"right"}}>{money(item.unitPrice)}</td><td style={{textAlign:"right",fontWeight:800}}>{money(item.lineTotal)}</td></tr>
+              <tr key={item.id} style={{borderTop:"1px solid #E7E9E2"}}><td style={{padding:"10px 12px"}}><strong>{item.productName}</strong>{(item.size||item.weight)&&<small style={styles.itemMeta}>{item.size||String(item.weight)+" kg"}</small>}</td><td style={{padding:"10px 12px",textAlign:"center"}}>{item.quantity}</td><td style={{padding:"10px 12px",textAlign:"right"}}>{money(item.unitPrice)}</td><td style={{padding:"10px 12px",textAlign:"right",fontWeight:800}}>{money(item.lineTotal)}</td></tr>
             )) : <tr><td colSpan={4} style={{textAlign:"center"}}>No product lines recorded.</td></tr>}
           </tbody>
-          <tfoot><tr><td colSpan={2}>Total quantity: {receipt.totalQuantity}</td><td>Order total</td><td style={{textAlign:"right",color:"#E85F18",fontSize:17}}>{money(receipt.totalAmount)}</td></tr></tfoot>
+          <tfoot><tr style={{background:"#F8F2E5",fontWeight:900,borderTop:"1px solid #D8DED5"}}><td style={{padding:"12px"}} colSpan={2}>Total quantity: {receipt.totalQuantity}</td><td style={{padding:"12px"}}>Order total</td><td style={{padding:"12px",textAlign:"right",color:"#E85F18",fontSize:17}}>{money(receipt.totalAmount)}</td></tr></tfoot>
         </table>
       </div>
     </div>
