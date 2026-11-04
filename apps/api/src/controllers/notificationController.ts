@@ -1,8 +1,28 @@
 import { Request, Response } from "express";
 import AppDataSource from "../config/database";
 import { Notification } from "../entities/Notification";
+import { User } from "../entities/User";
 
 const notificationRepo = AppDataSource.getRepository(Notification);
+const userRepo = AppDataSource.getRepository(User);
+
+// POST /api/notifications/push-token — Save this authenticated device's Expo token.
+export const registerPushToken = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const expoPushToken = String(req.body?.expoPushToken || "").trim();
+
+    if (!/^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(expoPushToken)) {
+      return res.status(400).json({ success: false, error: "A valid Expo push token is required." });
+    }
+
+    await userRepo.update({ id: userId }, { expoPushToken });
+    return res.json({ success: true, message: "Device notification token registered." });
+  } catch (error: any) {
+    console.error("[PUSH TOKEN] Registration failed:", error);
+    return res.status(500).json({ success: false, error: "Could not register this device for notifications." });
+  }
+};
 
 // GET /api/notifications — Get user's notifications
 export const getNotifications = async (req: Request, res: Response) => {
