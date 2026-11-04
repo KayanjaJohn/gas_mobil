@@ -59,6 +59,7 @@ export default function Drivers() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [updatingDriverId, setUpdatingDriverId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -125,36 +126,55 @@ export default function Drivers() {
     }
   };
 
-  const createDriver = async () => {
-    if (!form.name || !form.email || !form.phone || !form.password) {
+  const saveDriver = async () => {
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || (!editingDriver && !form.password)) {
       setSnackbar({
         open: true,
-        message: 'Please fill name, email, phone and a unique driver password',
+        message: editingDriver ? 'Name, email and phone are required' : 'Name, email, phone and a driver password are required',
         severity: 'error'
       });
       return;
     }
     try {
-      await axios.post(`${API_URL}/agent/drivers`, {
-        ...form
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (editingDriver) {
+        await axios.put(`${API_URL}/agent/drivers/${editingDriver.id}`, {
+          ...form,
+          password: form.password || undefined,
+        }, { headers: { Authorization: `Bearer ${token}` } });
+      } else {
+        await axios.post(`${API_URL}/agent/drivers`, form, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
       setOpen(false);
+      setEditingDriver(null);
       setForm({ name: '', email: '', phone: '', password: '', vehicleNumber: '', vehicleType: '' });
       setSnackbar({
         open: true,
-        message: 'Driver created successfully',
+        message: editingDriver ? 'Driver information updated' : 'Driver created successfully',
         severity: 'success'
       });
       fetchDrivers();
     } catch (err: any) {
       setSnackbar({
         open: true,
-        message: err.response?.data?.error || 'Failed to create driver',
+        message: err.response?.data?.error || (editingDriver ? 'Failed to update driver' : 'Failed to create driver'),
         severity: 'error'
       });
     }
+  };
+
+  const openEditDriver = (driver: Driver) => {
+    setEditingDriver(driver);
+    setForm({
+      name: driver.name || '',
+      email: driver.email || '',
+      phone: driver.phone || '',
+      password: '',
+      vehicleNumber: driver.vehicleNumber || '',
+      vehicleType: driver.vehicleType || '',
+    });
+    setOpen(true);
   };
 
   const getStatusColor = (status: string): any => {
@@ -176,7 +196,7 @@ export default function Drivers() {
             Drivers at {user?.station?.name}
           </Typography>
         </Box>
-        <Button variant="contained" onClick={() => setOpen(true)}>
+        <Button variant="contained" onClick={() => { setEditingDriver(null); setForm({ name: '', email: '', phone: '', password: '', vehicleNumber: '', vehicleType: '' }); setOpen(true); }}>
           Add Driver
         </Button>
       </Box>
@@ -197,6 +217,7 @@ export default function Drivers() {
                 <TableCell>Vehicle</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Location</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -249,11 +270,14 @@ export default function Drivers() {
                       driver.currentLongitude
                     )}
                   </TableCell>
+                  <TableCell>
+                    <Button size="small" variant="outlined" onClick={() => openEditDriver(driver)}>Edit</Button>
+                  </TableCell>
                 </TableRow>
               ))}
               {drivers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography color="textSecondary">
                       No drivers at this station
                     </Typography>
@@ -266,7 +290,7 @@ export default function Drivers() {
       )}
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Driver</DialogTitle>
+        <DialogTitle>{editingDriver ? `Edit ${editingDriver.name}` : "Add New Driver"}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
@@ -296,10 +320,10 @@ export default function Drivers() {
               label="Driver password"
               type="password"
               value={form.password}
-              required
+              required={!editingDriver}
               inputProps={{ minLength: 8 }}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              helperText="Set a unique password (at least 8 characters). Share it securely with the driver."
+              helperText={editingDriver ? "Leave blank to keep the current password." : "Set a unique password (at least 8 characters). Share it securely with the driver."}
             />
             <TextField
               fullWidth
@@ -318,8 +342,8 @@ export default function Drivers() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={createDriver} variant="contained">
-            Create
+          <Button onClick={saveDriver} variant="contained">
+            {editingDriver ? "Save changes" : "Create"}
           </Button>
         </DialogActions>
       </Dialog>
