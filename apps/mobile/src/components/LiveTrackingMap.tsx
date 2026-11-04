@@ -132,6 +132,7 @@ export const LiveTrackingMap: React.FC<Props> = ({
           <GeoJSONSource id="delivery-route-source" data={route as any}>
             <Layer
               id="delivery-route-line"
+              source="delivery-route-source"
               type="line"
               paint={{
                 "line-color": "#F36A21",
