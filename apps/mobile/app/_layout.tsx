@@ -2,11 +2,40 @@ import React, { useEffect, useCallback }from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, Platform } from "react-native";
+import * as Notifications from "expo-notifications";
 import { COLORS } from "../src/utils/constants";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 function RootLayoutInner() {
   const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    const configureNotifications = async () => {
+      const permission = await Notifications.getPermissionsAsync();
+      if (!permission.granted) {
+        await Notifications.requestPermissionsAsync();
+      }
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "GasMobil alerts",
+          importance: Notifications.AndroidImportance.MAX,
+          sound: "default",
+          vibrationPattern: [0, 500, 180, 500, 180, 650],
+          enableVibrate: true,
+        });
+      }
+    };
+    void configureNotifications();
+  }, []);
   const segments = useSegments();
   const router = useRouter();
 
