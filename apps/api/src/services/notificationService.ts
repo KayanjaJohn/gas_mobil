@@ -1,7 +1,7 @@
 import AppDataSource from '../config/database';
 import { Notification, NotificationType } from '../entities/Notification';
 import { User } from '../entities/User';
-import { broadcastToUser, broadcastToAdmins, broadcastToStation } from '../config/socket';
+import { broadcastToUser } from '../config/socket';
 
 const notificationRepo = AppDataSource.getRepository(Notification);
 const userRepo = AppDataSource.getRepository(User);
@@ -50,15 +50,6 @@ export async function createSystemNotification(payload: NotifyPayload) {
         );
       }
     }
-    // Admin socket broadcast (no ID needed — just an alert)
-    broadcastToAdmins('admin_notification', {
-      type: payload.type,
-      title: payload.title,
-      message: payload.message,
-      orderId: payload.orderId,
-      data: payload.data,
-      timestamp: new Date().toISOString(),
-    });
   }
 
   // 2. Agents at the specific station
@@ -115,21 +106,19 @@ export async function createSystemNotification(payload: NotifyPayload) {
     savedNotifications = await notificationRepo.save(notificationsToSave);
   }
 
-  // Emit to individual users with their real DB notification IDs
+  // Emit every persisted notification to its recipient with the real DB ID.
+  // This is shared by customer, driver, agent, and admin clients.
   for (const notif of savedNotifications) {
-    const scope = notif.data?.scope;
-    if (scope === 'customer' || scope === 'driver') {
-      broadcastToUser(notif.userId, 'notification', {
-        id: notif.id,                 // ← REAL ID from DB
-        type: notif.type,
-        title: notif.title,
-        message: notif.message,
-        orderId: notif.orderId,
-        data: notif.data,
-        isRead: false,
-        createdAt: notif.createdAt,
-      });
-    }
+    broadcastToUser(notif.userId, 'notification', {
+      id: notif.id,
+      type: notif.type,
+      title: notif.title,
+      message: notif.message,
+      orderId: notif.orderId,
+      data: notif.data,
+      isRead: false,
+      createdAt: notif.createdAt,
+    });
   }
 
   return { sentCount: savedNotifications.length, recipients: Array.from(targetUserIds) };
