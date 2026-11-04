@@ -12,6 +12,8 @@ interface Order {
   status: string;
   totalAmount: number;
   deliveryAddress: string;
+  deliveryCity?: string | null;
+  items?: Array<{ quantity: number; product?: { name?: string; size?: string | null; weight?: number | null } }>;
   paymentMethod: string;
   user?: { name: string; phone: string };
   deliveries?: Array<{
@@ -162,6 +164,8 @@ export default function Orders() {
               <TableRow sx={{ "& th": { color: "#94A3B8", fontWeight: 600, borderBottom: "1px solid #334155" } }}>
                 <TableCell>Order ID</TableCell>
                 <TableCell>Customer</TableCell>
+                <TableCell>Products (Qty)</TableCell>
+                <TableCell>Delivery address & city</TableCell>
                 <TableCell>Amount</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Driver</TableCell>
@@ -171,7 +175,7 @@ export default function Orders() {
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} sx={{ textAlign: "center", color: "#94A3B8", py: 4 }}>
+                  <TableCell colSpan={8} sx={{ textAlign: "center", color: "#94A3B8", py: 4 }}>
                     No orders found
                   </TableCell>
                 </TableRow>
