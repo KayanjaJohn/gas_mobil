@@ -5,10 +5,12 @@ import {
   markAsRead,
   markAllAsRead,
   deleteNotification,
+  registerPushToken,
 } from "../controllers/notificationController";
 
 const router = Router();
 
+router.post("/push-token", authMiddleware, registerPushToken);
 router.get("/", authMiddleware, getNotifications);
 router.patch("/:id/read", authMiddleware, markAsRead);
 router.patch("/read-all", authMiddleware, markAllAsRead);
