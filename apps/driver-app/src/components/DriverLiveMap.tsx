@@ -120,6 +120,7 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
           <GeoJSONSource id="driver-route-source" data={route as any}>
             <Layer
               id="driver-route-line"
+              source="driver-route-source"
               type="line"
               paint={{
                 "line-color": "#F36A21",
