@@ -110,8 +110,10 @@ export default function NotificationPage() {
   useEffect(() => {
     if (loading || autoExpanded) return;
     const firstOrderNotification = notifications.find((item) => !!item.orderId);
-    if (firstOrderNotification) setSelected(firstOrderNotification.id);
-    setAutoExpanded(true);
+    if (firstOrderNotification) {
+      setSelected(firstOrderNotification.id);
+      setAutoExpanded(true);
+    }
   }, [notifications, loading, autoExpanded]);
 
   const markAsRead = async (id:string) => {
