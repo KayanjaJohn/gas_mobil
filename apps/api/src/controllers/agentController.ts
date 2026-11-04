@@ -346,6 +346,59 @@ export const cancelOrder = async (req: Request, res: Response) => {
 };
 
 
+export const updateAgentDriver = async (req: Request, res: Response) => {
+  try {
+    const stationId = await getAgentStationId(req);
+    if (!stationId) return res.status(400).json({ success: false, error: "Agent has no station" });
+
+    const { id } = req.params;
+    const { name, email, phone, password, vehicleNumber, vehicleType } = req.body;
+    const driver = await userRepo().findOne({
+      where: { id, role: "driver", stationId },
+    } as any);
+    if (!driver) return res.status(404).json({ success: false, error: "Driver not found at this station" });
+
+    const cleanName = typeof name === "string" ? name.trim() : driver.name;
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : driver.email;
+    const cleanPhone = typeof phone === "string" ? phone.trim() : driver.phone;
+    if (!cleanName || !cleanEmail || !cleanPhone) {
+      return res.status(400).json({ success: false, error: "Name, email and phone are required." });
+    }
+
+    const duplicate = await userRepo().findOne({
+      where: [{ email: cleanEmail }, { phone: cleanPhone }],
+    } as any);
+    if (duplicate && duplicate.id !== driver.id) {
+      return res.status(409).json({ success: false, error: "Another account already uses this email or phone." });
+    }
+    if (password !== undefined && password !== "") {
+      if (typeof password !== "string" || password.length < 8) {
+        return res.status(400).json({ success: false, error: "Password must be at least 8 characters." });
+      }
+      driver.password = await bcrypt.hash(password, 12);
+    }
+
+    driver.name = cleanName;
+    driver.email = cleanEmail;
+    driver.phone = cleanPhone;
+    if (vehicleNumber !== undefined) driver.vehicleNumber = vehicleNumber || null;
+    if (vehicleType !== undefined) driver.vehicleType = vehicleType || null;
+
+    await userRepo().save(driver);
+    return res.json({
+      success: true,
+      data: {
+        id: driver.id, name: driver.name, email: driver.email, phone: driver.phone,
+        vehicleNumber: driver.vehicleNumber, vehicleType: driver.vehicleType,
+        driverStatus: driver.driverStatus, stationId: driver.stationId,
+      },
+    });
+  } catch (error: any) {
+    console.error("updateAgentDriver error:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to update driver." });
+  }
+};
+
 export const updateAgentDriverStatus = async (req: Request, res: Response) => {
   try {
     const stationId = await getAgentStationId(req);
