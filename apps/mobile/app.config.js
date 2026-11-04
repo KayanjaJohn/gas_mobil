@@ -2,7 +2,7 @@ import "dotenv/config";
 
 export default {
   expo: {
-    name: "gas-mobil-app",
+    name: "GasMobil Uganda",
     slug: "gas-mobil-app",
     owner: "gasmobil-uganda",
     version: "1.0.0",
