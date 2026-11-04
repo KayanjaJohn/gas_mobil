@@ -11,9 +11,10 @@ interface Props {
   showBack?: boolean;
   onBack?: () => void;
   right?: React.ReactNode;
+  locationLabel?: string;
 }
 
-export default function TopBar({ title, showBack = false, onBack, right }: Props) {
+export default function TopBar({ title, showBack = false, onBack, right, locationLabel }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -45,7 +46,7 @@ export default function TopBar({ title, showBack = false, onBack, right }: Props
             <View>
               <View style={styles.locRow}>
                 <Icon name="map-marker" size={13} color={COLORS.accent} />
-                <Text style={styles.locText}>Kampala, Uganda</Text>
+                <Text style={styles.locText} numberOfLines={1}>{locationLabel || "Current city unavailable"}</Text>
                 <View style={[styles.connectionDot, { backgroundColor: isConnected ? "#35B879" : COLORS.muted }]} />
               </View>
               <Text style={styles.brandTitle}>
