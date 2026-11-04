@@ -7,10 +7,22 @@ interface NotificationBellProps {
 }
 
 export default function NotificationBell({ token, userRole }: NotificationBellProps) {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, latestNotification } =
     useAdminNotifications(token);
   const [isOpen, setIsOpen] = useState(false);
+  const [toast, setToast] = useState<any>(null);
+  const toastTimerRef = useRef<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!latestNotification) return;
+    setToast(latestNotification);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 7000);
+    return () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    };
+  }, [latestNotification?.id]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -39,6 +51,17 @@ export default function NotificationBell({ token, userRole }: NotificationBellPr
 
   return (
     <div style={{ position: 'relative' }} ref={dropdownRef}>
+      {toast && (
+        <div role="alert" aria-live="assertive" style={styles.toast}>
+          <div style={styles.toastIcon}>🔔</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={styles.toastTitle}>{toast.title}</p>
+            <p style={styles.toastMessage}>{toast.message}</p>
+          </div>
+          <button onClick={() => setToast(null)} aria-label="Dismiss notification" style={styles.toastClose}>×</button>
+        </div>
+      )}
+
       {/* Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -124,6 +147,28 @@ export default function NotificationBell({ token, userRole }: NotificationBellPr
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  toast: {
+    position: 'fixed',
+    top: 76,
+    right: 22,
+    width: 360,
+    maxWidth: 'calc(100vw - 32px)',
+    zIndex: 2000,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: '14px 15px',
+    borderRadius: 14,
+    backgroundColor: '#0B3D2E',
+    color: '#FFF8EE',
+    border: '1px solid #F36A21',
+    boxShadow: '0 14px 36px rgba(0,0,0,0.28)',
+  },
+  toastIcon: { fontSize: 20, lineHeight: '24px' },
+  toastTitle: { margin: '0 0 3px', fontSize: 13, fontWeight: 800, color: '#FFF8EE' },
+  toastMessage: { margin: 0, fontSize: 12, lineHeight: 1.45, color: '#E8F0EB', overflowWrap: 'anywhere' },
+  toastClose: { background: 'transparent', border: 0, color: '#FFF8EE', fontSize: 22, lineHeight: 1, cursor: 'pointer', padding: 0 },
+
   bellButton: {
     position: 'relative',
     width: 40,
