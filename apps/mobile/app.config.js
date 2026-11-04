@@ -14,7 +14,7 @@ export default {
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
-      backgroundColor: "#0B3D2E",
+      backgroundColor: "#002B18",
     },
     assetBundlePatterns: ["**/*"],
     ios: {
@@ -24,7 +24,7 @@ export default {
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#0B3D2E",
+        backgroundColor: "#002B18",
       },
       package: "com.gasmobil.app",
       versionCode: 1,
