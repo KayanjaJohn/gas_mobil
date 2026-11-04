@@ -12,8 +12,10 @@ interface Order {
   status: string;
   totalAmount: number;
   deliveryAddress: string;
+  deliveryCity?: string | null;
+  items?: Array<{ quantity: number; product?: { name?: string; size?: string | null; weight?: number | null } }>;
   paymentMethod: string;
-  user?: { name: string; phone: string };
+  user?: { name: string; phone: string; address?: string; city?: string };
   station?: { name: string };
   deliveries?: Array<{
     driverName?: string;
@@ -161,6 +163,8 @@ export default function Orders() {
                 <TableCell>Order ID</TableCell>
                 <TableCell>Customer</TableCell>
                 <TableCell>Station</TableCell>
+                <TableCell>Products (Qty)</TableCell>
+                <TableCell>Delivery address & city</TableCell>
                 <TableCell>Amount</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Driver</TableCell>
@@ -170,7 +174,7 @@ export default function Orders() {
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={9} align="center">
                     <Typography color="text.secondary" sx={{ py: 4 }}>
                       No orders found
                     </Typography>
@@ -188,6 +192,17 @@ export default function Orders() {
                       </Typography>
                     </TableCell>
                     <TableCell>{order.station?.name || "-"}</TableCell>
+                    <TableCell>
+                      {(order.items || []).map((item, index) => (
+                        <Typography key={index} variant="body2">
+                          {item.product?.name || "Product"}{item.product?.size ? ` · ${item.product.size}` : item.product?.weight ? ` · ${item.product.weight}kg` : ""} × {item.quantity}
+                        </Typography>
+                      ))}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{order.deliveryAddress || "Address not recorded"}</Typography>
+                      <Typography variant="caption" color="text.secondary">{order.deliveryCity || "City not recorded"}</Typography>
+                    </TableCell>
                     <TableCell>UGX {order.totalAmount?.toLocaleString()}</TableCell>
                     <TableCell>
                       <Chip label={order.status} color={getStatusColor(order.status) as any} size="small" />
