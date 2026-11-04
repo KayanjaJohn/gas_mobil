@@ -3,7 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { View, ActivityIndicator, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 import { COLORS } from "../src/utils/constants";
 
@@ -88,8 +88,10 @@ function RootLayoutInner() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutInner />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootLayoutInner />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
