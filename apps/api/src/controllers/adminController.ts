@@ -6,12 +6,74 @@ import { User } from "../entities/User";
 import { Product } from "../entities/Product";
 import { Delivery } from "../entities/Delivery";
 import { Station } from "../entities/Station";
+import { StationActivity } from "../entities/StationActivity";
 import bcryptjs from "bcryptjs";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const userRepository = AppDataSource.getRepository(User);
 const productRepository = AppDataSource.getRepository(Product);
 const stationRepository = AppDataSource.getRepository(Station);
+
+// GET /api/admin/stations/:id/history
+export const getStationHistory = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+    if (user.role !== "admin") return res.status(403).json({ success: false, error: "Admin access only" });
+
+    const { id: stationId } = req.params;
+    const station = await stationRepository.findOne({ where: { id: stationId } });
+    if (!station) return res.status(404).json({ success: false, error: "Station not found" });
+
+    const { from, to } = req.query;
+    const query = AppDataSource.getRepository(StationActivity)
+      .createQueryBuilder("activity")
+      .where("activity.stationId = :stationId", { stationId });
+
+    if (typeof from === "string") {
+      const fromDate = new Date(from);
+      if (!Number.isFinite(fromDate.getTime())) {
+        return res.status(400).json({ success: false, error: "Invalid start date." });
+      }
+      query.andWhere("activity.createdAt >= :fromDate", { fromDate });
+    }
+    if (typeof to === "string") {
+      const toDate = new Date(to);
+      if (!Number.isFinite(toDate.getTime())) {
+        return res.status(400).json({ success: false, error: "Invalid end date." });
+      }
+      toDate.setHours(23, 59, 59, 999);
+      query.andWhere("activity.createdAt <= :toDate", { toDate });
+    }
+
+    const history = await query.orderBy("activity.createdAt", "DESC").take(300).getMany();
+    return res.json({ success: true, data: { station, history } });
+  } catch (error: any) {
+    console.error("getStationHistory error:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to load station history." });
+  }
+};
+
+// DELETE /api/admin/stations/:id/history
+export const clearStationHistory = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+    if (user.role !== "admin") return res.status(403).json({ success: false, error: "Admin access only" });
+
+    const { id: stationId } = req.params;
+    const station = await stationRepository.findOne({ where: { id: stationId } });
+    if (!station) return res.status(404).json({ success: false, error: "Station not found" });
+
+    const result = await AppDataSource.getRepository(StationActivity).delete({ stationId });
+    return res.json({
+      success: true,
+      deletedCount: result.affected || 0,
+      message: `Station activity history cleared for ${station.name}.`,
+    });
+  } catch (error: any) {
+    console.error("clearStationHistory error:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to clear station history." });
+  }
+};
 
 // GET /api/admin/dashboard
 export const getDashboardStats = async (req: Request, res: Response) => {
