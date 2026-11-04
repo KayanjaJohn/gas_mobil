@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { disconnectSocket } from '../services/socketService';
 import type { User } from '../types';
+import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
 
 interface Station {
  id: string;
@@ -36,6 +38,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  const [user, setUser] = useState<User | null>(null);
  const [token, setToken] = useState<string | null>(null);
  const [isLoading, setIsLoading] = useState(true);
+
+ // Register the signed-in driver's EAS push token so assignments and arrival
+ // alerts still reach the phone while the app is backgrounded or closed.
+ useEffect(() => {
+   if (!user?.id || !token) return;
+   let active = true;
+   const registerDevice = async () => {
+     try {
+       let permission = await Notifications.getPermissionsAsync();
+       if (!permission.granted) permission = await Notifications.requestPermissionsAsync();
+       if (!permission.granted) return;
+       const projectId =
+         Constants.expoConfig?.extra?.eas?.projectId ||
+         (Constants.easConfig as any)?.projectId;
+       if (!projectId) {
+         console.warn('[Push] Driver EAS project ID is missing.');
+         return;
+       }
+       const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+       if (active && pushToken) {
+         await api.post('/notifications/push-token', { expoPushToken: pushToken });
+       }
+     } catch (error: any) {
+       console.warn('[Push] Driver device registration failed:', error?.message || error);
+     }
+   };
+   void registerDevice();
+   return () => { active = false; };
+ }, [user?.id, token]);
 
  const syncDriverAvailability = async (status: 'online' | 'offline') => {
  try {
@@ -164,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    if (!response.data?.success || !response.data?.data) {
      return { success: false, error: response.data?.error || 'Profile update failed.' };
    }
-   const updatedUser = { ...user, ...response.data.data } as User;
+   const updatedUser = { ...(user || {} as User), ...response.data.data } as User;
    setUser(updatedUser);
    await AsyncStorage.setItem('driver_user', JSON.stringify(updatedUser));
    return { success: true };
@@ -178,6 +209,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
  const logout = async () => {
  await syncDriverAvailability('offline');
+ try { await api.delete('/notifications/push-token'); } catch (error) {
+   console.warn('[Push] Driver device token cleanup failed:', (error as any)?.message || error);
+ }
  disconnectSocket();
  await AsyncStorage.removeItem('driver_token');
  await AsyncStorage.removeItem('driver_refresh_token');
