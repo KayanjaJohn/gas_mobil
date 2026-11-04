@@ -3,6 +3,34 @@ import { io, Socket } from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:3200';
 const MAX_NOTIFICATIONS = 200;
+const alertedNotificationIds = new Set<string>();
+
+function playFallbackNotificationTone() {
+  try {
+    const AudioContextConstructor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextConstructor) return;
+    const context = new AudioContextConstructor();
+    if (context.state === 'suspended') void context.resume();
+    const startAt = context.currentTime;
+    [880, 660, 880].forEach((frequency, index) => {
+      const start = startAt + index * 0.23;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.45, start + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.19);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.2);
+    });
+    window.setTimeout(() => { void context.close(); }, 1000);
+  } catch (error) {
+    console.warn('[AgentNotif] Browser alert tone unavailable:', error);
+  }
+}
 
 export interface Notification {
   id: string;
@@ -23,6 +51,7 @@ export interface NotificationFilters {
 
 export function useAgentNotifications(token: string | null, stationId?: string | null) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [latestNotification, setLatestNotification] = useState<Notification | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,12 +169,26 @@ export function useAgentNotifications(token: string | null, stationId?: string |
           orderId: payload.orderId,
           data: payload.data,
         };
+        const alreadyAlerted = alertedNotificationIds.has(newNotif.id);
         setNotifications((prev) => {
-          const next = [newNotif, ...prev];
-          return next.slice(0, MAX_NOTIFICATIONS);
+          if (prev.some((item) => item.id === newNotif.id)) return prev;
+          return [newNotif, ...prev].slice(0, MAX_NOTIFICATIONS);
         });
-        setUnreadCount((prev) => prev + 1);
-        audioRef.current?.play().catch(() => {});
+        setLatestNotification(newNotif);
+        if (!alreadyAlerted) {
+          alertedNotificationIds.add(newNotif.id);
+          if (alertedNotificationIds.size > 300) {
+            const oldest = alertedNotificationIds.values().next().value;
+            if (oldest) alertedNotificationIds.delete(oldest);
+          }
+          setUnreadCount((prev) => prev + 1);
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(() => playFallbackNotificationTone());
+          } else {
+            playFallbackNotificationTone();
+          }
+        }
       } else {
         fetchNotifications();
       }
@@ -188,6 +231,7 @@ export function useAgentNotifications(token: string | null, stationId?: string |
   return {
     notifications: filteredNotifications,
     allNotifications: notifications,
+    latestNotification,
     unreadCount,
     loading,
     error,
