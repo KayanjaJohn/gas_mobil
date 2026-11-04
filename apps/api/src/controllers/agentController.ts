@@ -54,7 +54,10 @@ export const getAgentCustomers = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Agent has no station" });
     const orders = await orderRepo().find({ where: { stationId } } as any);
     const customerIds = [...new Set(orders.map((o: any) => o.userId))].filter(Boolean);
-    const customers = customerIds.length > 0 ? await userRepo().find({ where: { id: In(customerIds) } }) : [];
+    const customers = customerIds.length > 0 ? await userRepo().find({
+      where: { id: In(customerIds) },
+      select: ["id", "name", "email", "phone", "address", "city", "createdAt"],
+    } as any) : [];
     res.json({ success: true, data: customers });
   } catch (error) {
     console.error("getAgentCustomers error:", error);
