@@ -62,6 +62,7 @@ export function useAgentNotifications(token: string | null, stationId?: string |
   });
   const socketRef = useRef<Socket | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const receivedNotificationIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     audioRef.current = new Audio('/notification-sound.mp3');
@@ -77,6 +78,7 @@ export function useAgentNotifications(token: string | null, stationId?: string |
       });
       const json = await res.json();
       if (json.success) {
+        (json.data as Notification[]).forEach((item) => receivedNotificationIdsRef.current.add(item.id));
         setNotifications(json.data);
         setUnreadCount(json.meta?.unreadCount || 0);
       }
@@ -170,18 +172,20 @@ export function useAgentNotifications(token: string | null, stationId?: string |
           data: payload.data,
         };
         const alreadyAlerted = alertedNotificationIds.has(newNotif.id);
+        const isNewForThisHook = !receivedNotificationIdsRef.current.has(newNotif.id);
+        receivedNotificationIdsRef.current.add(newNotif.id);
         setNotifications((prev) => {
           if (prev.some((item) => item.id === newNotif.id)) return prev;
           return [newNotif, ...prev].slice(0, MAX_NOTIFICATIONS);
         });
         setLatestNotification(newNotif);
+        if (isNewForThisHook) setUnreadCount((prev) => prev + 1);
         if (!alreadyAlerted) {
           alertedNotificationIds.add(newNotif.id);
           if (alertedNotificationIds.size > 300) {
             const oldest = alertedNotificationIds.values().next().value;
             if (oldest) alertedNotificationIds.delete(oldest);
           }
-          setUnreadCount((prev) => prev + 1);
           if (audioRef.current) {
             audioRef.current.currentTime = 0;
             audioRef.current.play().catch(() => playFallbackNotificationTone());
