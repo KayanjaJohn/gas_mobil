@@ -29,8 +29,8 @@ const STATUS_CONFIG: Record<string, { title: string; message: string; type: stri
     type: 'in_transit',
   },
   nearby: {
-    title: 'Driver Nearby',
-    message: 'Your driver is approaching your location. Get ready!',
+    title: 'Your Driver Has Arrived',
+    message: 'Your driver has reached the delivery location. Please meet the driver to receive your order.',
     type: 'nearby',
   },
   delivered: {
