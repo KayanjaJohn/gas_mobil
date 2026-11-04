@@ -1,5 +1,6 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DeviceEventEmitter } from "react-native";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -50,7 +51,11 @@ api.interceptors.response.use(
           if (refreshRes.data?.success && refreshRes.data?.data?.accessToken) {
             const newToken = refreshRes.data.data.accessToken;
             await AsyncStorage.setItem("driver_token", newToken);
+            if (refreshRes.data.data.refreshToken) {
+              await AsyncStorage.setItem("driver_refresh_token", refreshRes.data.data.refreshToken);
+            }
             error.config.headers.Authorization = "Bearer " + newToken;
+            DeviceEventEmitter.emit("gasmobil:driver-token-refreshed", newToken);
             return api.request(error.config);
           }
         }
@@ -59,6 +64,7 @@ api.interceptors.response.use(
       }
 
       await AsyncStorage.multiRemove(["driver_token", "driver_refresh_token", "driver_user"]);
+      DeviceEventEmitter.emit("gasmobil:driver-session-expired");
     }
 
     const apiError = error.response?.data?.error;
