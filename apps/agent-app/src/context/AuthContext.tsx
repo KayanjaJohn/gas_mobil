@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
 
+const API_URL = import.meta.env.VITE_API_URL || "/api";
+
 interface User {
   id: string;
   name: string;
@@ -50,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCurrentUser = async () => {
     if (!localStorage.getItem("agent_token")) return;
-    const response = await api.get("/auth/me");
+    const response = await api.get(`${API_URL}/auth/me`);
     const freshUser = response.data?.data;
     if (!freshUser || freshUser.role !== "agent") {
       throw new Error("Agent account is no longer available.");
@@ -145,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (emailOrPhone: string, password: string) => {
     try {
-      const response = await api.post("/auth/login", { emailOrPhone, password });
+      const response = await api.post(`${API_URL}/auth/login`, { emailOrPhone, password });
       const data = response.data;
       if (!data.success) return { success: false, error: data.error || "Login failed" };
 
