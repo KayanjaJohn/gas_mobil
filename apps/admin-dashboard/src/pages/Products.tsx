@@ -54,6 +54,7 @@ export default function Products() {
   const [open, setOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [editingCatalog, setEditingCatalog] = useState<CatalogItem | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [form, setForm] = useState({ name: '', description: '', price: '', stock: '', type: 'cylinder', stationId: '', weight: '', size: '', imageUrl: '' });
   const [catalogForm, setCatalogForm] = useState({ name: '', description: '', defaultPrice: '', defaultWeight: '', defaultSize: '', category: 'cylinder', imageUrl: '' });
@@ -133,21 +134,51 @@ export default function Products() {
     if (!catalogForm.name || !catalogForm.defaultPrice) {
       setSnackbar({ open: true, message: 'Name and price are required', severity: 'error' }); return;
     }
+    const payload = {
+      name: catalogForm.name.trim(),
+      description: catalogForm.description || undefined,
+      defaultPrice: Number(catalogForm.defaultPrice),
+      defaultWeight: catalogForm.defaultWeight ? Number(catalogForm.defaultWeight) : undefined,
+      defaultSize: catalogForm.defaultSize || undefined,
+      category: catalogForm.category,
+      imageUrl: catalogForm.imageUrl || undefined,
+    };
     try {
-      await axios.post(`${API_URL}/catalog`, {
-        name: catalogForm.name,
-        description: catalogForm.description || undefined,
-        defaultPrice: Number(catalogForm.defaultPrice),
-        defaultWeight: catalogForm.defaultWeight ? Number(catalogForm.defaultWeight) : undefined,
-        defaultSize: catalogForm.defaultSize || undefined,
-        category: catalogForm.category,
-        imageUrl: catalogForm.imageUrl || undefined,
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      setSnackbar({ open: true, message: 'Catalog item created', severity: 'success' });
+      if (editingCatalog) {
+        await axios.put(`${API_URL}/catalog/${editingCatalog.id}`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post(`${API_URL}/catalog`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      setSnackbar({
+        open: true,
+        message: editingCatalog ? 'Catalog item updated' : 'Catalog item created',
+        severity: 'success'
+      });
       setCatalogOpen(false);
+      setEditingCatalog(null);
       setCatalogForm({ name: '', description: '', defaultPrice: '', defaultWeight: '', defaultSize: '', category: 'cylinder', imageUrl: '' });
       fetchCatalog();
-    } catch (err: any) { setSnackbar({ open: true, message: err.response?.data?.error || 'Failed to save', severity: 'error' }); }
+    } catch (err: any) {
+      setSnackbar({ open: true, message: err.response?.data?.error || 'Failed to save', severity: 'error' });
+    }
+  };
+
+  const openEditCatalog = (item: CatalogItem) => {
+    setEditingCatalog(item);
+    setCatalogForm({
+      name: item.name || '',
+      description: item.description || '',
+      defaultPrice: String(item.defaultPrice ?? ''),
+      defaultWeight: item.defaultWeight != null ? String(item.defaultWeight) : '',
+      defaultSize: item.defaultSize || '',
+      category: item.category || 'cylinder',
+      imageUrl: item.imageUrl || '',
+    });
+    setCatalogOpen(true);
   };
 
   const addCatalogToStation = async () => {
@@ -280,7 +311,7 @@ export default function Products() {
       {activeTab === 1 && (
         <>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button variant="contained" startIcon={<Add />} onClick={() => { setCatalogForm({ name: '', description: '', defaultPrice: '', defaultWeight: '', defaultSize: '', category: 'cylinder', imageUrl: '' }); setCatalogOpen(true); }}>
+            <Button variant="contained" startIcon={<Add />} onClick={() => { setEditingCatalog(null); setCatalogForm({ name: '', description: '', defaultPrice: '', defaultWeight: '', defaultSize: '', category: 'cylinder', imageUrl: '' }); setCatalogOpen(true); }}>
               Add Catalog Item
             </Button>
           </Box>
@@ -297,8 +328,11 @@ export default function Products() {
                       <Typography variant="body2" color="text.secondary">{item.description || 'No description'}</Typography>
                       {item.defaultSize && <Chip label={item.defaultSize} size="small" sx={{ mr: 0.5 }} />}
                       {item.defaultWeight && <Chip label={`${item.defaultWeight}kg`} size="small" />}
-                      <Box sx={{ mt: 2 }}>
-                        <Button variant="outlined" size="small" onClick={() => { setSelectedCatalog(item); setStationForm({ stationId: '', price: '', stock: '', imageUrl: item.imageUrl || '' }); setAddToStationOpen(true); }}>
+                      <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        <Button variant="outlined" size="small" startIcon={<Edit />} onClick={() => openEditCatalog(item)}>
+                          Edit Catalog
+                        </Button>
+                        <Button variant="contained" size="small" onClick={() => { setSelectedCatalog(item); setStationForm({ stationId: '', price: '', stock: '', imageUrl: item.imageUrl || '' }); setAddToStationOpen(true); }}>
                           Add to Station
                         </Button>
                       </Box>
@@ -369,7 +403,7 @@ export default function Products() {
 
       {/* Catalog Dialog */}
       <Dialog open={catalogOpen} onClose={() => setCatalogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Catalog Template</DialogTitle>
+        <DialogTitle>{editingCatalog ? `Edit Catalog: ${editingCatalog.name}` : 'Add Catalog Template'}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
             <ImageUpload value={catalogForm.imageUrl} onChange={(url) => setCatalogForm({ ...catalogForm, imageUrl: url })} label="Catalog Image" token={token || ''} />
@@ -389,7 +423,7 @@ export default function Products() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCatalogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={saveCatalogItem}>Create</Button>
+          <Button variant="contained" onClick={saveCatalogItem}>{editingCatalog ? 'Save Changes' : 'Create'}</Button>
         </DialogActions>
       </Dialog>
 
