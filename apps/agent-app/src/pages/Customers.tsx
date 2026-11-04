@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, TextField, InputAdornment, CircularProgress,
@@ -42,7 +44,7 @@ export default function Customers() {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/agent/customers');
+      const response = await api.get(`${API_URL}/agent/customers`);
       const data = response.data;
       setCustomers(data.data || []);
       setFiltered(data.data || []);
