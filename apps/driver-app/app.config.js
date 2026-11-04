@@ -8,6 +8,7 @@ const googleMapsApiKey =
 export default ({ config }) => ({
   ...config,
   owner: "gasmobil-uganda",
+  newArchEnabled: true,
   android: {
     ...config.android,
     ...(googleMapsApiKey
