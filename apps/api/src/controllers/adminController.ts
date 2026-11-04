@@ -202,6 +202,70 @@ export const createDriver = async (req: Request, res: Response) => {
   }
 };
 
+// PUT /api/admin/drivers/:id - Edit driver contact, vehicle and station details.
+export const updateDriver = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+    if (user.role !== "admin") {
+      return res.status(403).json({ success: false, error: "Admin access only" });
+    }
+
+    const { id } = req.params;
+    const { name, email, phone, password, stationId, vehicleNumber, vehicleType } = req.body;
+    const driver = await userRepository.findOne({ where: { id, role: "driver" } as any });
+    if (!driver) {
+      return res.status(404).json({ success: false, error: "Driver not found" });
+    }
+
+    const cleanName = typeof name === "string" ? name.trim() : driver.name;
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : driver.email;
+    const cleanPhone = typeof phone === "string" ? phone.trim() : driver.phone;
+    if (!cleanName || !cleanEmail || !cleanPhone) {
+      return res.status(400).json({ success: false, error: "Name, email and phone are required." });
+    }
+
+    const duplicate = await userRepository.findOne({
+      where: [{ email: cleanEmail }, { phone: cleanPhone }],
+    });
+    if (duplicate && duplicate.id !== driver.id) {
+      return res.status(409).json({ success: false, error: "Another account already uses this email or phone." });
+    }
+
+    if (stationId !== undefined) {
+      const station = await stationRepository.findOne({ where: { id: stationId } });
+      if (!station) return res.status(404).json({ success: false, error: "Station not found." });
+      driver.stationId = stationId;
+    }
+    if (password !== undefined && password !== "") {
+      if (typeof password !== "string" || password.length < 8) {
+        return res.status(400).json({ success: false, error: "Password must be at least 8 characters." });
+      }
+      driver.password = await bcryptjs.hash(password, 12);
+    }
+
+    driver.name = cleanName;
+    driver.email = cleanEmail;
+    driver.phone = cleanPhone;
+    if (vehicleNumber !== undefined) driver.vehicleNumber = vehicleNumber || null;
+    if (vehicleType !== undefined) driver.vehicleType = vehicleType || null;
+
+    await userRepository.save(driver);
+    const updated = await userRepository.findOne({ where: { id: driver.id }, relations: ["station"] });
+    return res.json({
+      success: true,
+      data: updated ? {
+        id: updated.id, name: updated.name, email: updated.email,
+        phone: updated.phone, vehicleNumber: updated.vehicleNumber,
+        vehicleType: updated.vehicleType, stationId: updated.stationId,
+        station: updated.station, driverStatus: updated.driverStatus,
+      } : null,
+    });
+  } catch (error: any) {
+    console.error("updateDriver error:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to update driver." });
+  }
+};
+
 // POST /api/admin/orders/:id/cancel - Admin cancels order
 export const cancelOrder = async (req: Request, res: Response) => {
   try {
