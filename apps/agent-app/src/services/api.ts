@@ -101,7 +101,8 @@ export async function apiRequest<T>(
   url: string,
   data?: unknown
 ): Promise<ApiResponse<T>> {
-  const fullUrl = /^https?:\\/\\//i.test(url)
+  const isAbsoluteUrl = url.startsWith("https://") || url.startsWith("http://");
+  const fullUrl = isAbsoluteUrl
     ? url
     : `${API_URL}${url.startsWith("/") ? url : `/${url}`}`;
   const response = await api.request<ApiResponse<T>>({ method, url: fullUrl, data });
