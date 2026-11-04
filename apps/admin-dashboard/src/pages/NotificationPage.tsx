@@ -1,318 +1,200 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
+interface ReceiptItem {
+  id: string; productName: string; size?: string | null; weight?: number | null;
+  quantity: number; unitPrice: number; lineTotal: number;
+}
+interface OrderReceipt {
+  orderNumber: string; status: string;
+  customer: { name: string; phone?: string | null; email?: string | null };
+  delivery: { address?: string | null; city?: string | null };
+  station: { name: string; address?: string | null };
+  driver: { name?: string | null; phone?: string | null; vehicleNumber?: string | null; vehicleType?: string | null };
+  payment: { method?: string; status?: string };
+  orderedAt?: string; deliveredAt?: string | null;
+  items: ReceiptItem[]; totalQuantity: number; subtotal: number; totalAmount: number;
+}
 interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-  orderId?: string;
-  data?: any;
+  id: string; type: string; title: string; message: string;
+  isRead: boolean; createdAt: string; orderId?: string | null; data?: any;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
+const API_ROOT = API_BASE.endsWith("/api") ? API_BASE : API_BASE + "/api";
+const ROYAL_GREEN_BACKGROUND = "radial-gradient(ellipse at 54% 27%, rgba(0,164,73,.48) 0%, rgba(0,96,49,.30) 36%, transparent 72%), linear-gradient(145deg,#00170C 0%,#00351E 52%,#00140B 100%)";
+const money = (value: number) => "UGX " + Number(value || 0).toLocaleString("en-UG", { maximumFractionDigits: 0 });
+const dateTime = (value?: string | null) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("en-UG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+};
+const shortId = (value?: string | null) => value ? "#" + value.slice(0, 8).toUpperCase() : "—";
+
+function ReceiptPanel({ receipt, notification }: { receipt?: OrderReceipt; notification: Notification }) {
+  if (!receipt) return (
+    <div style={styles.fallback}>
+      <strong>Order receipt details</strong>
+      <p>Order: {shortId(notification.orderId)}</p>
+      <p>{notification.data?.customerName || "Customer details not available"}</p>
+      <small>Full product lines will appear when the order has saved product records.</small>
+    </div>
+  );
+  return (
+    <div style={styles.receipt}>
+      <div style={styles.receiptHeader}>
+        <div><small style={styles.eyebrow}>GASMOBIL ORDER RECEIPT</small><h3 style={styles.orderNumber}>{shortId(receipt.orderNumber)}</h3></div>
+        <span style={styles.status}>{String(receipt.status || "pending").replace(/_/g, " ").toUpperCase()}</span>
+      </div>
+      <div style={styles.infoGrid}>
+        <div style={styles.infoColumn}>
+          <Detail label="Customer" value={receipt.customer.name} />
+          <Detail label="Phone" value={receipt.customer.phone} />
+          <Detail label="Email" value={receipt.customer.email} />
+          <Detail label="Address" value={receipt.delivery.address} />
+          <Detail label="City" value={receipt.delivery.city} />
+        </div>
+        <div style={styles.infoColumn}>
+          <Detail label="Driver" value={receipt.driver.name || "Not assigned"} />
+          <Detail label="Driver phone" value={receipt.driver.phone} />
+          <Detail label="Vehicle" value={[receipt.driver.vehicleType, receipt.driver.vehicleNumber].filter(Boolean).join(" · ")} />
+          <Detail label="Station" value={receipt.station.name} />
+          <Detail label="Payment" value={(receipt.payment.method || "cash").toUpperCase() + " · " + (receipt.payment.status || "pending").toUpperCase()} />
+          <Detail label="Ordered" value={dateTime(receipt.orderedAt)} />
+          <Detail label="Delivered" value={dateTime(receipt.deliveredAt)} />
+        </div>
+      </div>
+      <div style={styles.tableWrap}>
+        <table style={styles.table}>
+          <thead><tr><th style={{textAlign:"left"}}>Product</th><th>Qty</th><th style={{textAlign:"right"}}>Unit price</th><th style={{textAlign:"right"}}>Line total</th></tr></thead>
+          <tbody>
+            {receipt.items.length ? receipt.items.map((item) => (
+              <tr key={item.id}>
+                <td><strong>{item.productName}</strong>{(item.size || item.weight) && <small style={styles.itemMeta}>{item.size || (String(item.weight) + " kg")}</small>}</td>
+                <td>{item.quantity}</td><td style={{textAlign:"right"}}>{money(item.unitPrice)}</td><td style={{textAlign:"right",fontWeight:800}}>{money(item.lineTotal)}</td>
+              </tr>
+            )) : <tr><td colSpan={4} style={{textAlign:"center"}}>No product lines recorded.</td></tr>}
+          </tbody>
+          <tfoot><tr><td colSpan={2}>Total quantity: {receipt.totalQuantity}</td><td>Order total</td><td style={{textAlign:"right",color:"#E85F18",fontSize:17}}>{money(receipt.totalAmount)}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+function Detail({label,value}:{label:string;value?:string|null}) {
+  return <div style={styles.detail}><span>{label}</span><strong>{value || "—"}</strong></div>;
+}
 
 export default function NotificationPage() {
   const { token } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ status: "all" as "all" | "unread" | "read", type: "all" });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedNotification, setSelectedNotification] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all"|"unread"|"read">("all");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string|null>(null);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
-    setLoading(true);
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+    setLoading(true); setError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/notifications?page=1&limit=100`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.success) setNotifications(data.data || []);
-      else setError(data.error || "Failed to load notifications");
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
+      const response = await fetch(API_ROOT + "/notifications?page=1&limit=100", {headers:{Authorization:"Bearer " + token}});
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || "Unable to load notifications.");
+      setNotifications(payload.data || []);
+    } catch (err:any) { setError(err?.message || "Network error."); }
+    finally { setLoading(false); }
+  }, [token]);
+  useEffect(() => { void fetchNotifications(); }, [fetchNotifications]);
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = async (id:string) => {
     try {
-      await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      );
-    } catch {
-      console.error("Failed to mark as read");
-    }
+      const response = await fetch(API_ROOT + "/notifications/" + id + "/read", {method:"PATCH",headers:{Authorization:"Bearer " + token}});
+      if (!response.ok) throw new Error("Could not mark notification as read.");
+      setNotifications(prev => prev.map(n => n.id === id ? {...n,isRead:true} : n));
+    } catch(err:any) { setError(err?.message || "Could not update notification."); }
   };
-
   const markAllAsRead = async () => {
     try {
-      await fetch(`${API_BASE_URL}/notifications/read-all`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch {
-      console.error("Failed to mark all as read");
-    }
+      const response = await fetch(API_ROOT + "/notifications/read-all", {method:"PATCH",headers:{Authorization:"Bearer " + token}});
+      if (!response.ok) throw new Error("Could not mark notifications as read.");
+      setNotifications(prev => prev.map(n => ({...n,isRead:true})));
+    } catch(err:any) { setError(err?.message || "Could not update notifications."); }
   };
-
-  const deleteNotification = async (id: string) => {
+  const deleteNotification = async (id:string) => {
     try {
-      await fetch(`${API_BASE_URL}/notifications/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    } catch {
-      console.error("Failed to delete notification");
-    }
+      const response = await fetch(API_ROOT + "/notifications/" + id, {method:"DELETE",headers:{Authorization:"Bearer " + token}});
+      if (!response.ok) throw new Error("Could not delete notification.");
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setSelected(current => current === id ? null : current);
+    } catch(err:any) { setError(err?.message || "Could not delete notification."); }
   };
 
-  const filtered = notifications.filter((n) => {
-    if (filters.status === "unread" && n.isRead) return false;
-    if (filters.status === "read" && !n.isRead) return false;
-    if (filters.type !== "all" && n.type !== filters.type) return false;
-    if (searchQuery && !n.title.toLowerCase().includes(searchQuery.toLowerCase()) && !n.message.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const unreadNotifications = notifications.filter((n) => !n.isRead);
-  const readNotifications = notifications.filter((n) => n.isRead);
-
-  const formatTime = (date: string) => new Date(date).toLocaleString();
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "order_placed": return "#3b82f6";
-      case "payment_received": return "#10b981";
-      case "cancelled": return "#ef4444";
-      case "delivered": return "#8b5cf6";
-      default: return "#6b7280";
-    }
-  };
+  const filtered = useMemo(() => notifications.filter(n => {
+    if (statusFilter === "unread" && n.isRead) return false;
+    if (statusFilter === "read" && !n.isRead) return false;
+    const receipt = n.data?.receipt;
+    const lines = (receipt?.items || []).map((item:ReceiptItem) => item.productName).join(" ");
+    const target = [n.title,n.message,n.orderId || "",receipt?.customer?.name || "",receipt?.customer?.phone || "",lines].join(" ").toLowerCase();
+    return !search.trim() || target.includes(search.trim().toLowerCase());
+  }), [notifications,statusFilter,search]);
+  const unread = notifications.filter(n => !n.isRead).length;
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Admin Notifications</h1>
-          <p style={styles.subtitle}>
-            {unreadCount > 0 ? (
-              <span style={styles.unreadBadge}>{unreadCount} unread</span>
-            ) : (
-              "All caught up"
-            )}
-          </p>
+      <header style={styles.header}>
+        <div><h1 style={styles.title}>🔔 Notifications</h1><p style={styles.subtitle}>{unread ? unread + " unread notifications" : "You are all caught up"}</p></div>
+        <div style={styles.headerActions}><button style={styles.ghostButton} onClick={() => void fetchNotifications()}>↻ Refresh</button>{unread > 0 && <button style={styles.orangeButton} onClick={() => void markAllAsRead()}>Mark all read</button>}</div>
+      </header>
+      <div style={styles.filters}>
+        <div style={styles.tabs}>
+          {(["all","unread","read"] as const).map(tab => <button key={tab} onClick={() => setStatusFilter(tab)} style={{...styles.tab,...(statusFilter===tab?styles.activeTab:{})}}>{tab==="all"?"All ("+notifications.length+")":tab==="unread"?"Unread ("+unread+")":"Read ("+(notifications.length-unread)+")"}</button>)}
         </div>
-        <div style={styles.headerActions}>
-          {unreadCount > 0 && (
-            <button style={styles.primaryButton} onClick={markAllAsRead}>
-              Mark all read
-            </button>
-          )}
-        </div>
+        <input style={styles.search} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search notifications, customers or products…" />
       </div>
-
-      <div style={styles.filtersBar}>
-        <div style={styles.tabGroup}>
-          {(["all", "unread", "read"] as const).map((tab) => (
-            <button
-              key={tab}
-              style={{
-                ...styles.tab,
-                ...(filters.status === tab ? styles.tabActive : {}),
-              }}
-              onClick={() => setFilters((f) => ({ ...f, status: tab }))}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              {tab === "unread" && unreadCount > 0 && (
-                <span style={styles.tabBadge}>{unreadCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
-        <div style={styles.filterGroup}>
-          <input
-            type="text"
-            placeholder="Search notifications..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
-          />
-        </div>
-      </div>
-
-      {error && (
-        <div style={styles.errorBanner}>
-          ⚠️ {error}
-          <button style={styles.retryButton} onClick={fetchNotifications}>Retry</button>
-        </div>
-      )}
-
-      {loading && notifications.length === 0 && (
-        <div style={styles.loadingState}>
-          <div style={styles.spinner} />
-          <p>Loading notifications...</p>
-        </div>
-      )}
-
-      {!loading && filtered.length === 0 && (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>🔔</div>
-          <h3>No notifications</h3>
-          <p>
-            {filters.status === "unread"
-              ? "You have no unread notifications."
-              : filters.status === "read"
-              ? "No read notifications yet."
-              : "No notifications match your filters."}
-          </p>
-        </div>
-      )}
-
-      <div style={styles.notificationList}>
-        {filtered.map((notification) => (
-          <div
-            key={notification.id}
-            className="notification-card"
-            onClick={() => {
-              if (!notification.isRead) markAsRead(notification.id);
-              setSelectedNotification(
-                selectedNotification === notification.id ? null : notification.id
-              );
-            }}
-            style={{
-              ...styles.notificationCard,
-              ...(notification.isRead ? styles.readCard : styles.unreadCard),
-              ...(selectedNotification === notification.id ? styles.selectedCard : {}),
-            }}
-          >
-            <div style={{ ...styles.typeIndicator, backgroundColor: getTypeColor(notification.type) }} />
-            <div style={styles.cardContent}>
-              <div style={styles.cardHeader}>
-                <h4 style={styles.cardTitle}>
-                  {!notification.isRead && <span style={styles.unreadDot} />}
-                  {notification.title}
-                </h4>
-                <span style={styles.timestamp}>{formatTime(notification.createdAt)}</span>
-              </div>
-              <p style={styles.cardMessage}>{notification.message}</p>
-
-              {selectedNotification === notification.id && notification.data && (
-                <div style={styles.detailsPanel}>
-                  {notification.orderId && (
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>Order:</span>
-                      <a href={`/orders`} style={styles.detailLink}>#{notification.orderId.slice(0, 8)}</a>
-                    </div>
-                  )}
-                  {notification.data?.customerName && (
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>Customer:</span>{notification.data.customerName}
-                    </div>
-                  )}
-                  {notification.data?.amount && (
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>Amount:</span>
-                      <span style={styles.amount}>UGX {Number(notification.data.amount).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {notification.data?.driverName && (
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>Driver:</span>{notification.data.driverName}
-                    </div>
-                  )}
-                  {notification.data?.scope && (
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>Scope:</span>
-                      <span style={styles.scopeBadge}>{notification.data.scope}</span>
-                    </div>
-                  )}
-                  <div style={styles.detailRow}>
-                    <span style={styles.detailLabel}>Type:</span>
-                    <span style={styles.typeBadge}>{notification.type.replace(/_/g, " ")}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="card-actions" style={styles.cardActions}>
-              {!notification.isRead && (
-                <button style={styles.actionButton} onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }} title="Mark as read">
-                  ✓
+      {error && <div style={styles.error}>{error}<button onClick={()=>void fetchNotifications()} style={styles.retry}>Retry</button></div>}
+      {loading && notifications.length===0 && <div style={styles.empty}>Loading notifications…</div>}
+      {!loading && filtered.length===0 && <div style={styles.empty}>No notifications match this view.</div>}
+      <div style={styles.list}>
+        {filtered.map(notification => {
+          const expanded = selected === notification.id;
+          return (
+            <article key={notification.id} style={{...styles.card,...(!notification.isRead?styles.unreadCard:{})}}>
+              <div style={{...styles.indicator,background:notification.type==="delivered"?"#168447":notification.type==="cancelled"?"#D92D20":"#F36A21"}} />
+              <div style={styles.cardBody}>
+                <button style={styles.cardToggle} onClick={()=>{if(!notification.isRead)void markAsRead(notification.id);setSelected(expanded?null:notification.id);}} aria-expanded={expanded}>
+                  <div style={styles.cardTitleRow}><strong style={styles.cardTitle}>{!notification.isRead&&<span style={styles.dot}/>} {notification.title}</strong><span style={styles.timestamp}>{dateTime(notification.createdAt)}</span></div>
+                  <span style={styles.message}>{notification.message}</span>
                 </button>
-              )}
-              <button style={styles.deleteButton} onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }} title="Delete">
-                🗑
-              </button>
-            </div>
-          </div>
-        ))}
+                {expanded && <div style={styles.expanded}>
+                  {notification.orderId ? <ReceiptPanel receipt={notification.data?.receipt} notification={notification}/> : <div style={styles.fallback}>{notification.data?.scope && <Detail label="Scope" value={notification.data.scope}/>} {notification.data?.stationName && <Detail label="Station" value={notification.data.stationName}/>} {notification.data?.productName && <Detail label="Product" value={notification.data.productName}/>} {notification.data?.addedQuantity!=null && <Detail label="Quantity added" value={String(notification.data.addedQuantity)}/>} {notification.data?.availableStock!=null && <Detail label="New stock" value={String(notification.data.availableStock)}/>}</div>}
+                </div>}
+              </div>
+              <div style={styles.actions}>{!notification.isRead&&<button style={styles.actionButton} onClick={()=>void markAsRead(notification.id)}>✓</button>}<button style={styles.deleteButton} onClick={()=>void deleteNotification(notification.id)}>×</button></div>
+            </article>
+          );
+        })}
       </div>
-
-      <div style={styles.footer}>
-        <span>Showing {filtered.length} of {notifications.length} notifications</span>
-        <span>{unreadNotifications.length} unread · {readNotifications.length} read</span>
-      </div>
+      <footer style={styles.footer}>Showing {filtered.length} of {notifications.length} notifications · {unread} unread</footer>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  container: { maxWidth: 900, margin: "0 auto", padding: 24, fontFamily: "system-ui, -apple-system, sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 },
-  title: { fontSize: 28, fontWeight: 700, margin: 0, color: "#111827" },
-  subtitle: { margin: "4px 0 0", color: "#6b7280", fontSize: 14 },
-  unreadBadge: { display: "inline-flex", alignItems: "center", backgroundColor: "#fee2e2", color: "#dc2626", padding: "2px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600 },
-  headerActions: { display: "flex", gap: 8, alignItems: "center" },
-  primaryButton: { padding: "8px 16px", backgroundColor: "#111827", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
-  filtersBar: { display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20, padding: 16, backgroundColor: "#f9fafb", borderRadius: 12, border: "1px solid #e5e7eb" },
-  tabGroup: { display: "flex", gap: 4, backgroundColor: "#e5e7eb", padding: 4, borderRadius: 8 },
-  tab: { padding: "6px 14px", borderRadius: 6, border: "none", backgroundColor: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 500, color: "#6b7280", position: "relative" },
-  tabActive: { backgroundColor: "#fff", color: "#111827", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
-  tabBadge: { position: "absolute", top: -4, right: -4, backgroundColor: "#dc2626", color: "#fff", fontSize: 10, fontWeight: 700, width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" },
-  filterGroup: { display: "flex", gap: 8, flex: 1, justifyContent: "flex-end", flexWrap: "wrap" },
-  searchInput: { padding: "6px 12px", borderRadius: 8, border: "1px solid #d1d5db", backgroundColor: "#fff", fontSize: 13, minWidth: 200, outline: "none" },
-  errorBanner: { padding: "12px 16px", backgroundColor: "#fee2e2", color: "#991b1b", borderRadius: 8, marginBottom: 16, display: "flex", alignItems: "center", gap: 12, fontSize: 14 },
-  retryButton: { marginLeft: "auto", padding: "4px 12px", backgroundColor: "#dc2626", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer" },
-  loadingState: { textAlign: "center", padding: 60, color: "#6b7280" },
-  spinner: { width: 32, height: 32, border: "3px solid #e5e7eb", borderTopColor: "#111827", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 16px" },
-  emptyState: { textAlign: "center", padding: 80, color: "#6b7280" },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  notificationList: { display: "flex", flexDirection: "column", gap: 8 },
-  notificationCard: { display: "flex", alignItems: "flex-start", gap: 12, padding: 16, borderRadius: 12, border: "1px solid #e5e7eb", backgroundColor: "#fff", cursor: "pointer", transition: "all 0.15s ease" },
-  unreadCard: { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" },
-  readCard: { backgroundColor: "#fff", borderColor: "#e5e7eb" },
-  selectedCard: { boxShadow: "0 4px 12px rgba(0,0,0,0.08)", borderColor: "#3b82f6" },
-  typeIndicator: { width: 4, minHeight: 40, borderRadius: 2, flexShrink: 0, marginTop: 4 },
-  cardContent: { flex: 1, minWidth: 0 },
-  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 },
-  cardTitle: { margin: 0, fontSize: 15, fontWeight: 600, color: "#111827", display: "flex", alignItems: "center", gap: 8 },
-  unreadDot: { width: 8, height: 8, borderRadius: "50%", backgroundColor: "#3b82f6", display: "inline-block" },
-  timestamp: { fontSize: 12, color: "#9ca3af", flexShrink: 0, whiteSpace: "nowrap" },
-  cardMessage: { margin: 0, fontSize: 14, color: "#4b5563", lineHeight: 1.5 },
-  detailsPanel: { marginTop: 12, padding: 12, backgroundColor: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" },
-  detailRow: { display: "flex", gap: 8, marginBottom: 6, fontSize: 13 },
-  detailLabel: { color: "#6b7280", fontWeight: 500, minWidth: 80 },
-  detailLink: { color: "#3b82f6", textDecoration: "none", fontWeight: 600 },
-  amount: { fontWeight: 700, color: "#059669" },
-  scopeBadge: { display: "inline-block", padding: "2px 8px", borderRadius: 4, backgroundColor: "#e0e7ff", color: "#4338ca", fontSize: 11, fontWeight: 600, textTransform: "uppercase" },
-  typeBadge: { fontSize: 12, fontWeight: 600, textTransform: "capitalize" },
-  cardActions: { display: "flex", gap: 4, flexDirection: "column", opacity: 0, transition: "opacity 0.15s ease" },
-  actionButton: { width: 28, height: 28, borderRadius: 6, border: "1px solid #d1d5db", backgroundColor: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 },
-  deleteButton: { width: 28, height: 28, borderRadius: 6, border: "1px solid #fee2e2", backgroundColor: "#fef2f2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 },
-  footer: { display: "flex", justifyContent: "space-between", marginTop: 20, padding: "12px 0", borderTop: "1px solid #e5e7eb", fontSize: 13, color: "#6b7280" },
+const styles:Record<string,React.CSSProperties> = {
+  container:{margin:"-24px",padding:"28px 30px 36px",minHeight:"calc(100vh - 64px)",background:ROYAL_GREEN_BACKGROUND,color:"#FFF8EE",fontFamily:"Inter,system-ui,-apple-system,Segoe UI,sans-serif"},
+  header:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:20,flexWrap:"wrap"},
+  title:{margin:0,fontSize:29,fontWeight:850,color:"#FFF8EE"},subtitle:{margin:"5px 0 0",color:"#C6E5D4",fontSize:13},
+  headerActions:{display:"flex",gap:9},ghostButton:{padding:"9px 13px",borderRadius:9,border:"1px solid rgba(255,248,238,.35)",background:"rgba(255,248,238,.10)",color:"#FFF8EE",fontWeight:700,cursor:"pointer"},
+  orangeButton:{padding:"10px 15px",border:0,borderRadius:9,background:"#F36A21",color:"#fff",fontWeight:800,cursor:"pointer"},
+  filters:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",padding:10,marginBottom:18,borderRadius:14,background:"#FFF8EE",boxShadow:"0 8px 28px rgba(0,0,0,.16)"},
+  tabs:{display:"flex",gap:4,padding:4,borderRadius:9,background:"#E7E9E8"},tab:{padding:"9px 15px",border:0,borderRadius:7,background:"transparent",color:"#475569",fontWeight:700,cursor:"pointer"},activeTab:{background:"#087C43",color:"#fff"},
+  search:{flex:"1 1 280px",maxWidth:420,padding:"10px 13px",borderRadius:9,border:"1px solid #CBD5D1",background:"#fff",color:"#10251A",outline:"none"},
+  error:{padding:12,marginBottom:14,borderRadius:9,background:"#FEE2E2",color:"#7F1D1D"},retry:{marginLeft:12,padding:"5px 10px",border:0,borderRadius:6,cursor:"pointer"},
+  empty:{padding:36,textAlign:"center",borderRadius:12,background:"rgba(0,0,0,.16)",color:"#E0F0E7"},
+  list:{display:"flex",flexDirection:"column",gap:12},card:{display:"flex",alignItems:"stretch",gap:13,padding:16,borderRadius:14,background:"#FFF8EE",border:"1px solid rgba(255,255,255,.8)",boxShadow:"0 8px 26px rgba(0,0,0,.16)"},unreadCard:{borderColor:"#F36A21",boxShadow:"0 0 0 1px rgba(243,106,33,.20),0 8px 26px rgba(0,0,0,.16)"},
+  indicator:{width:5,borderRadius:6,flexShrink:0},cardBody:{flex:1,minWidth:0},cardToggle:{width:"100%",padding:0,border:0,background:"transparent",textAlign:"left",cursor:"pointer",color:"#10251A"},
+  cardTitleRow:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:5},cardTitle:{display:"flex",alignItems:"center",gap:7,color:"#0B281A",fontSize:16,fontWeight:800},dot:{width:8,height:8,borderRadius:"50%",background:"#F36A21",display:"inline-block"},
+  timestamp:{color:"#758278",fontSize:12,whiteSpace:"nowrap"},message:{display:"block",color:"#43534A",fontSize:14,lineHeight:1.5},expanded:{marginTop:14,paddingTop:13,borderTop:"1px solid #E4E8E4"},
+  receipt:{padding:14,border:"1px solid #D8E0D8",borderRadius:13,background:"#FFFCF6",color:"#10251A"},receiptHeader:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:12},eyebrow:{fontSize:10,fontWeight:900,letterSpacing:1.1,color:"#68786F"},orderNumber:{fontSize:19,fontWeight:900,color:"#0B3D2E",margin:"2px 0 0"},status:{padding:"6px 12px",borderRadius:99,background:"#087C43",color:"#fff",fontSize:11,fontWeight:900},
+  infoGrid:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12,marginBottom:12},infoColumn:{padding:"9px 12px",border:"1px solid #E3E8E2",borderRadius:10},detail:{display:"flex",justifyContent:"space-between",gap:8,padding:"5px 0",fontSize:12,color:"#21382A"},tableWrap:{overflowX:"auto",border:"1px solid #DADFD8",borderRadius:10},table:{width:"100%",minWidth:570,borderCollapse:"collapse",fontSize:12,color:"#10251A"},itemMeta:{display:"block",fontSize:10,color:"#738077"},fallback:{padding:13,borderRadius:10,border:"1px solid #D8E0D8",background:"#FFFCF6",color:"#193326"},actions:{display:"flex",flexDirection:"column",gap:6},actionButton:{width:30,height:30,border:"1px solid #D8E0D8",borderRadius:7,background:"#fff",color:"#087C43",fontWeight:900,cursor:"pointer"},deleteButton:{width:30,height:30,border:"1px solid #F3D2C8",borderRadius:7,background:"#FFF1EC",color:"#B54723",fontSize:20,cursor:"pointer"},footer:{padding:"14px 0 4px",color:"#C6E5D4",fontSize:12},
 };
