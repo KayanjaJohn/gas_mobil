@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import api from "../services/api";
+
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, Button, Dialog, DialogTitle, DialogContent,
@@ -48,7 +50,7 @@ export default function Orders() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/agent/orders");
+      const response = await api.get(`${API_URL}/agent/orders`);
       const data = response.data;
       const ordersData = data.data || data.orders || [];
       setOrders(ordersData);
@@ -61,7 +63,7 @@ export default function Orders() {
 
   const fetchDrivers = async () => {
     try {
-      const response = await api.get("/agent/drivers");
+      const response = await api.get(`${API_URL}/agent/drivers`);
       const data = response.data;
       const driversData: Driver[] = data.data || data.drivers || [];
       setDrivers(driversData.filter((driver) => driver.driverStatus === "online"));
@@ -73,7 +75,7 @@ export default function Orders() {
   const handleAssign = async () => {
     if (!selectedOrder || !selectedDriver) return;
     try {
-      await api.post(`/agent/orders/${selectedOrder.id}/assign`, { driverId: selectedDriver });
+      await api.post(`${API_URL}/agent/orders/${selectedOrder.id}/assign`, { driverId: selectedDriver });
       setDialogOpen(false);
       fetchOrders();
     } catch {
@@ -84,7 +86,7 @@ export default function Orders() {
   const handleCancel = async (orderId: string) => {
     if (!confirm("Are you sure you want to cancel this order?")) return;
     try {
-      await api.post(`/agent/orders/${orderId}/cancel`, {});
+      await api.post(`${API_URL}/agent/orders/${orderId}/cancel`, {});
       fetchOrders();
     } catch {
       setError("Network error");
