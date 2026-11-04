@@ -9,7 +9,6 @@ import { TopBar } from "../../src/components/index";
 import { Card } from "../../src/components/index";
 import { BottomNav } from "../../src/components/index";
 import { COLORS } from "../../src/utils/constants";
-import { formatDate } from "../../src/utils/formatters";
 import { apiRequest } from "../../src/services/api";
 import * as Location from 'expo-location';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
@@ -296,7 +295,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={styles.cylInfo}>
-              <Text style={styles.cylTitle}><Icon name="propane-tank" size={18} color={COLORS.accent} />  6kg Cylinder</Text>
+              <Text style={styles.cylTitle}><Icon name="propane-tank" size={18} color={COLORS.accent} />  {cylinderDelivery?.weightKg ?? 6}kg Cylinder</Text>
               <Text style={[styles.warn, { color }]}>{status.msg}</Text>
               <Text style={styles.insp}>{daysLeftText}</Text>
               {cylinderDelivery && (
