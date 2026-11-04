@@ -2,11 +2,12 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
-const api = axios.create({
-  baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
-  timeout: 30000,
-});
+// Use the shared Axios singleton so legacy pages importing axios directly
+// receive the same token and single-flight refresh interceptors.
+const api = axios;
+api.defaults.baseURL = API_URL;
+api.defaults.timeout = 30000;
+api.defaults.headers.common["Content-Type"] = "application/json";
 
 type RetriableRequest = InternalAxiosRequestConfig & { _gasmobilRetry?: boolean };
 let refreshInFlight: Promise<string> | null = null;
