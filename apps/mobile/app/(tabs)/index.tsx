@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, Animated,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/context/index";
@@ -13,6 +13,23 @@ import { formatDate } from "../../src/utils/formatters";
 import { apiRequest } from "../../src/services/api";
 import * as Location from 'expo-location';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
+
+interface HomeOrder {
+  id: string;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  items?: Array<{
+    quantity: number;
+    product?: { name?: string; type?: string; weight?: number | string | null };
+  }>;
+  deliveries?: Array<{ status: string; deliveredAt?: string | null }>;
+}
+
+interface CylinderDelivery {
+  deliveredAt: string;
+  weightKg: number;
+}
 
 interface Station {
   id: string;
@@ -28,30 +45,89 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
-  const [percent, setPercent] = useState(15);
-  const [inspectionDate] = useState(formatDate(new Date()));
+  const [percent, setPercent] = useState<number | null>(null);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [cylinderDelivery, setCylinderDelivery] = useState<CylinderDelivery | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
   const [nearestStation, setNearestStation] = useState<Station | null>(null);
   const [loadingStations, setLoadingStations] = useState(true);
+  const [customerCity, setCustomerCity] = useState(user?.city || "Finding your city…");
+
+  // Household usage estimate: two one-hour cooking sessions per day.
+  // The 0.20 kg/hour burn rate is an editable planning assumption, not a sensor reading.
+  const COOKING_HOURS_PER_DAY = 2;
+  const ESTIMATED_LPG_KG_PER_HOUR = 0.20;
+  const DAILY_LPG_USE_KG = COOKING_HOURS_PER_DAY * ESTIMATED_LPG_KG_PER_HOUR;
 
   console.log('[Home] Screen rendered | user:', user?.email, '| authenticated:', !!user);
 
-  // Animated cylinder gauge
-  const gaugeAnim = useState(new Animated.Value(15))[0];
+  const calculateCylinderUsage = useCallback((delivery: CylinderDelivery | null) => {
+    if (!delivery) {
+      setPercent(null);
+      setDaysRemaining(null);
+      return;
+    }
+    const deliveredAt = new Date(delivery.deliveredAt).getTime();
+    if (!Number.isFinite(deliveredAt) || delivery.weightKg <= 0) {
+      setPercent(null);
+      setDaysRemaining(null);
+      return;
+    }
+    const elapsedDays = Math.max(0, (Date.now() - deliveredAt) / 86400000);
+    const consumedKg = elapsedDays * DAILY_LPG_USE_KG;
+    const remainingKg = Math.max(0, delivery.weightKg - consumedKg);
+    setPercent(Math.max(0, Math.min(100, (remainingKg / delivery.weightKg) * 100)));
+    setDaysRemaining(remainingKg / DAILY_LPG_USE_KG);
+  }, [DAILY_LPG_USE_KG]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPercent((p) => {
-        const next = p <= 0 ? 100 : p - 0.5;
-        Animated.timing(gaugeAnim, {
-          toValue: next,
-          duration: 500,
-          useNativeDriver: false,
-        }).start();
-        return next;
+    calculateCylinderUsage(cylinderDelivery);
+    if (!cylinderDelivery) return;
+    const timer = setInterval(() => calculateCylinderUsage(cylinderDelivery), 60 * 1000);
+    return () => clearInterval(timer);
+  }, [cylinderDelivery, calculateCylinderUsage]);
+
+  const fetchCylinderDelivery = useCallback(async () => {
+    try {
+      const response = await apiRequest<HomeOrder[]>("get", "/orders");
+      if (!response.success || !response.data) return;
+      const completedDeliveries = response.data.flatMap((order) => {
+        const delivered = (order.deliveries || [])
+          .filter((delivery) => delivery.status === "delivered")
+          .map((delivery) => ({
+            deliveredAt: delivery.deliveredAt || order.updatedAt || order.createdAt,
+            order,
+          }));
+        return delivered;
+      }).filter((entry) => Number.isFinite(new Date(entry.deliveredAt).getTime()));
+
+      completedDeliveries.sort(
+        (a, b) => new Date(b.deliveredAt).getTime() - new Date(a.deliveredAt).getTime()
+      );
+      const latest = completedDeliveries[0];
+      if (!latest) {
+        setCylinderDelivery(null);
+        return;
+      }
+
+      const cylinderItems = (latest.order.items || []).filter((item) =>
+        item.product?.type === "cylinder" ||
+        /cylinder|lpg|gas refill/i.test(item.product?.name || "")
+      );
+      const deliveredWeight = cylinderItems.reduce((sum, item) => {
+        const weight = Number(item.product?.weight || 0);
+        return sum + (Number.isFinite(weight) && weight > 0 ? weight * Math.max(1, Number(item.quantity || 1)) : 0);
+      }, 0);
+
+      // Existing GasMobil home design defaults to a 6 kg cylinder if older
+      // order records do not include product weight in the API response.
+      setCylinderDelivery({
+        deliveredAt: latest.deliveredAt,
+        weightKg: deliveredWeight > 0 ? deliveredWeight : 6,
       });
-    }, 2000);
-    return () => clearInterval(interval);
+    } catch (error: any) {
+      console.warn("[Home] Could not load latest delivered cylinder:", error?.message || error);
+    }
   }, []);
 
   // Haversine distance (meters)
@@ -72,84 +148,117 @@ export default function HomeScreen() {
     return R * c; // meters
   };
 
-  // Fetch real stations from API and compute nearest using device location
+  // Resolve the customer's real city and find the nearest active station.
   const fetchStations = useCallback(async () => {
     setLoadingStations(true);
     try {
-      const res = await apiRequest<Station[]>("get", "/stations");
-      if (res.success && res.data) {
-        const activeStations = res.data.filter((s: Station) => s.isActive);
-        setStations(activeStations);
+      const [stationResponse, permission] = await Promise.all([
+        apiRequest<Station[]>("get", "/stations"),
+        Location.requestForegroundPermissionsAsync(),
+      ]);
+      const activeStations = stationResponse.success && stationResponse.data
+        ? stationResponse.data.filter((station: Station) => station.isActive)
+        : [];
+      setStations(activeStations);
 
-        if (activeStations.length === 0) {
-          setNearestStation(null);
-          return;
-        }
-
-        // Try to get device location to compute nearest station
+      let currentLatitude: number | null = null;
+      let currentLongitude: number | null = null;
+      if (permission.status === "granted") {
         try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === 'granted') {
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            const { latitude, longitude } = loc.coords;
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          currentLatitude = location.coords.latitude;
+          currentLongitude = location.coords.longitude;
 
-            let best: Station | null = null;
-            let bestDist = Number.POSITIVE_INFINITY;
-            for (const st of activeStations) {
-              const lat = Number(st.latitude ?? (st as any).lat);
-              const lng = Number(st.longitude ?? (st as any).lng);
-              if (isNaN(lat) || isNaN(lng)) continue;
-              const dist = haversineDistance(latitude, longitude, lat, lng);
-              if (dist < bestDist) {
-                bestDist = dist;
-                best = st;
-              }
-            }
-
-            setNearestStation(best || activeStations[0]);
-          } else {
-            // Permission denied — fallback to first active station
-            setNearestStation(activeStations[0]);
-          }
-        } catch (locErr) {
-          console.warn('[Home] Location error, falling back to first station', locErr);
-          setNearestStation(activeStations[0]);
+          const places = await Location.reverseGeocodeAsync({
+            latitude: currentLatitude,
+            longitude: currentLongitude,
+          });
+          const place = places[0];
+          const actualCity = place?.city || place?.district || place?.subregion || place?.region;
+          setCustomerCity(actualCity ? actualCity.trim() : (user?.city || "Current city unavailable"));
+        } catch (locationError: any) {
+          console.warn("[Home] Could not resolve current city:", locationError?.message || locationError);
+          setCustomerCity(user?.city || "Current city unavailable");
         }
+      } else {
+        setCustomerCity(user?.city || "Enable location to show your city");
       }
-    } catch (err: any) {
-      console.error("[Home] Failed to fetch stations:", err?.message || err);
+
+      if (activeStations.length === 0) {
+        setNearestStation(null);
+        return;
+      }
+
+      if (currentLatitude !== null && currentLongitude !== null) {
+        let best: Station | null = null;
+        let bestDistance = Number.POSITIVE_INFINITY;
+        for (const station of activeStations) {
+          const latitude = Number(station.latitude ?? (station as any).lat);
+          const longitude = Number(station.longitude ?? (station as any).lng);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+          const distance = haversineDistance(
+            currentLatitude, currentLongitude, latitude, longitude
+          );
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = station;
+          }
+        }
+        setNearestStation(best || activeStations[0]);
+      } else {
+        setNearestStation(activeStations[0]);
+      }
+    } catch (error: any) {
+      console.error("[Home] Failed to load stations/location:", error?.message || error);
+      setCustomerCity(user?.city || "Current city unavailable");
     } finally {
       setLoadingStations(false);
     }
-  }, []);
+  }, [user?.city]);
 
   // Only fetch stations once user is authenticated
   useEffect(() => {
     if (user) {
-      fetchStations();
+      void fetchStations();
+      void fetchCylinderDelivery();
     } else {
-      // If user logged out, clear stations
       setStations([]);
       setNearestStation(null);
+      setCylinderDelivery(null);
+      setCustomerCity("Location unavailable");
       setLoadingStations(false);
     }
-  }, [user, fetchStations]);
+  }, [user?.id, fetchStations, fetchCylinderDelivery]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (user) fetchStations();
-    setTimeout(() => setRefreshing(false), 1500);
-  }, [fetchStations, user]);
+    try {
+      if (user) await Promise.all([fetchStations(), fetchCylinderDelivery()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchStations, fetchCylinderDelivery, user]);
 
-  const getColor = (p: number) => (p < 20 ? COLORS.danger : p < 50 ? COLORS.warn : COLORS.success);
-  const getStatus = (p: number) => {
-    if (p < 20) return { label: "LOW", msg: "~1 day left — Refill soon!" };
-    if (p < 50) return { label: "HALF", msg: "~3 days left — Plan a refill" };
-    return { label: "FULL", msg: "Plenty of gas remaining" };
+  const getColor = (value: number | null) => {
+    if (value === null) return COLORS.muted;
+    return value <= 15 ? COLORS.danger : value <= 40 ? COLORS.warn : COLORS.success;
+  };
+  const getStatus = (value: number | null) => {
+    if (value === null) return { label: "AWAITING", msg: "Your usage meter starts when a delivery is confirmed." };
+    if (value <= 15) return { label: "LOW", msg: "Refill soon — your estimated gas is running low." };
+    if (value <= 40) return { label: "MODERATE", msg: "Plan your next refill." };
+    return { label: "FULL", msg: "Your delivered cylinder is being tracked." };
   };
 
   const color = getColor(percent);
   const status = getStatus(percent);
+  const daysLeftText = daysRemaining === null
+    ? "Estimate starts after delivery"
+    : daysRemaining <= 0
+      ? "Estimated gas exhausted — arrange a refill"
+      : `About ${Math.ceil(daysRemaining)} days left at 2 cooking hours/day`;
 
   return (
     <View style={styles.container}>
@@ -158,7 +267,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <TopBar />
+        <TopBar locationLabel={customerCity ? `${customerCity}, Uganda` : "Location unavailable"} />
 
         {/* Hero Order Card */}
         <Card style={styles.heroCard} onPress={() => router.push("/order")}>
@@ -182,14 +291,19 @@ export default function HomeScreen() {
           <View style={styles.cylinderInner}>
             <View style={[styles.progressRing, { borderColor: color }]}>
               <View style={styles.progressInner}>
-                <Text style={[styles.percent, { color }]}>{Math.round(percent)}%</Text>
+                <Text style={[styles.percent, { color }]}>{percent === null ? "—" : `${percent === null ? "—" : `${Math.round(percent)}%`}`}</Text>
                 <Text style={styles.fullLabel}>{status.label}</Text>
               </View>
             </View>
             <View style={styles.cylInfo}>
               <Text style={styles.cylTitle}><Icon name="propane-tank" size={18} color={COLORS.accent} />  6kg Cylinder</Text>
               <Text style={[styles.warn, { color }]}>{status.msg}</Text>
-              <Text style={styles.insp}>Inspected {inspectionDate}</Text>
+              <Text style={styles.insp}>{daysLeftText}</Text>
+              {cylinderDelivery && (
+                <Text style={styles.insp}>
+                  Delivered {new Date(cylinderDelivery.deliveredAt).toLocaleDateString()}
+                </Text>
+              )}
             </View>
           </View>
         </Card>
