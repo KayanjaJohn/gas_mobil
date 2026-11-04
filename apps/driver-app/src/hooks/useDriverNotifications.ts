@@ -1,48 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSocket, initializeSocket } from '../services/socketService';
-import * as Notifications from 'expo-notifications';
-import { Vibration } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
 const MAX_NOTIFICATIONS = 100;
-const alertedNotificationIds = new Set<string>();
-
-async function alertDriver(payload: any) {
-  const id = String(payload?.id || '');
-  if (!id || alertedNotificationIds.has(id)) return;
-  alertedNotificationIds.add(id);
-  if (alertedNotificationIds.size > 300) {
-    const oldest = alertedNotificationIds.values().next().value;
-    if (oldest) alertedNotificationIds.delete(oldest);
-  }
-  Vibration.vibrate([0, 500, 180, 500, 180, 650]);
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: payload.title || 'GasMobil notification',
-        body: payload.message || 'You have a new update.',
-        sound: 'default',
-        data: { orderId: payload.orderId || payload.data?.orderId },
-      },
-      trigger: null,
-    });
-  } catch (error) {
-    console.warn('[DriverNotif] Could not display phone notification:', error);
-  }
-}
-
-export interface DriverNotification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-  orderId?: string | null;
-  data?: any;
-}
-
 export function useDriverNotifications() {
   const [notifications, setNotifications] = useState<DriverNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -153,7 +114,7 @@ export function useDriverNotifications() {
       if (isNewForThisHook && !newNotif.isRead) {
         setUnreadCount((prev) => prev + 1);
       }
-      void alertDriver(payload);
+
     };
 
     const handleLegacyAssignment = () => {
