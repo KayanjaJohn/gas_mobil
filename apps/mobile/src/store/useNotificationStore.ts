@@ -30,10 +30,13 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   isLoading: false,
 
   addNotification: (n) => {
-    set((state) => ({
-      notifications: [n, ...state.notifications].slice(0, 100), // keep last 100
-      unreadCount: state.unreadCount + (n.isRead ? 0 : 1),
-    }));
+    set((state) => {
+      if (state.notifications.some((existing) => existing.id === n.id)) return state;
+      return {
+        notifications: [n, ...state.notifications].slice(0, 100),
+        unreadCount: state.unreadCount + (n.isRead ? 0 : 1),
+      };
+    });
   },
 
   markAsRead: async (id) => {
