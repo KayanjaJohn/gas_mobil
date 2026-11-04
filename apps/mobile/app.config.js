@@ -1,9 +1,5 @@
 import "dotenv/config";
 
-const googleMapsApiKey =
-  process.env.GOOGLE_MAPS_API_KEY ||
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
 export default {
   expo: {
     name: "gas-mobil-app",
@@ -32,9 +28,6 @@ export default {
       },
       package: "com.gasmobil.app",
       versionCode: 1,
-      ...(googleMapsApiKey
-        ? { config: { googleMaps: { apiKey: googleMapsApiKey } } }
-        : {}),
     },
     web: {
       favicon: "./assets/icon.png",
