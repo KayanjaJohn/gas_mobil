@@ -23,7 +23,8 @@
         "foregroundImage": "./assets/gasmobil-icon.png",
         "backgroundColor": "#061D16"
       },
-      "package": "com.gasmobil.driver"
+      "package": "com.gasmobil.driver",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"
