@@ -4,6 +4,7 @@ import { Order } from '../entities/Order';
 import { User } from '../entities/User';
 import { createSystemNotification } from './notificationService';
 import { broadcastToAdmins, broadcastToOrder } from '../config/socket';
+import { recordStationActivity } from './stationActivityService';
 
 const deliveryRepo = AppDataSource.getRepository(Delivery);
 const orderRepo = AppDataSource.getRepository(Order);
@@ -132,6 +133,22 @@ export async function updateDeliveryStatusUnified(input: UpdateDeliveryStatusInp
     await queryRunner.manager.save(delivery);
     await queryRunner.manager.save(order);
     await queryRunner.commitTransaction();
+
+    // Station audit trail is persisted after the order/delivery transaction.
+    await recordStationActivity({
+      stationId: order.stationId,
+      eventType: `delivery_${input.status}`,
+      title: `Delivery ${input.status.replace(/_/g, " ")}`,
+      description: `Order #${order.id.slice(0, 8).toUpperCase()} marked ${input.status.replace(/_/g, " ")} by ${input.driverName}.`,
+      actorId: input.driverId,
+      orderId: order.id,
+      data: {
+        driverId: input.driverId,
+        driverName: input.driverName,
+        status: input.status,
+        deliveryId: delivery.id,
+      },
+    });
 
     // ── Notifications & Socket (outside transaction) ──
     const cfg = STATUS_CONFIG[input.status];
