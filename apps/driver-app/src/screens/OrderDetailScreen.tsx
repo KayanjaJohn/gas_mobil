@@ -196,6 +196,22 @@ export default function OrderDetailScreen() {
             <Text style={styles.actionText}>{updating ? 'Starting…' : 'Start Delivery & Share Live Location'}</Text>
           </TouchableOpacity>
         )}
+        {order.status === 'in_transit' && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.arrivedButton]}
+            disabled={updating}
+            onPress={() => updateDeliveryStatus('nearby')}
+          >
+            <Icon name="map-marker-check" size={19} color="#FFF8EE" />
+            <Text style={styles.actionText}>{updating ? 'Sending customer alert…' : "I've Arrived — Alert Customer"}</Text>
+          </TouchableOpacity>
+        )}
+        {order.status === 'nearby' && (
+          <View style={styles.arrivedNotice}>
+            <Icon name="bell-check" size={18} color="#0B3D2E" />
+            <Text style={styles.arrivedNoticeText}>Customer has been alerted that you have arrived.</Text>
+          </View>
+        )}
         {isMoving && (
           <TouchableOpacity style={[styles.actionBtn, styles.greenButton]} disabled={updating} onPress={confirmPaymentAndDelivery}>
             <Text style={styles.actionText}>{updating ? 'Updating…' : 'Confirm Cash Payment & Deliver'}</Text>
@@ -248,6 +264,9 @@ const styles = StyleSheet.create({
   actionBtn: { padding: 16, borderRadius: 12, alignItems: 'center' },
   orangeButton: { backgroundColor: '#F36A21' },
   greenButton: { backgroundColor: '#168447' },
+  arrivedButton: { backgroundColor: '#0D6B4B', flexDirection: 'row', justifyContent: 'center', gap: 9 },
+  arrivedNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 2, padding: 13, borderRadius: 10, backgroundColor: '#D9F2E5' },
+  arrivedNoticeText: { color: '#0B3D2E', fontSize: 12, fontWeight: '700', flex: 1 },
   actionText: { color: '#FFF8EE', fontWeight: '800', fontSize: 14, textAlign: 'center' },
   codNote: { color: '#68786F', fontSize: 11, textAlign: 'center', margin: 14 },
 });
