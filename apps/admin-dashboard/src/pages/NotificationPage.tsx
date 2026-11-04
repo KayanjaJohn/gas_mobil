@@ -108,6 +108,17 @@ export default function NotificationPage() {
   }, [token]);
   useEffect(() => { void fetchNotifications(); }, [fetchNotifications]);
   useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchNotifications();
+    }, 30000);
+    const onFocus = () => void fetchNotifications();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [fetchNotifications]);
+  useEffect(() => {
     if (loading || autoExpanded) return;
     const firstOrderNotification = notifications.find((item) => !!item.orderId);
     if (firstOrderNotification) {
