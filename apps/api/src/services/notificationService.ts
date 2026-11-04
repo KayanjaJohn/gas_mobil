@@ -134,7 +134,7 @@ export async function createSystemNotification(payload: NotifyPayload) {
       const tokensByUserId = new Map(
         recipients
           .filter((recipient) => !!recipient.expoPushToken)
-          .map((recipient) => [recipient.id, recipient.expoPushToken as string])
+          .map((recipient) => [recipient.id, recipient.expoPushToken as string] as const)
       );
       const pushMessages = savedNotifications.flatMap((notif) => {
         const to = tokensByUserId.get(notif.userId);
