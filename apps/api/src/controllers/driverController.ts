@@ -246,17 +246,29 @@ export const getDriverEarnings = async (req: Request, res: Response) => {
 
     const deliveries = await deliveryRepository.find({
       where: { driverId: user.id, status: "delivered" },
-      relations: ["order"],
-      order: { createdAt: "DESC" },
+      relations: ["order", "order.user", "order.items", "order.items.product"],
+      order: { deliveredAt: "DESC", createdAt: "DESC" },
     });
 
     const earnings = deliveries.map((d) => ({
       id: d.id,
       orderId: d.orderId,
-      date: d.createdAt,
+      createdAt: (d.deliveredAt || d.createdAt).toISOString(),
+      date: (d.deliveredAt || d.createdAt).toISOString(),
       amount: Math.round(Number(d.order?.totalAmount || 0) * 0.1),
       status: "paid" as const,
       customerName: d.order?.user?.name || "N/A",
+      customerPhone: d.order?.user?.phone || "N/A",
+      deliveryAddress: d.order?.deliveryAddress || "Address not recorded",
+      deliveryCity: d.order?.deliveryCity || "",
+      items: (d.order?.items || []).map((item: any) => ({
+        productId: item.productId,
+        productName: item.product?.name || "Product",
+        quantity: Number(item.quantity || 0),
+        weight: item.product?.weight ?? null,
+        size: item.product?.size ?? null,
+        subtotal: Number(item.subtotal || item.price * item.quantity || 0),
+      })),
     }));
 
     const totalEarnings = earnings.reduce((sum, e) => sum + e.amount, 0);
