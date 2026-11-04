@@ -90,10 +90,10 @@ export default function NotificationPage({token,userRole}:Props) {
   }),[notifications,search]);
 
   useEffect(() => {
-    if (loading || autoExpanded) return;
+    if (loading || autoExpanded || notifications.length === 0) return;
     const firstOrderNotification = notifications.find((item) => !!item.orderId);
     if (firstOrderNotification) setSelected(firstOrderNotification.id);
-    setAutoExpanded(true);
+    if (firstOrderNotification) setAutoExpanded(true);
   }, [notifications, loading, autoExpanded]);
 
   const unread = notifications.filter(n=>!n.isRead).length;
