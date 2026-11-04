@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, TextField, InputAdornment, CircularProgress,
@@ -13,10 +14,10 @@ interface Customer {
   address?: string | null;
   city?: string | null;
   role: string;
+  address?: string | null;
+  city?: string | null;
   createdAt: string;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -24,8 +25,6 @@ export default function Customers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
-
-  const token = localStorage.getItem('agent_token');
 
   useEffect(() => {
     fetchCustomers();
@@ -43,16 +42,10 @@ export default function Customers() {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/agent/customers`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCustomers(data.data || []);
-        setFiltered(data.data || []);
-      } else {
-        setError(data.error || 'Failed to fetch customers');
-      }
+      const response = await api.get('/agent/customers');
+      const data = response.data;
+      setCustomers(data.data || []);
+      setFiltered(data.data || []);
     } catch (err) {
       setError('Network error');
     } finally {
@@ -114,6 +107,8 @@ export default function Customers() {
                     <TableCell sx={{ fontWeight: 500 }}>{c.name}</TableCell>
                     <TableCell>{c.email}</TableCell>
                     <TableCell>{c.phone || '-'}</TableCell>
+                    <TableCell>{c.address || 'Not provided'}</TableCell>
+                    <TableCell>{c.city || 'Not provided'}</TableCell>
                     <TableCell>
                       <Chip label={c.role} size="small" sx={{ bgcolor: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontWeight: 600 }} />
                     </TableCell>
