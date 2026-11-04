@@ -138,7 +138,7 @@ export async function createSystemNotification(payload: NotifyPayload) {
       );
       const pushMessages = savedNotifications.flatMap((notif) => {
         const to = tokensByUserId.get(notif.userId);
-        if (!to || !/^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(to)) return [];
+        if (!to || !/^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(to)) return [];
         return [{
           to,
           title: notif.title,
