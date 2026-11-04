@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 import {
   Menu as MenuIcon, Dashboard, ShoppingCart, LocalShipping,
-  People, Store, Assessment, Notifications, ChevronLeft, ChevronRight,
+  People, Store, Assessment, Notifications, History as HistoryIcon, ChevronLeft, ChevronRight,
   Brightness4, Brightness7, Logout,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
@@ -24,6 +24,7 @@ const navItems = [
   { text: "Drivers", path: "/drivers", icon: <LocalShipping /> },
   { text: "Customers", path: "/customers", icon: <People /> },
   { text: "Stations", path: "/stations", icon: <Store /> },
+  { text: "Station History", path: "/station-history", icon: <HistoryIcon /> },
   { text: "Reports", path: "/reports", icon: <Assessment /> },
   { text: "Notifications", path: "/notifications", icon: <Notifications /> },
 ];
