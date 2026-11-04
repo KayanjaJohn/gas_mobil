@@ -17,11 +17,12 @@ export default function NotificationBell({ token, userRole }: NotificationBellPr
   useEffect(() => {
     if (!latestNotification) return;
     setToast(latestNotification);
-    if (document.visibilityState === 'hidden' && 'Notification' in window && window.Notification.permission === 'granted') {
+    if ('Notification' in window && window.Notification.permission === 'granted') {
       try {
         new window.Notification(latestNotification.title, {
           body: latestNotification.message,
           tag: latestNotification.id,
+          icon: '/gasmobil-icon.png',
         });
       } catch (error) {
         console.warn('Could not show browser notification:', error);
