@@ -1,3 +1,4 @@
+import axios from 'axios';
 import AppDataSource from '../config/database';
 import { Notification, NotificationType } from '../entities/Notification';
 import { User } from '../entities/User';
@@ -119,6 +120,58 @@ export async function createSystemNotification(payload: NotifyPayload) {
       isRead: false,
       createdAt: notif.createdAt,
     });
+  }
+
+  // Push notifications reach mobile devices even when the app is backgrounded
+  // or closed. Socket delivery above remains the immediate in-app path.
+  try {
+    const recipientIds = Array.from(new Set(savedNotifications.map((item) => item.userId)));
+    if (recipientIds.length > 0) {
+      const recipients = await userRepo.find({
+        where: recipientIds.map((id) => ({ id })),
+        select: ["id", "expoPushToken"] as any,
+      });
+      const tokensByUserId = new Map(
+        recipients
+          .filter((recipient) => !!recipient.expoPushToken)
+          .map((recipient) => [recipient.id, recipient.expoPushToken as string])
+      );
+      const pushMessages = savedNotifications.flatMap((notif) => {
+        const to = tokensByUserId.get(notif.userId);
+        if (!to || !/^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(to)) return [];
+        return [{
+          to,
+          title: notif.title,
+          body: notif.message,
+          sound: "default",
+          priority: "high",
+          channelId: "default",
+          ttl: 86400,
+          data: {
+            notificationId: notif.id,
+            type: notif.type,
+            orderId: notif.orderId,
+          },
+        }];
+      });
+
+      if (pushMessages.length > 0) {
+        await axios.post(
+          "https://exp.host/--/api/v2/push/send",
+          pushMessages,
+          {
+            timeout: 5000,
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+    }
+  } catch (pushError: any) {
+    // Push outages must not make order placement or delivery updates fail.
+    console.warn("[Notifications] Expo push delivery failed:", pushError?.message || pushError);
   }
 
   return { sentCount: savedNotifications.length, recipients: Array.from(targetUserIds) };
