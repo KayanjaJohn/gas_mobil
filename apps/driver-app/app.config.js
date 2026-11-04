@@ -17,6 +17,7 @@ export default ({ config }) => ({
         }
       : {}),
   },
+  plugins: [...(config.plugins || []), "expo-notifications"],
   extra: {
     ...config.extra,
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
