@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import {
   Box, Drawer, AppBar, Toolbar, List, ListItem, ListItemButton,
   ListItemIcon, ListItemText, IconButton, Typography, Divider,
-  useTheme, CssBaseline, Badge,
+  useTheme, CssBaseline,
 } from "@mui/material";
 import {
   Menu as MenuIcon, Dashboard, ShoppingCart, LocalShipping,
@@ -12,6 +12,7 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import ColorModeContext from "../theme";
+import NotificationBell from "./NotificationBell";
 
 const expandedDrawerWidth = 260;
 const collapsedDrawerWidth = 72;
@@ -28,7 +29,7 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { user, isLoading, logout, error } = useAuth();
+  const { user, token, isLoading, logout, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -135,11 +136,7 @@ export default function Layout() {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             GasMobil Admin
           </Typography>
-          <IconButton color="inherit" onClick={() => navigate("/notifications")}>
-            <Badge badgeContent={0} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
+          <NotificationBell token={token || ""} userRole="admin" />
           <IconButton color="inherit" onClick={colorMode.toggleColorMode}>
             {theme.palette.mode === "dark" ? <Brightness7 /> : <Brightness4 />}
           </IconButton>
