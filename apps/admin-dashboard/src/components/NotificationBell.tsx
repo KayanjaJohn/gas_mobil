@@ -17,6 +17,16 @@ export default function NotificationBell({ token, userRole }: NotificationBellPr
   useEffect(() => {
     if (!latestNotification) return;
     setToast(latestNotification);
+    if (document.visibilityState === 'hidden' && 'Notification' in window && window.Notification.permission === 'granted') {
+      try {
+        new window.Notification(latestNotification.title, {
+          body: latestNotification.message,
+          tag: latestNotification.id,
+        });
+      } catch (error) {
+        console.warn('Could not show browser notification:', error);
+      }
+    }
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToast(null), 7000);
     return () => {
@@ -34,6 +44,13 @@ export default function NotificationBell({ token, userRole }: NotificationBellPr
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleBellClick = () => {
+    setIsOpen((open) => !open);
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      void window.Notification.requestPermission();
+    }
+  };
 
   const recentNotifications = notifications.slice(0, 8);
 
@@ -64,7 +81,7 @@ export default function NotificationBell({ token, userRole }: NotificationBellPr
 
       {/* Bell Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleBellClick}
         style={styles.bellButton}
         aria-label="Notifications"
       >
