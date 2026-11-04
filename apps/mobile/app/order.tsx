@@ -133,7 +133,7 @@ export default function OrderScreen() {
     product.type === "cylinder" &&
     product.isAvailable &&
     matchesCylinderSize(product) &&
-    Number(product.stock) > 0
+    Number(product.stock) >= quantity
   );
 
   const selectedSize = CYLINDER_SIZES.find((s) => s.id === cylinderSize);
