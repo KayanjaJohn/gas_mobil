@@ -27,8 +27,8 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/gasmobil-icon.png",
-        backgroundColor: "#070b14",
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#0B3D2E",
       },
       package: "com.gasmobil.app",
       versionCode: 1,
