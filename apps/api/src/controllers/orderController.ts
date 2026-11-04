@@ -56,6 +56,25 @@ export const createOrder = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: "Only customers can place orders" });
     }
 
+    if (!Array.isArray(items) || items.length === 0) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({ success: false, error: "Add at least one product before placing your order." });
+    }
+
+    const invalidItem = items.find((item: any) =>
+      !item?.productId ||
+      !Number.isInteger(Number(item.quantity)) ||
+      Number(item.quantity) < 1 ||
+      Number(item.quantity) > 50
+    );
+    if (invalidItem) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({
+        success: false,
+        error: "Each order item must have a valid product and a quantity between 1 and 50.",
+      });
+    }
+
     // GasMobil launch policy: cash on delivery only.
     if (paymentMethod && paymentMethod !== "cash") {
       await queryRunner.rollbackTransaction();
