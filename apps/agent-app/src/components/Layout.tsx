@@ -63,8 +63,8 @@ export default function Layout() {
   }
 
   const drawer = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "#0B3D2E", color: "#FFF8EE", "& .MuiTypography-root": { color: "#FFF8EE" }, "& .MuiListItemIcon-root": { color: "#FFF8EE" }, "& .MuiDivider-root": { borderColor: "#315C4D" } }}>
-      <Toolbar sx={{ justifyContent: "center", bgcolor: "#0B3D2E", gap: 1 }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", background: "radial-gradient(ellipse at 50% 22%, rgba(0,154,69,.36) 0%, rgba(0,74,40,.16) 42%, transparent 76%), linear-gradient(180deg,#002A19 0%,#00170C 100%)", color: "#FFF8EE", "& .MuiTypography-root": { color: "#FFF8EE" }, "& .MuiListItemIcon-root": { color: "#FFF8EE" }, "& .MuiDivider-root": { borderColor: "#315C4D" } }}>
+      <Toolbar sx={{ justifyContent: "center", background: "radial-gradient(ellipse at 50% 22%, rgba(0,154,69,.36) 0%, rgba(0,74,40,.16) 42%, transparent 76%), linear-gradient(180deg,#002A19 0%,#00170C 100%)", gap: 1 }}>
         <Box component="img" src="/agent/gasmobil-icon.png" alt="GasMobil" sx={{ width: 30, height: 30, borderRadius: 1 }} />
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {drawerCollapsed ? "GM" : "GasMobil"}
@@ -122,7 +122,7 @@ export default function Layout() {
       <CssBaseline />
       <AppBar
         position="fixed"
-        sx={{ bgcolor: "#0B3D2E", color: "#FFF8EE",
+        sx={{ background: "radial-gradient(ellipse at 50% 22%, rgba(0,154,69,.36) 0%, rgba(0,74,40,.16) 42%, transparent 76%), linear-gradient(180deg,#002A19 0%,#00170C 100%)", color: "#FFF8EE",
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
           transition: theme.transitions.create(["width", "margin"], {
@@ -159,7 +159,7 @@ export default function Layout() {
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: "block", sm: "none" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: expandedDrawerWidth, bgcolor: "#0B3D2E", color: "#FFF8EE", borderColor: "#315C4D" },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: expandedDrawerWidth, background: "radial-gradient(ellipse at 50% 22%, rgba(0,154,69,.36) 0%, rgba(0,74,40,.16) 42%, transparent 76%), linear-gradient(180deg,#002A19 0%,#00170C 100%)", color: "#FFF8EE", borderColor: "#315C4D" },
           }}
         >
           {drawer}
@@ -168,7 +168,7 @@ export default function Layout() {
           variant="permanent"
           sx={{
             display: { xs: "none", sm: "block" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth, transition: theme.transitions.create("width"), bgcolor: "#0B3D2E", color: "#FFF8EE", borderColor: "#315C4D" },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth, transition: theme.transitions.create("width"), background: "radial-gradient(ellipse at 50% 22%, rgba(0,154,69,.36) 0%, rgba(0,74,40,.16) 42%, transparent 76%), linear-gradient(180deg,#002A19 0%,#00170C 100%)", color: "#FFF8EE", borderColor: "#315C4D" },
           }}
           open
         >
@@ -176,7 +176,7 @@ export default function Layout() {
         </Drawer>
       </Box>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, minHeight: "100vh", background: "radial-gradient(ellipse at 55% 28%, rgba(0,146,66,.28) 0%, rgba(0,70,36,.12) 40%, transparent 75%), linear-gradient(145deg,#00170C 0%,#00351E 52%,#00140B 100%)" }}>
         <Toolbar />
         {error && (
           <Box sx={{ mb: 2, p: 2, bgcolor: "error.light", color: "error.contrastText", borderRadius: 1 }}>
