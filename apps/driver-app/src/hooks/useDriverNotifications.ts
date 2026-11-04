@@ -48,7 +48,7 @@ export function useDriverNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const receivedNotificationIdsRef = useRef(new Set<string>());
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -60,6 +60,7 @@ export function useDriverNotifications() {
       });
       const json = await res.json();
       if (json.success && json.data) {
+        (json.data as DriverNotification[]).forEach((item) => receivedNotificationIdsRef.current.add(item.id));
         setNotifications(json.data);
         setUnreadCount(json.meta?.unreadCount || 0);
       }
@@ -143,11 +144,15 @@ export function useDriverNotifications() {
         data: payload.data,
       };
 
+      const isNewForThisHook = !receivedNotificationIdsRef.current.has(id);
+      receivedNotificationIdsRef.current.add(id);
       setNotifications((prev) => {
         if (prev.some((item) => item.id === id)) return prev;
         return [newNotif, ...prev].slice(0, MAX_NOTIFICATIONS);
       });
-      setUnreadCount((prev) => prev + (alertedNotificationIds.has(id) ? 0 : (newNotif.isRead ? 0 : 1)));
+      if (isNewForThisHook && !newNotif.isRead) {
+        setUnreadCount((prev) => prev + 1);
+      }
       void alertDriver(payload);
     };
 
