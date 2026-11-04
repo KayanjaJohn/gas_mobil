@@ -19,7 +19,7 @@ export class AddStationActivities1793803600000 implements MigrationInterface {
       "  KEY `IDX_station_activities_stationId` (`stationId`),",
       "  KEY `IDX_station_activities_createdAt` (`createdAt`)",
       ") ENGINE=InnoDB",
-    ].join("\\n");
+    ].join(" ");
     await queryRunner.query(sql);
   }
 
