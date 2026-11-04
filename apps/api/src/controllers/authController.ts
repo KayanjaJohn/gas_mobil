@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 import AppDataSource from "../config/database";
 import { User } from "../entities/User";
 import { generateToken, generateRefreshToken } from "../middleware/auth";
+import { createSystemNotification } from "../services/notificationService";
 
 const userRepository = AppDataSource.getRepository(User);
 
@@ -78,6 +79,21 @@ export const register = async (req: Request, res: Response) => {
 
     const result = await userRepository.save(userData);
     const user = Array.isArray(result) ? result[0] : result;
+
+    try {
+      await createSystemNotification({
+        type: "system_announcement",
+        title: "Welcome to GasMobil",
+        message: "Your customer account has been created successfully. You can now order gas and track deliveries from the app.",
+        data: { event: "customer_account_created" },
+        notifyCustomer: true,
+        userId: user.id,
+      });
+    } catch (notificationError: any) {
+      // Do not turn a successful account creation into a failed registration
+      // response if the notification service is temporarily unavailable.
+      console.error("[REGISTER] Welcome notification failed:", notificationError?.message);
+    }
 
     const accessToken = generateToken(user.id, user.email, user.name, user.role);
     const refreshToken = generateRefreshToken(user.id);
