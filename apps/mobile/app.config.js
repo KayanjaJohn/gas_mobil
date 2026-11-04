@@ -44,6 +44,6 @@ export default {
         projectId: "e63f5e6a-5e16-4297-9623-c7475c34d842",
       },
     },
-    plugins: ["expo-router", "expo-notifications"],
+    plugins: ["expo-router", "expo-notifications", "@maplibre/maplibre-react-native"],
   },
 };
