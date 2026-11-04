@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Platform, View, Text, ActivityIndicator } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -49,9 +51,35 @@ function AppNavigator() {
   );
 }
 
-import { View, Text, ActivityIndicator } from 'react-native';
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 export default function App() {
+  useEffect(() => {
+    const configure = async () => {
+      const permission = await Notifications.getPermissionsAsync();
+      if (!permission.granted) {
+        await Notifications.requestPermissionsAsync();
+      }
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'GasMobil alerts',
+          importance: Notifications.AndroidImportance.MAX,
+          sound: 'default',
+          vibrationPattern: [0, 500, 180, 500, 180, 650],
+          enableVibrate: true,
+        });
+      }
+    };
+    void configure();
+  }, []);
+
   return (
     <AuthProvider>
       <AppNavigator />
