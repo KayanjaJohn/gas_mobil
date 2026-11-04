@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { In } from "typeorm";
+import { Order } from "../entities/Order";
 import AppDataSource from "../config/database";
 import { Notification } from "../entities/Notification";
 import { User } from "../entities/User";
@@ -43,21 +45,136 @@ export const getNotifications = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
 
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(100, Math.max(1, limit));
     const [notifications, total] = await notificationRepo.findAndCount({
       where: { userId },
       order: { createdAt: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
     });
 
     const unreadCount = await notificationRepo.count({
       where: { userId, isRead: false },
     });
 
+    // Build full order receipts from the current relational records rather than
+    // relying on the small event payload that existed when each notification
+    // was first created. This also enriches older notifications already saved.
+    const orderIds = Array.from(new Set(
+      notifications.map((notification) => notification.orderId).filter((id): id is string => !!id)
+    ));
+
+    const orders = orderIds.length
+      ? await AppDataSource.getRepository(Order).find({
+          where: { id: In(orderIds) },
+          relations: ["user", "station", "items", "items.product", "deliveries"],
+        } as any)
+      : [];
+
+    const driverIds = Array.from(new Set(
+      orders.flatMap((order) => (order.deliveries || []).map((delivery) => delivery.driverId).filter(Boolean))
+    ));
+    const drivers = driverIds.length
+      ? await userRepo.find({
+          where: { id: In(driverIds) },
+          select: ["id", "name", "phone", "vehicleNumber", "vehicleType"],
+        } as any)
+      : [];
+    const driverById = new Map(drivers.map((driver) => [driver.id, driver]));
+    const orderById = new Map(orders.map((order) => [order.id, order]));
+
+    const enrichedNotifications = notifications.map((notification) => {
+      const order = notification.orderId ? orderById.get(notification.orderId) : undefined;
+      if (!order) return notification;
+
+      const deliveries = [...(order.deliveries || [])].sort((a, b) => {
+        const aTime = new Date(a.deliveredAt || a.updatedAt || a.createdAt).getTime();
+        const bTime = new Date(b.deliveredAt || b.updatedAt || b.createdAt).getTime();
+        return bTime - aTime;
+      });
+      const latestDelivery = deliveries[0];
+      const driver = latestDelivery ? driverById.get(latestDelivery.driverId) : undefined;
+
+      const items = (order.items || []).map((item) => {
+        const quantity = Number(item.quantity || 0);
+        const unitPrice = Number(item.price ?? item.product?.price ?? 0);
+        const lineTotal = Number(item.subtotal ?? unitPrice * quantity);
+        return {
+          id: item.id,
+          productId: item.productId,
+          productName: item.product?.name || "Product details unavailable",
+          productType: item.product?.type || null,
+          size: item.product?.size || null,
+          weight: item.product?.weight == null ? null : Number(item.product.weight),
+          quantity,
+          unitPrice,
+          lineTotal,
+          imageUrl: item.product?.imageUrl || null,
+        };
+      });
+
+      const receipt = {
+        orderId: order.id,
+        orderNumber: order.id.slice(0, 8).toUpperCase(),
+        status: order.status,
+        customer: {
+          id: order.user?.id || order.userId,
+          name: order.user?.name || notification.data?.customerName || "Customer",
+          phone: order.user?.phone || notification.data?.phone || null,
+          email: order.user?.email || null,
+        },
+        delivery: {
+          address: order.deliveryAddress || null,
+          city: order.deliveryCity || null,
+          latitude: order.deliveryLatitude == null ? null : Number(order.deliveryLatitude),
+          longitude: order.deliveryLongitude == null ? null : Number(order.deliveryLongitude),
+        },
+        station: {
+          id: order.station?.id || order.stationId,
+          name: order.station?.name || "Station",
+          address: order.station?.address || null,
+        },
+        driver: latestDelivery ? {
+          id: latestDelivery.driverId,
+          name: latestDelivery.driverName || driver?.name || notification.data?.driverName || null,
+          phone: latestDelivery.driverPhone || driver?.phone || null,
+          vehicleNumber: latestDelivery.vehicleNumber || driver?.vehicleNumber || notification.data?.vehicleNumber || null,
+          vehicleType: driver?.vehicleType || null,
+        } : {
+          id: null,
+          name: notification.data?.driverName || null,
+          phone: notification.data?.phone || null,
+          vehicleNumber: notification.data?.vehicleNumber || null,
+          vehicleType: null,
+        },
+        payment: {
+          method: order.paymentMethod,
+          status: order.paymentStatus,
+        },
+        orderedAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        deliveredAt: latestDelivery?.deliveredAt || null,
+        items,
+        totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
+        subtotal: items.reduce((sum, item) => sum + item.lineTotal, 0),
+        totalAmount: Number(order.totalAmount || 0),
+        currency: "UGX",
+      };
+
+      return {
+        ...notification,
+        data: {
+          ...(notification.data && typeof notification.data === "object" ? notification.data : {}),
+          receipt,
+        },
+      };
+    });
+
     res.json({
       success: true,
-      data: notifications,
-      meta: { total, page, limit, unreadCount },
+      data: enrichedNotifications,
+      meta: { total, page: safePage, limit: safeLimit, unreadCount },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
