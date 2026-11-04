@@ -156,13 +156,13 @@ export default function StationsScreen() {
               {filtered.map((station) => (
                 <View key={station.id} style={styles.station}>
                   <View style={[styles.avatar, { backgroundColor: station.isActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)" }]}>
-                    <Text style={[styles.avatarText, { color: station.isActive ? "#3ddc84" : "#ff6b6b" }]}>{station.name?.slice(0, 2)?.toUpperCase()}</Text>
+                    <Text style={[styles.avatarText, { color: station.isActive ? "#0B3D2E" : "#991B1B" }]}>{station.name?.slice(0, 2)?.toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                       <Text style={styles.stationName}>{station.name}</Text>
                       <View style={[styles.pill, { backgroundColor: station.isActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)" }]}>
-                        <Text style={[styles.pillText, { color: station.isActive ? "#34d399" : "#ff6b6b" }]}>{station.isActive ? "OPEN" : "CLOSED"}</Text>
+                        <Text style={[styles.pillText, { color: station.isActive ? "#0B3D2E" : "#991B1B" }]}>{station.isActive ? "OPEN" : "CLOSED"}</Text>
                       </View>
                     </View>
                     <Text style={styles.stationSub}>{station.city || station.address}</Text>
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   netsum: { margin: 16, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 16 },
   netsumLabel: { fontSize: 11, color: COLORS.accent, letterSpacing: 1.5, fontWeight: "700", marginBottom: 12 },
   netsumNums: { flexDirection: "row", gap: 14 },
-  netsumBig: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  netsumBig: { color: COLORS.text, fontSize: 24, fontWeight: "700" },
   netsumSmall: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   searchWrap: { marginHorizontal: 16, marginBottom: 12, flexDirection: "row", alignItems: "center", backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 14 },
   searchIcon: { fontSize: 14, color: COLORS.muted, marginRight: 10 },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   station: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 12 },
   avatar: { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   avatarText: { fontWeight: "700", fontSize: 14 },
-  stationName: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  stationName: { color: COLORS.text, fontSize: 14, fontWeight: "600" },
   stationSub: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
   stationSold: { color: COLORS.accent, fontSize: 11, marginTop: 3 },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
