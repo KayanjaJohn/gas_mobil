@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Platform } from "react-native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import { Map, Camera, Marker, GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 import type { LocationPoint } from "../types";
 
 type Coordinate = { latitude: number; longitude: number };
@@ -12,97 +11,126 @@ interface Props {
   status: string;
 }
 
-const KAMPALA = {
-  latitude: 0.3136,
-  longitude: 32.5811,
-  latitudeDelta: 0.12,
-  longitudeDelta: 0.12,
-};
+const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const KAMPALA: Coordinate = { latitude: 0.3476, longitude: 32.5825 };
 
 export default function DriverLiveMap({ destination, driverLocation, status }: Props) {
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<any>(null);
 
   const driverPoint = useMemo<Coordinate | null>(() => {
     if (!driverLocation) return null;
     const latitude = Number(driverLocation.latitude);
     const longitude = Number(driverLocation.longitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
-      latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 ||
-      (latitude === 0 && longitude === 0)) return null;
+    if (
+      !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+      latitude < -90 || latitude > 90 ||
+      longitude < -180 || longitude > 180 ||
+      (latitude === 0 && longitude === 0)
+    ) return null;
     return { latitude, longitude };
   }, [driverLocation?.latitude, driverLocation?.longitude]);
 
-  const initialRegion = useMemo<Region>(() => {
-    const center = driverPoint || destination || KAMPALA;
-    return {
-      latitude: center.latitude,
-      longitude: center.longitude,
-      latitudeDelta: 0.035,
-      longitudeDelta: 0.035,
-    };
-  }, [driverPoint?.latitude, driverPoint?.longitude, destination?.latitude, destination?.longitude]);
+  const destinationPoint = useMemo<Coordinate | null>(() => {
+    if (!destination) return null;
+    const latitude = Number(destination.latitude);
+    const longitude = Number(destination.longitude);
+    if (
+      !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+      latitude < -90 || latitude > 90 ||
+      longitude < -180 || longitude > 180 ||
+      (latitude === 0 && longitude === 0)
+    ) return null;
+    return { latitude, longitude };
+  }, [destination?.latitude, destination?.longitude]);
 
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const coordinates = [driverPoint, destination].filter(Boolean) as Coordinate[];
-    if (coordinates.length === 2) {
-      mapRef.current.fitToCoordinates(coordinates, {
-        edgePadding: { top: 70, right: 50, bottom: 125, left: 50 },
-        animated: true,
-      });
-    } else if (coordinates.length === 1) {
-      mapRef.current.animateToRegion({
-        latitude: coordinates[0].latitude,
-        longitude: coordinates[0].longitude,
-        latitudeDelta: 0.025,
-        longitudeDelta: 0.025,
-      }, 450);
-    }
-  }, [driverPoint?.latitude, driverPoint?.longitude, destination?.latitude, destination?.longitude]);
+  const route = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: driverPoint && destinationPoint
+      ? [{
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [
+              [driverPoint.longitude, driverPoint.latitude],
+              [destinationPoint.longitude, destinationPoint.latitude],
+            ],
+          },
+        }]
+      : [],
+  }), [driverPoint?.latitude, driverPoint?.longitude, destinationPoint?.latitude, destinationPoint?.longitude]);
 
   const inMotion = ["in_transit", "nearby"].includes(status);
-  const hasAnyLocation = !!driverPoint || !!destination;
+  const hasAnyLocation = !!driverPoint || !!destinationPoint;
+
+  useEffect(() => {
+    if (!cameraRef.current) return;
+    const points = [driverPoint, destinationPoint].filter(Boolean) as Coordinate[];
+    if (points.length === 2) {
+      const west = Math.min(points[0].longitude, points[1].longitude);
+      const east = Math.max(points[0].longitude, points[1].longitude);
+      const south = Math.min(points[0].latitude, points[1].latitude);
+      const north = Math.max(points[0].latitude, points[1].latitude);
+      cameraRef.current.fitBounds(
+        [west, south, east, north],
+        { top: 64, right: 50, bottom: 128, left: 50 },
+        500
+      );
+    } else if (points.length === 1) {
+      cameraRef.current.easeTo({
+        center: [points[0].longitude, points[0].latitude],
+        zoom: 14,
+        duration: 450,
+      });
+    }
+  }, [driverPoint?.latitude, driverPoint?.longitude, destinationPoint?.latitude, destinationPoint?.longitude]);
+
+  const center = driverPoint || destinationPoint || KAMPALA;
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+      <Map
         style={StyleSheet.absoluteFillObject}
-        initialRegion={initialRegion}
-        showsCompass
-        showsScale
-        showsTraffic={false}
-        loadingEnabled
-        toolbarEnabled
-        accessibilityLabel="Live delivery map"
+        mapStyle={MAP_STYLE}
+        attribution
+        compass
+        scaleBar
       >
-        {destination && (
-          <Marker
-            coordinate={destination}
-            title="Customer delivery address"
-            description="Delivery destination"
-            pinColor="#F36A21"
-          />
+        <Camera
+          ref={cameraRef}
+          initialViewState={{
+            center: [center.longitude, center.latitude],
+            zoom: 12,
+          }}
+        />
+
+        {destinationPoint && (
+          <Marker id="customer-destination" lngLat={[destinationPoint.longitude, destinationPoint.latitude]} anchor="bottom">
+            <View style={styles.destinationPin}><Text style={styles.pinLabel}>D</Text></View>
+          </Marker>
         )}
+
         {driverPoint && (
-          <Marker
-            coordinate={driverPoint}
-            title="Your current position"
-            description="Live GPS position"
-            pinColor="#168447"
-            rotation={driverLocation?.heading || 0}
-          />
+          <Marker id="live-driver-position" lngLat={[driverPoint.longitude, driverPoint.latitude]} anchor="bottom">
+            <View style={styles.driverPin}><Text style={styles.pinLabel}>Y</Text></View>
+          </Marker>
         )}
-        {driverPoint && destination && (
-          <Polyline
-            coordinates={[driverPoint, destination]}
-            strokeColor="#F36A21"
-            strokeWidth={4}
-            lineDashPattern={[8, 5]}
-          />
+
+        {route.features.length > 0 && (
+          <GeoJSONSource id="driver-route-source" data={route as any}>
+            <Layer
+              id="driver-route-line"
+              type="line"
+              paint={{
+                "line-color": "#F36A21",
+                "line-width": 4,
+                "line-opacity": 0.9,
+                "line-dasharray": [2, 1.5],
+              }}
+            />
+          </GeoJSONSource>
         )}
-      </MapView>
+      </Map>
 
       <View style={styles.statusPanel}>
         <View style={[styles.dot, driverPoint && inMotion ? styles.liveDot : styles.waitDot]} />
@@ -110,11 +138,11 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
           <Text style={styles.statusTitle}>
             {driverPoint && inMotion ? "LIVE · Your GPS is sharing" :
               driverPoint ? "GPS location available" :
-              destination ? "Waiting for your first GPS fix" : "Delivery map"}
+              "Waiting for your first GPS fix"}
           </Text>
           <Text style={styles.statusSub}>
-            {destination
-              ? "Orange pin: customer · Green pin: you"
+            {destinationPoint
+              ? "Orange pin: customer · Green pin: your current position"
               : "Customer destination pin has not been saved"}
           </Text>
         </View>
@@ -127,6 +155,15 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
 
 const styles = StyleSheet.create({
   container: { flex: 1, overflow: "hidden", borderRadius: 16, backgroundColor: "#D9E6E0" },
+  destinationPin: {
+    width: 30, height: 30, borderRadius: 15, backgroundColor: "#F36A21",
+    borderWidth: 2, borderColor: "#FFF8EE", alignItems: "center", justifyContent: "center",
+  },
+  driverPin: {
+    width: 30, height: 30, borderRadius: 15, backgroundColor: "#0B3D2E",
+    borderWidth: 2, borderColor: "#FFF8EE", alignItems: "center", justifyContent: "center",
+  },
+  pinLabel: { color: "#FFF8EE", fontSize: 11, fontWeight: "900" },
   statusPanel: {
     position: "absolute", left: 12, right: 12, bottom: 12,
     flexDirection: "row", alignItems: "center", gap: 10,
