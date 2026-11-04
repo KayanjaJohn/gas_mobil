@@ -140,7 +140,7 @@ export const login = async (req: Request, res: Response) => {
     const isEmail = emailOrPhone.includes("@");
     const where = isEmail ? { email: emailOrPhone } : { phone: emailOrPhone };
 
-    const user = await userRepository.findOne({ where });
+    const user = await userRepository.findOne({ where, relations: ["station"] });
 
     if (!user) {
       console.log(`[LOGIN] Rejected: user not found for identifier=${emailOrPhone}`);
@@ -164,6 +164,14 @@ export const login = async (req: Request, res: Response) => {
       role: user.role,
       address: user.address,
       city: user.city,
+      vehicleNumber: user.vehicleNumber,
+      vehicleType: user.vehicleType,
+      driverStatus: user.driverStatus,
+      currentLatitude: user.currentLatitude,
+      currentLongitude: user.currentLongitude,
+      lastLocationUpdate: user.lastLocationUpdate,
+      stationId: user.stationId,
+      station: user.station,
     };
 
     console.log(`[LOGIN] Success: user=${user.email}`);
