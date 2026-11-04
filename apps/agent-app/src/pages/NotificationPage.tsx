@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAgentNotifications } from "../hooks/useAgentNotifications";
 
 interface ReceiptItem {
@@ -87,6 +87,12 @@ export default function NotificationPage({token,userRole}:Props) {
     const target = [notification.title,notification.message,notification.orderId||"",receipt?.customer?.name||"",receipt?.customer?.phone||"",products].join(" ").toLowerCase();
     return !search.trim() || target.includes(search.trim().toLowerCase());
   }),[notifications,search]);
+
+  useEffect(() => {
+    if (selected) return;
+    const firstOrderNotification = notifications.find((item) => !!item.orderId);
+    if (firstOrderNotification) setSelected(firstOrderNotification.id);
+  }, [notifications, selected]);
 
   const unread = notifications.filter(n=>!n.isRead).length;
   const read = notifications.length - unread;
