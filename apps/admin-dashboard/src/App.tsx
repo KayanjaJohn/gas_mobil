@@ -7,6 +7,7 @@ import Products from "./pages/Products";
 import Drivers from "./pages/Drivers";
 import Customers from "./pages/Customers";
 import Stations from "./pages/Stations";
+import StationHistory from "./pages/StationHistory";
 import Reports from "./pages/Reports";
 import NotificationPage from "./pages/NotificationPage";
 import Layout from "./components/Layout";
@@ -26,6 +27,7 @@ function App() {
           <Route path="/drivers" element={<Drivers />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/stations" element={<Stations />} />
+          <Route path="/station-history" element={<StationHistory />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/notifications" element={<NotificationPage />} />
         </Route>
