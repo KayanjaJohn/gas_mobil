@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAgentNotifications } from "../hooks/useAgentNotifications";
+import { useAuth } from "../context/AuthContext";
 
 interface ReceiptItem {
   id: string; productName: string; size?: string | null; weight?: number | null;
@@ -74,10 +75,12 @@ function ReceiptPanel({receipt,notification}:{receipt?:OrderReceipt;notification
 
 interface Props { token: string; userRole: "admin" | "agent"; }
 export default function NotificationPage({token,userRole}:Props) {
+  const auth = useAuth();
+  const activeToken = auth.token || token;
   const {
     notifications, unreadCount, loading, error, filters, setFilters,
     markAsRead, markAllAsRead, deleteNotification, refresh,
-  } = useAgentNotifications(token);
+  } = useAgentNotifications(activeToken);
   const [selected,setSelected] = useState<string|null>(null);
   const [autoExpanded, setAutoExpanded] = useState(false);
   const [search,setSearch] = useState("");
