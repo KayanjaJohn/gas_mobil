@@ -18,6 +18,9 @@ export class User {
   @Column({ type: "varchar", length: 20 })
   phone!: string;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  expoPushToken!: string | null;
+
   @Column({ type: "varchar", length: 255 })
   password!: string;
 
