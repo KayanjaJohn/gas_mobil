@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.defaults.headers.common.Authorization = `Bearer ${savedToken}`;
 
       try {
-        const response = await api.get("/auth/me");
+        const response = await api.get(`${API_URL}/auth/me`);
         const userData = response.data?.data;
         if (!userData || userData.role !== "agent") {
           throw new Error("This portal is for station agents only.");
