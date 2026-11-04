@@ -6,6 +6,7 @@ import { User } from "../entities/User";
 import { Order } from "../entities/Order";
 import { Delivery } from "../entities/Delivery";
 import { Product } from "../entities/Product";
+import { createSystemNotification } from "../services/notificationService";
 
 const userRepo = () => AppDataSource.getRepository(User);
 const orderRepo = () => AppDataSource.getRepository(Order);
@@ -229,6 +230,7 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
         .status(error === "Not your station order" ? 403 : 404)
         .json({ success: false, error: error || "Order not found" });
     }
+
     const stationId = await getAgentStationId(req);
     const driver = await userRepo().findOne({
       where: { id: driverId, role: "driver", stationId },
@@ -239,28 +241,70 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
     if ((driver as any).driverStatus !== "online") {
       return res.status(400).json({ success: false, error: "Driver is not online" });
     }
+
     const dRepo = deliveryRepo();
     const existing = await dRepo.findOne({ where: { orderId } } as any);
+    let delivery: Delivery;
+
     if (existing) {
       await dRepo.update(
         (existing as any).id,
         { driverId, driverName: driver.name, driverPhone: driver.phone, status: "driver_assigned" } as any
       );
       const updated = await dRepo.findOne({ where: { orderId } } as any);
-      return res.json({ success: true, delivery: updated });
+      if (!updated) throw new Error("Delivery assignment could not be reloaded");
+      delivery = updated;
+    } else {
+      const created = dRepo.create({
+        orderId,
+        driverId,
+        driverName: driver.name,
+        driverPhone: driver.phone,
+        status: "driver_assigned",
+      } as any);
+      const result: any = await dRepo.save(created);
+      delivery = Array.isArray(result) ? result[0] : result;
     }
-    const delivery = dRepo.create({
-      orderId, driverId, driverName: driver.name,
-      driverPhone: driver.phone, status: "driver_assigned",
-    } as any);
-    const result: any = await dRepo.save(delivery);
-    const saved = Array.isArray(result) ? result[0] : result;
+
     await orderRepo().update(orderId, { status: "driver_assigned" } as any);
+
+    const orderLabel = order.id.slice(0, 8).toUpperCase();
+    await createSystemNotification({
+      type: "driver_assigned",
+      orderId: order.id,
+      stationId: order.stationId,
+      title: "New Delivery Assigned",
+      message: `Order #${orderLabel} has been assigned to you.`,
+      data: {
+        orderId: order.id,
+        customerName: (order as any).user?.name,
+        deliveryAddress: order.deliveryAddress,
+      },
+      notifyAdmin: true,
+      notifyAgent: true,
+      notifyDriver: true,
+      userId: driver.id,
+    });
+
+    await createSystemNotification({
+      type: "driver_assigned",
+      orderId: order.id,
+      stationId: order.stationId,
+      title: "Driver Assigned",
+      message: `${driver.name} has been assigned to deliver order #${orderLabel}.`,
+      data: { orderId: order.id, driverId: driver.id, driverName: driver.name, phone: driver.phone },
+      notifyCustomer: true,
+      userId: order.userId,
+    });
+
+    // Keep the legacy event for older installed driver builds. New clients use
+    // the persisted notification above so it also appears in notification history.
     const io = (req as any).io || req.app.get("io");
     if (io) {
       io.to(`driver_${driverId}`).emit("new_order_assigned", { orderId: order.id });
     }
-    res.status(201).json({ success: true, delivery: saved });
+
+    return res.status(existing ? 200 : 201).json({ success: true, delivery });
   } catch (error) {
     console.error("assignDriverToOrder error:", error);
     res.status(500).json({ success: false, error: "Server error" });
