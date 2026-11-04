@@ -14,6 +14,8 @@ router.post('/orders/:id/assign', requireAgent, adminController.assignDriverToOr
 router.post('/orders/:id/cancel', requireAdmin, adminController.cancelOrder);
 
 // Station routes
+router.get('/stations/:id/history', requireAdmin, adminController.getStationHistory);
+router.delete('/stations/:id/history', requireAdmin, adminController.clearStationHistory);
 router.get('/stations', requireAdmin, adminController.getAllStations);
 router.post('/stations', requireAdmin, adminController.createStation);
 router.put('/stations/:id', requireAdmin, adminController.updateStation);
