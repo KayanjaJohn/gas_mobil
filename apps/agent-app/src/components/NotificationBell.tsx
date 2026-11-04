@@ -17,7 +17,7 @@ export default function NotificationBell({ token, userRole }: NotificationBellPr
   useEffect(() => {
     if (!latestNotification) return;
     setToast(latestNotification);
-    if ('Notification' in window && window.Notification.permission === 'granted') {
+    if (document.visibilityState === 'hidden' && 'Notification' in window && window.Notification.permission === 'granted') {
       try {
         new window.Notification(latestNotification.title, {
           body: latestNotification.message,
