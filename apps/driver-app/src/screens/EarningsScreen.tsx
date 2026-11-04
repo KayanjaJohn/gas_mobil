@@ -12,7 +12,13 @@ interface Earning {
   amount: number;
   status: string;
   createdAt: string;
-  order?: { deliveryAddress: string };
+  createdAt: string;
+  date?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryCity?: string;
+  items?: Array<{ productName: string; quantity: number; size?: string | null; weight?: number | null }>;
 }
 
 export default function EarningsScreen() {
@@ -82,9 +88,19 @@ export default function EarningsScreen() {
                   {e.status}
                 </Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}><Icon name="map-marker-outline" size={16} color="#94A3B8" /><Text style={styles.earningAddress}> {e.order?.deliveryAddress || 'Unknown address'}</Text></View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}><Icon name="map-marker-outline" size={16} color="#94A3B8" /><Text style={styles.earningAddress}> {[e.deliveryAddress, e.deliveryCity].filter(Boolean).join(", ") || 'Address not recorded'}</Text></View>
+              {e.customerName && <Text style={styles.earningDate}>Customer: {e.customerName} · {e.customerPhone || "No phone"}</Text>}
+              {(e.items || []).map((item, index) => (
+                <Text key={index} style={styles.earningProduct}>
+                  {item.productName}{item.size ? ` · ${item.size}` : item.weight ? ` · ${item.weight}kg` : ""} × {item.quantity}
+                </Text>
+              ))}
               <Text style={styles.earningAmount}>UGX {e.amount?.toLocaleString()}</Text>
-              <Text style={styles.earningDate}>{new Date(e.createdAt).toLocaleDateString()}</Text>
+              <Text style={styles.earningDate}>
+                {Number.isFinite(new Date(e.createdAt || e.date || "").getTime())
+                  ? new Date(e.createdAt || e.date || "").toLocaleString()
+                  : "Delivery date unavailable"}
+              </Text>
             </View>
           ))
         )}
@@ -122,6 +138,7 @@ const styles = StyleSheet.create({
   earningId: { color: '#0B3D2E', fontSize: 14, fontWeight: '600' },
   earningStatus: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
   earningAddress: { color: '#68786F', fontSize: 12, marginBottom: 6 },
-  earningAmount: { color: '#F36A21', fontSize: 16, fontWeight: '700' },
+  earningAmount: { color: '#F36A21', fontSize: 16, fontWeight: '700', marginTop: 6 },
+  earningProduct: { color: '#0B3D2E', fontSize: 12, marginBottom: 3, fontWeight: '600' },
   earningDate: { color: '#68786F', fontSize: 11, marginTop: 4 },
 });
