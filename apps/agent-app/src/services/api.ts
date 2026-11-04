@@ -5,7 +5,6 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 // Use the shared Axios singleton so legacy pages importing axios directly
 // receive the same token and single-flight refresh interceptors.
 const api = axios;
-api.defaults.baseURL = API_URL;
 api.defaults.timeout = 30000;
 api.defaults.headers.common["Content-Type"] = "application/json";
 
@@ -102,7 +101,10 @@ export async function apiRequest<T>(
   url: string,
   data?: unknown
 ): Promise<ApiResponse<T>> {
-  const response = await api.request<ApiResponse<T>>({ method, url, data });
+  const fullUrl = /^https?:\\/\\//i.test(url)
+    ? url
+    : `${API_URL}${url.startsWith("/") ? url : `/${url}`}`;
+  const response = await api.request<ApiResponse<T>>({ method, url: fullUrl, data });
   return response.data;
 }
 
