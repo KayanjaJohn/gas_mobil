@@ -106,6 +106,11 @@ export default function NotificationPage() {
     finally { setLoading(false); }
   }, [token]);
   useEffect(() => { void fetchNotifications(); }, [fetchNotifications]);
+  useEffect(() => {
+    if (selected) return;
+    const firstOrderNotification = notifications.find((item) => !!item.orderId);
+    if (firstOrderNotification) setSelected(firstOrderNotification.id);
+  }, [notifications, selected]);
 
   const markAsRead = async (id:string) => {
     try {
