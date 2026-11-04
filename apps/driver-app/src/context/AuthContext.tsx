@@ -19,6 +19,7 @@ interface AuthContextType {
  isLoading: boolean;
  login: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
  logout: () => Promise<void>;
+ updateProfile: (details: { name: string; phone: string }) => Promise<{ success: boolean; error?: string }>;
 }
 
 // FIX: Safe default context value
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
  isLoading: true,
  login: async () => ({ success: false, error: 'AuthProvider not mounted' }),
  logout: async () => {},
+ updateProfile: async () => ({ success: false, error: 'AuthProvider not mounted' }),
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -153,6 +155,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  }
  };
 
+ const updateProfile = async (details: { name: string; phone: string }) => {
+ try {
+   const response = await api.put('/auth/profile', {
+     name: details.name.trim(),
+     phone: details.phone.trim(),
+   });
+   if (!response.data?.success || !response.data?.data) {
+     return { success: false, error: response.data?.error || 'Profile update failed.' };
+   }
+   const updatedUser = { ...user, ...response.data.data } as User;
+   setUser(updatedUser);
+   await AsyncStorage.setItem('driver_user', JSON.stringify(updatedUser));
+   return { success: true };
+ } catch (error: any) {
+   return {
+     success: false,
+     error: error?.response?.data?.error || error?.message || 'Could not update your profile.',
+   };
+ }
+ };
+
  const logout = async () => {
  await syncDriverAvailability('offline');
  disconnectSocket();
@@ -164,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  };
 
  return (
- <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+ <AuthContext.Provider value={{ user, token, isLoading, login, logout, updateProfile }}>
  {children}
  </AuthContext.Provider>
  );
