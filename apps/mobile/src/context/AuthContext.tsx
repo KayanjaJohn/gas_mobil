@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
+import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { apiRequest } from '../services/api';
 import { User } from '../types';
 import { initializeSocket, disconnectSocket } from '../services/socketService';
@@ -113,6 +116,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { mounted = false; };
   }, []);
 
+  // Register the customer's EAS push token so order and account updates can
+  // be delivered by the OS even when the app is not running in the foreground.
+  useEffect(() => {
+    if (!user?.id || Platform.OS === 'web') return;
+    let active = true;
+    const registerDevice = async () => {
+      try {
+        let permission = await Notifications.getPermissionsAsync();
+        if (!permission.granted) permission = await Notifications.requestPermissionsAsync();
+        if (!permission.granted) return;
+        const projectId =
+          Constants.expoConfig?.extra?.eas?.projectId ||
+          (Constants.easConfig as any)?.projectId;
+        if (!projectId) {
+          console.warn('[Push] Customer EAS project ID is missing.');
+          return;
+        }
+        const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        if (active && pushToken) {
+          await apiRequest('post', '/notifications/push-token', { expoPushToken: pushToken });
+        }
+      } catch (error: any) {
+        console.warn('[Push] Customer device registration failed:', error?.message || error);
+      }
+    };
+    void registerDevice();
+    return () => { active = false; };
+  }, [user?.id]);
+
   // Route protection
   useEffect(() => {
     if (!isReady || isLoading) return;
@@ -169,6 +201,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     if (__DEV__) console.log('[Auth] Logging out');
+    try {
+      if (Platform.OS !== 'web') await apiRequest('delete', '/notifications/push-token');
+    } catch (error: any) {
+      console.warn('[Push] Customer device token cleanup failed:', error?.message || error);
+    }
     await clearAuth();
     router.replace('/login');
   }, [clearAuth, router]);
