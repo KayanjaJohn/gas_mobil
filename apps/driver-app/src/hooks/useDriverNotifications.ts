@@ -1,9 +1,36 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSocket, initializeSocket } from '../services/socketService';
+import * as Notifications from 'expo-notifications';
+import { Vibration } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
 const MAX_NOTIFICATIONS = 100;
+const alertedNotificationIds = new Set<string>();
+
+async function alertDriver(payload: any) {
+  const id = String(payload?.id || '');
+  if (!id || alertedNotificationIds.has(id)) return;
+  alertedNotificationIds.add(id);
+  if (alertedNotificationIds.size > 300) {
+    const oldest = alertedNotificationIds.values().next().value;
+    if (oldest) alertedNotificationIds.delete(oldest);
+  }
+  Vibration.vibrate([0, 500, 180, 500, 180, 650]);
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: payload.title || 'GasMobil notification',
+        body: payload.message || 'You have a new update.',
+        sound: 'default',
+        data: { orderId: payload.orderId || payload.data?.orderId },
+      },
+      trigger: null,
+    });
+  } catch (error) {
+    console.warn('[DriverNotif] Could not display phone notification:', error);
+  }
+}
 
 export interface DriverNotification {
   id: string;
@@ -91,72 +118,69 @@ export function useDriverNotifications() {
     }
   }, []);
 
-  // Socket listeners
+  // Socket listeners. The driver Home and Notifications screens share one
+  // socket, so cleanup must remove only this hook instance's handlers.
   useEffect(() => {
-    let socketCheckInterval: NodeJS.Timeout;
+    let disposed = false;
+    let socketCheckInterval: NodeJS.Timeout | undefined;
+    let activeSocket: ReturnType<typeof getSocket> = null;
 
-    const setupSocketListeners = async () => {
-      // Ensure socket is initialized
-      let socket = getSocket();
-      if (!socket) {
-        socket = await initializeSocket();
+    const handleNotification = (payload: any) => {
+      const id = payload?.id;
+      if (typeof id !== 'string' || id.length !== 36) {
+        fetchNotifications();
+        return;
       }
-      if (!socket) return;
 
-      const handleNotification = (payload: any) => {
-        console.log('[DriverNotif] Socket event:', payload.type || payload.title);
-        if (payload.id && typeof payload.id === 'string' && payload.id.length === 36) {
-          const newNotif: DriverNotification = {
-            id: payload.id,
-            type: payload.type || 'system_announcement',
-            title: payload.title || 'Notification',
-            message: payload.message || '',
-            isRead: false,
-            createdAt: payload.createdAt || new Date().toISOString(),
-            orderId: payload.orderId,
-            data: payload.data,
-          };
-          setNotifications((prev) => {
-            const next = [newNotif, ...prev];
-            return next.slice(0, MAX_NOTIFICATIONS);
-          });
-          setUnreadCount((prev) => prev + 1);
-        } else {
-          fetchNotifications();
-        }
+      const newNotif: DriverNotification = {
+        id,
+        type: payload.type || 'system_announcement',
+        title: payload.title || 'Notification',
+        message: payload.message || '',
+        isRead: !!payload.isRead,
+        createdAt: payload.createdAt || new Date().toISOString(),
+        orderId: payload.orderId || payload.data?.orderId || null,
+        data: payload.data,
       };
 
-      socket.on('notification', handleNotification);
-      socket.on('new_order_assigned', (payload) => {
-        handleNotification({
-          ...payload,
-          type: 'new_order_assigned',
-          title: 'New Order Assigned',
-          message: `Order #${payload.orderId?.slice(0, 8)} assigned to you`,
-        });
+      setNotifications((prev) => {
+        if (prev.some((item) => item.id === id)) return prev;
+        return [newNotif, ...prev].slice(0, MAX_NOTIFICATIONS);
       });
+      setUnreadCount((prev) => prev + (alertedNotificationIds.has(id) ? 0 : (newNotif.isRead ? 0 : 1)));
+      void alertDriver(payload);
+    };
+
+    const handleLegacyAssignment = () => {
+      // Older API builds emit this event without a database ID. Reload the
+      // stored notification rather than inventing an ID that cannot be read.
+      fetchNotifications();
+    };
+
+    const setupSocketListeners = async () => {
+      let socket = getSocket();
+      if (!socket) socket = await initializeSocket();
+      if (disposed || !socket) return;
+      activeSocket = socket;
+
+      socket.on('notification', handleNotification);
+      socket.on('new_order_assigned', handleLegacyAssignment);
       socket.on('order_status_changed', handleNotification);
 
-      // Poll as fallback when socket is disconnected
       socketCheckInterval = setInterval(() => {
-        const s = getSocket();
-        if (!s?.connected) {
-          fetchNotifications();
-        }
+        if (!getSocket()?.connected) fetchNotifications();
       }, 30000);
     };
 
-    setupSocketListeners();
-    fetchNotifications();
+    void setupSocketListeners();
+    void fetchNotifications();
 
     return () => {
+      disposed = true;
       if (socketCheckInterval) clearInterval(socketCheckInterval);
-      const socket = getSocket();
-      if (socket) {
-        socket.off('notification');
-        socket.off('new_order_assigned');
-        socket.off('order_status_changed');
-      }
+      activeSocket?.off('notification', handleNotification);
+      activeSocket?.off('new_order_assigned', handleLegacyAssignment);
+      activeSocket?.off('order_status_changed', handleNotification);
     };
   }, [fetchNotifications]);
 
