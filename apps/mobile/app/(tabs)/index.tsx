@@ -92,13 +92,18 @@ export default function HomeScreen() {
       const response = await apiRequest<HomeOrder[]>("get", "/orders");
       if (!response.success || !response.data) return;
       const completedDeliveries = response.data.flatMap((order) => {
-        const delivered = (order.deliveries || [])
+        const cylinderItems = (order.items || []).filter((item) =>
+          item.product?.type === "cylinder" ||
+          /cylinder|lpg|gas refill/i.test(item.product?.name || "")
+        );
+        if (cylinderItems.length === 0) return [];
+        return (order.deliveries || [])
           .filter((delivery) => delivery.status === "delivered")
           .map((delivery) => ({
             deliveredAt: delivery.deliveredAt || order.updatedAt || order.createdAt,
             order,
+            cylinderItems,
           }));
-        return delivered;
       }).filter((entry) => Number.isFinite(new Date(entry.deliveredAt).getTime()));
 
       completedDeliveries.sort(
@@ -110,14 +115,8 @@ export default function HomeScreen() {
         return;
       }
 
-      const cylinderItems = (latest.order.items || []).filter((item) =>
-        item.product?.type === "cylinder" ||
-        /cylinder|lpg|gas refill/i.test(item.product?.name || "")
-      );
-      const deliveredWeight = cylinderItems.reduce((sum, item) => {
-        const weight = Number(item.product?.weight || 0);
-        return sum + (Number.isFinite(weight) && weight > 0 ? weight * Math.max(1, Number(item.quantity || 1)) : 0);
-      }, 0);
+      const firstCylinderItem = latest.cylinderItems[0];
+      const deliveredWeight = Number(firstCylinderItem?.product?.weight || 0);
 
       // Existing GasMobil home design defaults to a 6 kg cylinder if older
       // order records do not include product weight in the API response.
