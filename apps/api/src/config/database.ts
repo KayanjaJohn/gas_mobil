@@ -10,6 +10,7 @@ import { Wallet } from '../entities/Wallet';
 import { Transaction } from '../entities/Transaction';
 import { Notification } from '../entities/Notification';
 import { ProductCatalog } from '../entities/ProductCatalog';
+import { StationActivity } from '../entities/StationActivity';
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
 
@@ -28,7 +29,7 @@ const AppDataSource = new DataSource({
       }),
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
-  entities: [User, Station, Product, Order, OrderItem, Delivery, Wallet, Transaction, Notification, ProductCatalog],
+  entities: [User, Station, Product, Order, OrderItem, Delivery, Wallet, Transaction, Notification, ProductCatalog, StationActivity],
   // Resolve compiled .js migrations in production and .ts migrations in development.
   migrations: [__dirname + '/../migrations/*{.js,.ts}'],
   migrationsRun: true,
