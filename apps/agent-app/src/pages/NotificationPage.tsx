@@ -79,6 +79,7 @@ export default function NotificationPage({token,userRole}:Props) {
     markAsRead, markAllAsRead, deleteNotification, refresh,
   } = useAgentNotifications(token);
   const [selected,setSelected] = useState<string|null>(null);
+  const [autoExpanded, setAutoExpanded] = useState(false);
   const [search,setSearch] = useState("");
 
   const filtered = useMemo(() => notifications.filter((notification) => {
@@ -89,10 +90,11 @@ export default function NotificationPage({token,userRole}:Props) {
   }),[notifications,search]);
 
   useEffect(() => {
-    if (selected) return;
+    if (loading || autoExpanded) return;
     const firstOrderNotification = notifications.find((item) => !!item.orderId);
     if (firstOrderNotification) setSelected(firstOrderNotification.id);
-  }, [notifications, selected]);
+    setAutoExpanded(true);
+  }, [notifications, loading, autoExpanded]);
 
   const unread = notifications.filter(n=>!n.isRead).length;
   const read = notifications.length - unread;
