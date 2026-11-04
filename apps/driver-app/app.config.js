@@ -22,7 +22,7 @@ export default ({ config }) => ({
         }
       : {}),
   },
-  plugins: [...(config.plugins || []), "expo-notifications"],
+  plugins: [...(config.plugins || []), "expo-notifications", "@maplibre/maplibre-react-native"],
   extra: {
     ...config.extra,
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
