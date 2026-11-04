@@ -20,6 +20,16 @@ import { apiRequest } from '../src/services/api';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/utils/constants';
 
+interface Station {
+  id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  latitude: number | string;
+  longitude: number | string;
+  isActive: boolean;
+}
+
 const PAYMENT_METHODS = [
   { id: 'cash', label: 'Cash on Delivery', icon: 'cash-multiple', color: '#F36A21' },
 ];
@@ -49,26 +59,82 @@ export default function OrderScreen() {
   const [placing, setPlacing] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [selectedStationId, setSelectedStationId] = useState("");
+  const [selectedStationManually, setSelectedStationManually] = useState(false);
+  const [stationsLoading, setStationsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    apiRequest<Product[]>("get", "/products")
-      .then((res) => {
-        if (active && res.success && Array.isArray(res.data)) setProducts(res.data);
-      })
-      .catch((err) => console.error("[Order] Product fetch failed:", err))
+    Promise.all([
+      apiRequest<Product[]>("get", "/products"),
+      apiRequest<Station[]>("get", "/stations"),
+    ]).then(([productResponse, stationResponse]) => {
+      if (!active) return;
+      if (productResponse.success && Array.isArray(productResponse.data)) {
+        setProducts(productResponse.data);
+      }
+      if (stationResponse.success && Array.isArray(stationResponse.data)) {
+        setStations(stationResponse.data.filter((station) => station.isActive));
+      }
+    }).catch((error) => console.error("[Order] Products/stations fetch failed:", error))
+      .finally(() => { if (active) setStationsLoading(false); });
     return () => { active = false; };
   }, []);
 
+  const distanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const radians = (value: number) => value * Math.PI / 180;
+    const dLat = radians(lat2 - lat1);
+    const dLon = radians(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const nearestStation = React.useMemo(() => {
+    if (!location || stations.length === 0) return null;
+    return stations.reduce((best, station) => {
+      if (!best) return station;
+      const stationDistance = distanceKm(
+        location.latitude, location.longitude,
+        Number(station.latitude), Number(station.longitude)
+      );
+      const bestDistance = distanceKm(
+        location.latitude, location.longitude,
+        Number(best.latitude), Number(best.longitude)
+      );
+      return stationDistance < bestDistance ? station : best;
+    }, null as Station | null);
+  }, [location?.latitude, location?.longitude, stations]);
+
+  useEffect(() => {
+    if (nearestStation && !selectedStationManually) {
+      setSelectedStationId(nearestStation.id);
+    }
+  }, [nearestStation?.id, selectedStationManually]);
+
   const requestedKg = Number.parseFloat(cylinderSize);
-  const cylinderProduct = products.find((p) => {
-    if (p.type !== "cylinder" || !p.isAvailable || p.stock < quantity) return false;
-    const exactSize = String(p.size ?? "").replace(/\\s/g, "").toLowerCase()
+  const matchesCylinderSize = (product: Product) => {
+    const exactSize = String(product.size ?? "").replace(/\\s/g, "").toLowerCase()
       === cylinderSize.replace(/\\s/g, "").toLowerCase();
-    const exactWeight = Number(p.weight) === requestedKg;
-    const exactName = new RegExp(`\\\\b${requestedKg}\\\\s*kg\\\\b`, "i").test(p.name);
+    const exactWeight = Number(product.weight) === requestedKg;
+    const exactName = new RegExp(`\\\\b${requestedKg}\\\\s*kg\\\\b`, "i").test(product.name);
     return exactSize || exactWeight || exactName;
-  });
+  };
+  const productsForSelectedStation = products.filter((product) =>
+    product.stationId === selectedStationId &&
+    product.type === "cylinder" &&
+    product.isAvailable &&
+    matchesCylinderSize(product)
+  );
+  const cylinderProduct = productsForSelectedStation.find((product) => Number(product.stock) >= quantity);
+  const stationHasAnySize = (stationId: string) => products.some((product) =>
+    product.stationId === stationId &&
+    product.type === "cylinder" &&
+    product.isAvailable &&
+    matchesCylinderSize(product) &&
+    Number(product.stock) > 0
+  );
 
   const selectedSize = CYLINDER_SIZES.find((s) => s.id === cylinderSize);
   const totalAmount = (selectedSize?.price || 0) * quantity;
@@ -115,6 +181,7 @@ export default function OrderScreen() {
     setPlacing(true);
     try {
       const payload = {
+        stationId: selectedStationId,
         items: [
           {
             productId: cylinderProduct.id,
@@ -215,6 +282,60 @@ export default function OrderScreen() {
                 {location.accuracy ? ` (±${Math.round(location.accuracy)}m)` : ''}
               </Text>
             </View>
+          )}
+        </View>
+
+        {/* Select the station that will fulfil this order. */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            <Icon name="store-marker-outline" size={19} color={COLORS.accent} />  Choose Delivery Station
+          </Text>
+          <Text style={styles.stationHint}>
+            Your nearest station is preselected. Choose another station whenever it has the cylinder size you need.
+          </Text>
+          {stationsLoading ? (
+            <ActivityIndicator color={COLORS.accent} />
+          ) : stations.length === 0 ? (
+            <Text style={styles.noStockText}>No active GasMobil stations are available right now.</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stationOptions}>
+              {stations.map((station) => {
+                const inStock = stationHasAnySize(station.id);
+                const selected = selectedStationId === station.id;
+                return (
+                  <TouchableOpacity
+                    key={station.id}
+                    style={[styles.stationOption, selected && styles.stationOptionActive]}
+                    onPress={() => {
+                      setSelectedStationManually(true);
+                      setSelectedStationId(station.id);
+                    }}
+                    activeOpacity={0.82}
+                  >
+                    <View style={styles.stationOptionHeader}>
+                      <Icon name="map-marker" size={17} color={selected ? "#FFF8EE" : COLORS.accent} />
+                      <Text style={[styles.stationOptionName, selected && styles.stationOptionTextActive]}>
+                        {station.name}
+                      </Text>
+                    </View>
+                    <Text style={[styles.stationOptionSub, selected && styles.stationOptionTextActive]}>
+                      {station.city || station.address || "Uganda"}
+                    </Text>
+                    <Text style={[styles.stationStock, { color: inStock ? COLORS.success : (selected ? "#FFE0CB" : COLORS.danger) }]}>
+                      {inStock ? "Selected size in stock" : `No ${cylinderSize} stock`}
+                    </Text>
+                    {nearestStation?.id === station.id && (
+                      <Text style={[styles.nearestLabel, selected && styles.stationOptionTextActive]}>NEAREST TO YOU</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+          {!!selectedStationId && !cylinderProduct && (
+            <Text style={styles.noStockText}>
+              This station does not have enough {cylinderSize} stock for your quantity. Select another station or we will notify you when nearby stock is replenished.
+            </Text>
           )}
         </View>
 
@@ -379,6 +500,20 @@ const styles = StyleSheet.create({
   locationAddress: { fontSize: 15, fontWeight: '600', color: COLORS.text, marginBottom: 4 },
   locationCoords: { fontSize: 12, color: COLORS.muted },
 
+  stationHint: { color: "#D8E7DE", fontSize: 12, lineHeight: 18, marginBottom: 10 },
+  stationOptions: { gap: 10, paddingBottom: 4 },
+  stationOption: {
+    width: 190, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14,
+    backgroundColor: COLORS.card, padding: 12,
+  },
+  stationOptionActive: { backgroundColor: COLORS.green, borderColor: COLORS.accent, borderWidth: 2 },
+  stationOptionHeader: { flexDirection: "row", alignItems: "center", gap: 5 },
+  stationOptionName: { color: COLORS.text, fontSize: 12, fontWeight: "800", flex: 1 },
+  stationOptionSub: { color: COLORS.muted, fontSize: 11, marginTop: 5 },
+  stationStock: { fontSize: 11, fontWeight: "800", marginTop: 8 },
+  nearestLabel: { color: COLORS.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1, marginTop: 6 },
+  stationOptionTextActive: { color: "#FFF8EE" },
+  noStockText: { color: "#FFD7BF", fontSize: 12, lineHeight: 18, marginTop: 8 },
   // Order Type
   typeRow: { flexDirection: 'row', gap: 12 },
   typeCard: {
