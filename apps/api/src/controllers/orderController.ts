@@ -152,6 +152,25 @@ export const createOrder = async (req: Request, res: Response) => {
       await queryRunner.manager.save(product);
     }
 
+    if (!fulfilmentStation) {
+      throw new Error("No station with the selected product is available. Please choose another station.");
+    }
+
+    // Save the customer's most recent delivery location for nearby restock
+    // notifications. Coordinates are only updated from validated Uganda GPS.
+    const customerRecord = await queryRunner.manager.findOne(User, { where: { id: user.id } });
+    if (customerRecord) {
+      customerRecord.latitude = lat;
+      customerRecord.longitude = lng;
+      if (typeof deliveryAddress === "string" && deliveryAddress.trim()) {
+        customerRecord.address = deliveryAddress.trim();
+      }
+      if (typeof deliveryCity === "string" && deliveryCity.trim()) {
+        customerRecord.city = deliveryCity.trim();
+      }
+      await queryRunner.manager.save(customerRecord);
+    }
+
     const order = queryRunner.manager.create(Order, {
       userId: user.id,
       stationId: fulfilmentStation.id,
