@@ -182,6 +182,8 @@ export function useAdminNotifications(token: string | null) {
           return [newNotif, ...prev].slice(0, MAX_NOTIFICATIONS);
         });
         setLatestNotification(newNotif);
+        // Reload the persisted notification so its full order receipt is attached.
+        if (newNotif.orderId) void fetchNotifications();
         if (isNewForThisHook) setUnreadCount((prev) => prev + 1);
         if (!alreadyAlerted) {
           alertedNotificationIds.add(newNotif.id);
