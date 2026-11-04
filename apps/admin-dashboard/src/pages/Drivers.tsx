@@ -56,6 +56,7 @@ export default function Drivers() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [newDriver, setNewDriver] = useState({ name: '', email: '', phone: '', password: '', stationId: '', vehicleNumber: '', vehicleType: '' });
 
   useEffect(() => { fetchDrivers(); fetchStations(); }, []);
@@ -76,15 +77,39 @@ export default function Drivers() {
     } catch (err) { console.error('Failed to fetch stations:', err); }
   };
 
-  const createDriver = async () => {
-    if (!newDriver.name || !newDriver.email || !newDriver.phone || !newDriver.password || !newDriver.stationId) {
-      alert('Please fill all required fields'); return;
+  const saveDriver = async () => {
+    if (!newDriver.name.trim() || !newDriver.email.trim() || !newDriver.phone.trim() || !newDriver.stationId || (!editingDriver && !newDriver.password)) {
+      alert('Name, email, phone and station are required. New drivers also need a password.');
+      return;
     }
     try {
-      await axios.post(`${API_URL}/admin/drivers`, newDriver, { headers: { Authorization: `Bearer ${token}` } });
-      setOpen(false); setNewDriver({ name: '', email: '', phone: '', password: '', stationId: '', vehicleNumber: '', vehicleType: '' });
+      if (editingDriver) {
+        await axios.put(`${API_URL}/admin/drivers/${editingDriver.id}`, {
+          ...newDriver,
+          password: newDriver.password || undefined,
+        }, { headers: { Authorization: `Bearer ${token}` } });
+      } else {
+        await axios.post(`${API_URL}/admin/drivers`, newDriver, { headers: { Authorization: `Bearer ${token}` } });
+      }
+      setOpen(false);
+      setEditingDriver(null);
+      setNewDriver({ name: '', email: '', phone: '', password: '', stationId: '', vehicleNumber: '', vehicleType: '' });
       fetchDrivers();
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to create driver'); }
+    } catch (err: any) { alert(err.response?.data?.error || (editingDriver ? 'Failed to update driver' : 'Failed to create driver')); }
+  };
+
+  const openEditDriver = (driver: Driver) => {
+    setEditingDriver(driver);
+    setNewDriver({
+      name: driver.name || '',
+      email: driver.email || '',
+      phone: driver.phone || '',
+      password: '',
+      stationId: (driver as any).stationId || '',
+      vehicleNumber: driver.vehicleNumber || '',
+      vehicleType: driver.vehicleType || '',
+    });
+    setOpen(true);
   };
 
   const getStatusColor = (status: string): any => {
@@ -99,7 +124,7 @@ export default function Drivers() {
           <Typography variant="h4">Drivers</Typography>
           <Typography variant="body2" color="textSecondary">Manage all delivery drivers</Typography>
         </Box>
-        <Button variant="contained" onClick={() => setOpen(true)}>Add Driver</Button>
+        <Button variant="contained" onClick={() => { setEditingDriver(null); setNewDriver({ name: '', email: '', phone: '', password: '', stationId: '', vehicleNumber: '', vehicleType: '' }); setOpen(true); }}>Add Driver</Button>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {loading ? (
@@ -110,7 +135,7 @@ export default function Drivers() {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell><TableCell>Phone</TableCell><TableCell>Vehicle</TableCell>
-                <TableCell>Station</TableCell><TableCell>Status</TableCell><TableCell>Location</TableCell>
+                <TableCell>Station</TableCell><TableCell>Status</TableCell><TableCell>Location</TableCell><TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -130,10 +155,11 @@ export default function Drivers() {
                       driver.currentLongitude
                     )}
                   </TableCell>
+                  <TableCell><Button size="small" onClick={() => openEditDriver(driver)}>Edit</Button></TableCell>
                 </TableRow>
               ))}
               {drivers.length === 0 && (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">No drivers found</Typography>
                 </TableCell></TableRow>
               )}
@@ -143,13 +169,13 @@ export default function Drivers() {
       )}
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Driver</DialogTitle>
+        <DialogTitle>{editingDriver ? `Edit ${editingDriver.name}` : "Add New Driver"}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}><TextField fullWidth label="Name" value={newDriver.name} onChange={(e) => setNewDriver({...newDriver, name: e.target.value})} required /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Email" type="email" value={newDriver.email} onChange={(e) => setNewDriver({...newDriver, email: e.target.value})} required /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Phone" value={newDriver.phone} onChange={(e) => setNewDriver({...newDriver, phone: e.target.value})} required /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Driver password" type="password" value={newDriver.password} onChange={(e) => setNewDriver({...newDriver, password: e.target.value})} required inputProps={{ minLength: 8 }} helperText="Use a unique password of at least 8 characters and share it securely with the driver." /></Grid>
+            <Grid item xs={12}><TextField fullWidth label={editingDriver ? "New password (optional)" : "Driver password"} type="password" value={newDriver.password} onChange={(e) => setNewDriver({...newDriver, password: e.target.value})} required={!editingDriver} inputProps={{ minLength: 8 }} helperText={editingDriver ? "Leave blank to keep the current password." : "Use a unique password of at least 8 characters and share it securely with the driver."} /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Vehicle Number" value={newDriver.vehicleNumber} onChange={(e) => setNewDriver({...newDriver, vehicleNumber: e.target.value})} /></Grid>
             <Grid item xs={6}><TextField fullWidth label="Vehicle Type" value={newDriver.vehicleType} onChange={(e) => setNewDriver({...newDriver, vehicleType: e.target.value})} /></Grid>
             <Grid item xs={12}>
@@ -163,7 +189,7 @@ export default function Drivers() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={createDriver} variant="contained">Create</Button>
+          <Button onClick={saveDriver} variant="contained">{editingDriver ? "Save changes" : "Create"}</Button>
         </DialogActions>
       </Dialog>
     </Box>
