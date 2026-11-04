@@ -13,8 +13,6 @@ interface Customer {
   name: string;
   email: string;
   phone: string;
-  address?: string | null;
-  city?: string | null;
   role: string;
   address?: string | null;
   city?: string | null;
