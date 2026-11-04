@@ -40,6 +40,7 @@ export const createOrder = async (req: Request, res: Response) => {
   try {
     const {
       items,
+      stationId: requestedStationId,
       deliveryAddress,
       deliveryCity,
       deliveryLatitude,
@@ -100,17 +101,15 @@ export const createOrder = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "No active stations available" });
     }
 
-    let nearestStation = stations[0];
-    let minDistance = Infinity;
-
-    for (const station of stations) {
-      if (station.latitude && station.longitude) {
-        const dist = getDistance(lat, lng, station.latitude, station.longitude);
-        if (dist < minDistance) {
-          minDistance = dist;
-          nearestStation = station;
-        }
-      }
+    let fulfilmentStation = requestedStationId
+      ? stations.find((station) => station.id === requestedStationId) || null
+      : null;
+    if (requestedStationId && !fulfilmentStation) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({
+        success: false,
+        error: "The selected station is unavailable. Please choose another active station.",
+      });
     }
 
     let totalAmount = 0;
@@ -126,8 +125,17 @@ export const createOrder = async (req: Request, res: Response) => {
       if (!product.isAvailable) {
         throw new Error(`${product.name} is not available`);
       }
-      if (product.stock < item.quantity) {
-        throw new Error(`Insufficient stock for ${product.name}`);
+      if (!fulfilmentStation) {
+        // Compatibility for older app versions which do not send stationId:
+        // honour the station that owns the selected product rather than assigning
+        // stock to an unrelated nearest station.
+        fulfilmentStation = stations.find((station) => station.id === product.stationId) || null;
+      }
+      if (!fulfilmentStation || product.stationId !== fulfilmentStation.id) {
+        throw new Error("This product is not stocked at the selected station. Choose a station that has the item.");
+      }
+      if (Number(product.stock) < Number(item.quantity)) {
+        throw new Error(`Insufficient stock for ${product.name} at ${fulfilmentStation.name}`);
       }
 
       totalAmount += product.price * item.quantity;
@@ -146,7 +154,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const order = queryRunner.manager.create(Order, {
       userId: user.id,
-      stationId: nearestStation.id,
+      stationId: fulfilmentStation.id,
       totalAmount,
       deliveryAddress: deliveryAddress || "",
       deliveryCity: deliveryCity || "",
@@ -166,7 +174,7 @@ export const createOrder = async (req: Request, res: Response) => {
     await createSystemNotification({
       type: "order_placed",
       orderId: order.id,
-      stationId: nearestStation.id,
+      stationId: fulfilmentStation.id,
       title: "New Order Received",
       message: `Order #${order.id.slice(0, 8).toUpperCase()} from ${user.name} — UGX ${totalAmount.toLocaleString()}`,
       data: { orderId: order.id, totalAmount, customerName: user.name, address: deliveryAddress || "" },
