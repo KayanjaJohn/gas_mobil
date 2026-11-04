@@ -236,6 +236,13 @@ export const getCurrentUser = async (req: Request, res: Response) => {
       city: user.city,
       latitude: user.latitude,
       longitude: user.longitude,
+      vehicleNumber: user.vehicleNumber,
+      vehicleType: user.vehicleType,
+      driverStatus: user.driverStatus,
+      currentLatitude: user.currentLatitude,
+      currentLongitude: user.currentLongitude,
+      lastLocationUpdate: user.lastLocationUpdate,
+      stationId: user.stationId,
       station: user.station,
     };
 
