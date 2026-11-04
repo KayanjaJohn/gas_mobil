@@ -1,6 +1,30 @@
 import { useEffect, useState } from "react";
+import * as Notifications from "expo-notifications";
+import { Vibration } from "react-native";
 import { initializeSocket, getSocket } from "../services/socketService";
 import { useNotificationStore } from "../store/useNotificationStore";
+
+const alertedNotificationIds = new Set<string>();
+
+function alertCustomer(payload: any) {
+  const id = String(payload?.id || "");
+  if (!id || alertedNotificationIds.has(id)) return;
+  alertedNotificationIds.add(id);
+  if (alertedNotificationIds.size > 300) {
+    const oldest = alertedNotificationIds.values().next().value;
+    if (oldest) alertedNotificationIds.delete(oldest);
+  }
+  Vibration.vibrate([0, 500, 180, 500, 180, 650]);
+  void Notifications.scheduleNotificationAsync({
+    content: {
+      title: payload.title || "GasMobil notification",
+      body: payload.message || "You have a new update.",
+      sound: "default",
+      data: { orderId: payload.orderId || payload.data?.orderId },
+    },
+    trigger: null,
+  }).catch((error) => console.warn("[CustomerNotif] Phone alert failed:", error));
+}
 
 export function useSocketNotifications() {
   const addNotification = useNotificationStore((state) => state.addNotification);
@@ -24,16 +48,18 @@ export function useSocketNotifications() {
       const onConnectError = () => setIsConnected(false);
       const onNotification = (payload: any) => {
         if (payload?.id) {
-          addNotification({
+          const notification = {
             id: payload.id,
             type: payload.type || "system_announcement",
             title: payload.title || "Notification",
             message: payload.message || "",
             isRead: !!payload.isRead,
             createdAt: payload.createdAt || new Date().toISOString(),
-            orderId: payload.orderId,
+            orderId: payload.orderId || payload.data?.orderId,
             data: payload.data,
-          });
+          };
+          addNotification(notification);
+          alertCustomer(payload);
         } else {
           fetchNotifications();
         }
