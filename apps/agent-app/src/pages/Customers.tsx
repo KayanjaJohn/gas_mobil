@@ -10,6 +10,8 @@ interface Customer {
   name: string;
   email: string;
   phone: string;
+  address?: string | null;
+  city?: string | null;
   role: string;
   createdAt: string;
 }
@@ -93,6 +95,8 @@ export default function Customers() {
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Phone</TableCell>
+                <TableCell>Address</TableCell>
+                <TableCell>City</TableCell>
                 <TableCell>Role</TableCell>
                 <TableCell>Joined</TableCell>
               </TableRow>
@@ -100,7 +104,7 @@ export default function Customers() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ textAlign: 'center', color: '#94A3B8', py: 4 }}>
+                  <TableCell colSpan={7} sx={{ textAlign: 'center', color: '#94A3B8', py: 4 }}>
                     No customers found
                   </TableCell>
                 </TableRow>
