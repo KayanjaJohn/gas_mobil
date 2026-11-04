@@ -12,7 +12,7 @@ export const registerPushToken = async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const expoPushToken = String(req.body?.expoPushToken || "").trim();
 
-    if (!/^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(expoPushToken)) {
+    if (!/^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(expoPushToken)) {
       return res.status(400).json({ success: false, error: "A valid Expo push token is required." });
     }
 
@@ -21,6 +21,18 @@ export const registerPushToken = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("[PUSH TOKEN] Registration failed:", error);
     return res.status(500).json({ success: false, error: "Could not register this device for notifications." });
+  }
+};
+
+// DELETE /api/notifications/push-token — Stop sending private alerts to this device.
+export const unregisterPushToken = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    await userRepo.update({ id: userId }, { expoPushToken: null });
+    return res.json({ success: true, message: "Device notification token removed." });
+  } catch (error: any) {
+    console.error("[PUSH TOKEN] Removal failed:", error);
+    return res.status(500).json({ success: false, error: "Could not remove this device notification token." });
   }
 };
 
