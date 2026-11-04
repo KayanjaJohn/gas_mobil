@@ -9,6 +9,7 @@ router.get('/orders', requireAdmin, adminController.getAllOrders);
 router.get('/customers', requireAdmin, adminController.getAllCustomers);
 router.get('/drivers', requireAdmin, adminController.getAllDrivers);
 router.post('/drivers', requireAdmin, adminController.createDriver);
+router.put('/drivers/:id', requireAdmin, adminController.updateDriver);
 router.post('/orders/:id/assign', requireAgent, adminController.assignDriverToOrder);
 router.post('/orders/:id/cancel', requireAdmin, adminController.cancelOrder);
 
