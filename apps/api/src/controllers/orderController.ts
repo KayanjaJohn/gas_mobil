@@ -8,6 +8,7 @@ import { Station } from "../entities/Station";
 import { Delivery } from "../entities/Delivery";
 import { createSystemNotification } from "../services/notificationService";
 import { NotificationType } from "../entities/Notification";
+import { recordStationActivity } from "../services/stationActivityService";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const productRepository = AppDataSource.getRepository(Product);
@@ -189,6 +190,22 @@ export const createOrder = async (req: Request, res: Response) => {
 
     await queryRunner.manager.save(order);
     await queryRunner.commitTransaction();
+
+    await recordStationActivity({
+      stationId: fulfilmentStation.id,
+      eventType: "order_placed",
+      title: "New customer order",
+      description: `Order #${order.id.slice(0, 8).toUpperCase()} · ${orderItems.length} product line(s) · UGX ${totalAmount.toLocaleString()}.`,
+      actorId: user.id,
+      orderId: order.id,
+      data: {
+        customerName: user.name,
+        deliveryAddress,
+        deliveryCity,
+        items: orderItems.map((item) => ({ productId: item.productId, quantity: item.quantity, subtotal: item.subtotal })),
+        totalAmount,
+      },
+    });
 
     await createSystemNotification({
       type: "order_placed",
