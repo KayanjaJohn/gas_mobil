@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Platform, View, Text, ActivityIndicator } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -81,8 +82,12 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AppNavigator />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: "#0B3D2E" }}>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
