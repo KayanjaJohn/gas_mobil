@@ -6,6 +6,7 @@ import { Station } from "../entities/Station";
 import { User } from "../entities/User";
 import { createSystemNotification } from "../services/notificationService";
 import { getIO } from "../config/socket";
+import { recordStationActivity } from "../services/stationActivityService";
 
 const catalogRepo = AppDataSource.getRepository(ProductCatalog);
 const productRepo = AppDataSource.getRepository(Product);
@@ -143,6 +144,22 @@ export const addCatalogToStation = async (req: Request, res: Response) => {
     const station = await AppDataSource.getRepository(Station).findOne({
       where: { id: targetStationId },
     });
+    if (restockQuantity > 0) {
+      await recordStationActivity({
+        stationId: targetStationId,
+        eventType: existing ? "stock_replenished" : "product_added",
+        title: existing ? "Station stock replenished" : "Product added to station",
+        description: `${catalogItem.name}: +${restockQuantity} unit(s). Available stock: ${product.stock}.`,
+        actorId: user.id,
+        data: {
+          productId: product.id,
+          productName: product.name,
+          addedQuantity: restockQuantity,
+          availableStock: product.stock,
+          unitPrice: product.price,
+        },
+      });
+    }
     const io = getIO();
     io.to(`station_${targetStationId}`).emit(existing ? "product_updated" : "product_created", product);
     io.emit("product_updated", { type: existing ? "restocked" : "created", product });
