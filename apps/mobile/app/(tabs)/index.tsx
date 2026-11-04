@@ -179,10 +179,10 @@ export default function HomeScreen() {
           setCustomerCity(actualCity ? actualCity.trim() : (user?.city || "Current city unavailable"));
         } catch (locationError: any) {
           console.warn("[Home] Could not resolve current city:", locationError?.message || locationError);
-          setCustomerCity(user?.city || "Current city unavailable");
+          setCustomerCity("Current city unavailable");
         }
       } else {
-        setCustomerCity(user?.city || "Enable location to show your city");
+        setCustomerCity("Enable location to show your city");
       }
 
       if (activeStations.length === 0) {
@@ -253,6 +253,10 @@ export default function HomeScreen() {
 
   const color = getColor(percent);
   const status = getStatus(percent);
+  const headerLocation = /unavailable|enable location/i.test(customerCity)
+    ? customerCity
+    : `${customerCity}, Uganda`;
+
   const daysLeftText = daysRemaining === null
     ? "Estimate starts after delivery"
     : daysRemaining <= 0
@@ -266,7 +270,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <TopBar locationLabel={customerCity ? `${customerCity}, Uganda` : "Location unavailable"} />
+        <TopBar locationLabel={headerLocation} />
 
         {/* Hero Order Card */}
         <Card style={styles.heroCard} onPress={() => router.push("/order")}>
@@ -290,7 +294,7 @@ export default function HomeScreen() {
           <View style={styles.cylinderInner}>
             <View style={[styles.progressRing, { borderColor: color }]}>
               <View style={styles.progressInner}>
-                <Text style={[styles.percent, { color }]}>{percent === null ? "—" : `${percent === null ? "—" : `${Math.round(percent)}%`}`}</Text>
+                <Text style={[styles.percent, { color }]}>{percent === null ? "—" : `${Math.round(percent)}%`}</Text>
                 <Text style={styles.fullLabel}>{status.label}</Text>
               </View>
             </View>
