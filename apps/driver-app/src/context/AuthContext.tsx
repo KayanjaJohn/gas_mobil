@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { disconnectSocket } from '../services/socketService';
@@ -38,6 +39,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  const [user, setUser] = useState<User | null>(null);
  const [token, setToken] = useState<string | null>(null);
  const [isLoading, setIsLoading] = useState(true);
+
+ useEffect(() => {
+   const expired = DeviceEventEmitter.addListener('gasmobil:driver-session-expired', () => {
+     disconnectSocket();
+     setToken(null);
+     setUser(null);
+   });
+   const refreshed = DeviceEventEmitter.addListener('gasmobil:driver-token-refreshed', (nextToken: string) => {
+     setToken(nextToken);
+   });
+   return () => {
+     expired.remove();
+     refreshed.remove();
+   };
+ }, []);
 
  // Register the signed-in driver's EAS push token so assignments and arrival
  // alerts still reach the phone while the app is backgrounded or closed.
