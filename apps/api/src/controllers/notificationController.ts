@@ -81,8 +81,8 @@ export const getNotifications = async (req: Request, res: Response) => {
           select: ["id", "name", "phone", "vehicleNumber", "vehicleType"],
         } as any)
       : [];
-    const driverById = new Map(drivers.map((driver) => [driver.id, driver]));
-    const orderById = new Map(orders.map((order) => [order.id, order]));
+    const driverById = new Map(drivers.map((driver) => [driver.id, driver] as const));
+    const orderById = new Map(orders.map((order) => [order.id, order] as const));
 
     const enrichedNotifications = notifications.map((notification) => {
       const order = notification.orderId ? orderById.get(notification.orderId) : undefined;
