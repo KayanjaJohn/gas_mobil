@@ -93,6 +93,7 @@ export default function NotificationPage() {
   const [statusFilter, setStatusFilter] = useState<"all"|"unread"|"read">("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string|null>(null);
+  const [autoExpanded, setAutoExpanded] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!token) return;
@@ -107,10 +108,11 @@ export default function NotificationPage() {
   }, [token]);
   useEffect(() => { void fetchNotifications(); }, [fetchNotifications]);
   useEffect(() => {
-    if (selected) return;
+    if (loading || autoExpanded) return;
     const firstOrderNotification = notifications.find((item) => !!item.orderId);
     if (firstOrderNotification) setSelected(firstOrderNotification.id);
-  }, [notifications, selected]);
+    setAutoExpanded(true);
+  }, [notifications, loading, autoExpanded]);
 
   const markAsRead = async (id:string) => {
     try {
