@@ -11,6 +11,7 @@ export default {
     owner: "gasmobil-uganda",
     version: "1.0.0",
     orientation: "portrait",
+    newArchEnabled: true,
     icon: "./assets/gasmobil-icon.png",
     scheme: "gasmobil",
     userInterfaceStyle: "dark",
