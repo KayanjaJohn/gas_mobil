@@ -4,6 +4,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../../src/context/index";
 import { TopBar } from "../../src/components/index";
 import { Card } from "../../src/components/index";
@@ -217,19 +218,23 @@ export default function HomeScreen() {
     }
   }, [user?.city]);
 
-  // Only fetch stations once user is authenticated
-  useEffect(() => {
-    if (user) {
-      void fetchStations();
-      void fetchCylinderDelivery();
-    } else {
-      setStations([]);
-      setNearestStation(null);
-      setCylinderDelivery(null);
-      setCustomerCity("Location unavailable");
-      setLoadingStations(false);
-    }
-  }, [user?.id, fetchStations, fetchCylinderDelivery]);
+  // Refresh the customer's city, nearest station and delivered-cylinder
+  // estimate whenever Home becomes visible again.
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        void fetchStations();
+        void fetchCylinderDelivery();
+      } else {
+        setStations([]);
+        setNearestStation(null);
+        setCylinderDelivery(null);
+        setCustomerCity("Location unavailable");
+        setLoadingStations(false);
+      }
+      return undefined;
+    }, [user?.id, fetchStations, fetchCylinderDelivery])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -261,7 +266,7 @@ export default function HomeScreen() {
     ? "Estimate starts after delivery"
     : daysRemaining <= 0
       ? "Estimated gas exhausted — arrange a refill"
-      : `About ${Math.ceil(daysRemaining)} days left at 2 cooking hours/day`;
+      : `About ${Math.ceil(daysRemaining)} days left (2 × 1-hour sessions/day)`;
 
   return (
     <View style={styles.container}>
@@ -302,6 +307,7 @@ export default function HomeScreen() {
               <Text style={styles.cylTitle}><Icon name="propane-tank" size={18} color={COLORS.accent} />  {cylinderDelivery?.weightKg ?? 6}kg Cylinder</Text>
               <Text style={[styles.warn, { color }]}>{status.msg}</Text>
               <Text style={styles.insp}>{daysLeftText}</Text>
+              <Text style={styles.insp}>Planning estimate: 0.20 kg/hour; actual use varies by burner and flame level.</Text>
               {cylinderDelivery && (
                 <Text style={styles.insp}>
                   Delivered {new Date(cylinderDelivery.deliveredAt).toLocaleDateString()}
