@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
+import api from "../services/api";
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, FormControl, InputLabel, Select, MenuItem,
   CircularProgress, Alert,
 } from "@mui/material";
-import { useAuth } from "../context/AuthContext";
 
 interface Order {
   id: string;
@@ -31,10 +31,7 @@ interface Driver {
   driverStatus: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
 export default function Orders() {
-  const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,14 +48,10 @@ export default function Orders() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/agent/orders`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      // Handle both response shapes: { data: [] } and { orders: [] }
+      const response = await api.get("/agent/orders");
+      const data = response.data;
       const ordersData = data.data || data.orders || [];
-      if (res.ok) setOrders(ordersData);
-      else setError(data.error || "Failed to fetch orders");
+      setOrders(ordersData);
     } catch {
       setError("Network error");
     } finally {
@@ -68,12 +61,10 @@ export default function Orders() {
 
   const fetchDrivers = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/agent/drivers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const response = await api.get("/agent/drivers");
+      const data = response.data;
       const driversData: Driver[] = data.data || data.drivers || [];
-      if (res.ok) setDrivers(driversData.filter((driver) => driver.driverStatus === "online"));
+      setDrivers(driversData.filter((driver) => driver.driverStatus === "online"));
     } catch {
       console.error("Failed to fetch drivers");
     }
@@ -82,21 +73,9 @@ export default function Orders() {
   const handleAssign = async () => {
     if (!selectedOrder || !selectedDriver) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/agent/orders/${selectedOrder.id}/assign`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ driverId: selectedDriver }),
-      });
-      const data = await res.json();
-      if (data.success || res.ok) {
-        setDialogOpen(false);
-        fetchOrders();
-      } else {
-        setError(data.error || "Failed to assign driver");
-      }
+      await api.post(`/agent/orders/${selectedOrder.id}/assign`, { driverId: selectedDriver });
+      setDialogOpen(false);
+      fetchOrders();
     } catch {
       setError("Network error");
     }
@@ -105,16 +84,8 @@ export default function Orders() {
   const handleCancel = async (orderId: string) => {
     if (!confirm("Are you sure you want to cancel this order?")) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/agent/orders/${orderId}/cancel`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await res.json();
-      if (data.success || res.ok) fetchOrders();
-      else setError(data.error || "Failed to cancel order");
+      await api.post(`/agent/orders/${orderId}/cancel`, {});
+      fetchOrders();
     } catch {
       setError("Network error");
     }
