@@ -157,7 +157,7 @@ export default function Orders() {
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 700, color: "text.primary" }}>Orders</Typography>
-          <Typography variant="body2" sx={{ color: "#94A3B8" }}>Review customer orders, products, payments and delivery details.</Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>Review customer orders, products, payments and delivery details.</Typography>
         </Box>
         <Button variant="outlined" startIcon={<Refresh />} onClick={() => { void fetchOrders(); void fetchDrivers(); }} disabled={loading}>
           Refresh
@@ -166,10 +166,10 @@ export default function Orders() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert>}
 
-      <TableContainer component={Paper} sx={{ bgcolor: "#1E293B", border: "1px solid #334155", overflowX: "auto" }}>
+      <TableContainer component={Paper} sx={{ bgcolor: "background.paper", color: "text.primary", border: "1px solid", borderColor: "divider", overflowX: "auto" }}>
         <Table size="small" sx={{ minWidth: 1100 }}>
           <TableHead>
-            <TableRow sx={{ "& th": { color: "#CBD5E1", fontWeight: 700, borderBottom: "1px solid #475569", whiteSpace: "nowrap" } }}>
+            <TableRow sx={{ "& th": { color: "text.primary", bgcolor: "action.hover", fontWeight: 800, borderBottom: "1px solid", borderColor: "divider", whiteSpace: "nowrap" } }}>
               <TableCell>Order ID / Date</TableCell>
               <TableCell>Customer</TableCell>
               <TableCell>Products (Qty)</TableCell>
@@ -192,7 +192,7 @@ export default function Orders() {
                 (item.product?.name || "Product") + " × " + Number(item.quantity || 0)
               ).join(", ");
               return (
-                <TableRow key={order.id} hover sx={{ "& td": { color: "#E2E8F0", borderBottom: "1px solid #334155", verticalAlign: "top" } }}>
+                <TableRow key={order.id} hover sx={{ "& td": { color: "text.primary", borderBottom: "1px solid", borderColor: "divider", verticalAlign: "top" } }}>
                   <TableCell>
                     <Typography sx={{ fontFamily: "monospace", fontWeight: 700 }}>#{order.id.slice(0, 8).toUpperCase()}</Typography>
                     <Typography variant="caption" sx={{ color: "#94A3B8" }}>{dateTime(order.createdAt)}</Typography>
@@ -217,7 +217,7 @@ export default function Orders() {
                     <Typography variant="body2">{order.deliveryAddress || "Address not provided"}</Typography>
                     <Typography variant="caption" sx={{ color: "#94A3B8" }}>{order.deliveryCity || "City not provided"}</Typography>
                   </TableCell>
-                  <TableCell align="right" sx={{ whiteSpace: "nowrap", fontWeight: 700, color: "#FBBF24 !important" }}>{money(order.totalAmount)}</TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: "nowrap", fontWeight: 700, color: "warning.main" }}>{money(order.totalAmount)}</TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ textTransform: "capitalize" }}>{order.paymentMethod || "cash"}</Typography>
                     <Chip size="small" label={order.paymentStatus || "pending"} color={order.paymentStatus === "paid" ? "success" : "warning"} />
@@ -277,14 +277,14 @@ export default function Orders() {
               <Stack direction="row" justifyContent="space-between"><Typography fontWeight={700}>Total payable</Typography><Typography fontWeight={800} color="primary.main">{money(selectedOrder.totalAmount)}</Typography></Stack>
               {selectedOrder.notes && <Alert severity="info">Customer notes: {selectedOrder.notes}</Alert>}
               {selectedOrder.cancellationReason && <Alert severity="warning">Cancellation reason: {selectedOrder.cancellationReason}</Alert>}
-              {driverFor(selectedOrder) && <Accordion sx={{ bgcolor: "background.default", color: "text.primary" }}><AccordionSummary expandIcon={<ExpandMore sx={{ color: "#fff" }} />}>Delivery timeline</AccordionSummary><AccordionDetails><Typography>Picked up: {dateTime(driverFor(selectedOrder)?.pickedUpAt)}</Typography><Typography>Started: {dateTime(driverFor(selectedOrder)?.startedAt)}</Typography><Typography>Delivered: {dateTime(driverFor(selectedOrder)?.deliveredAt)}</Typography><Typography>Delivery notes: {driverFor(selectedOrder)?.notes || "—"}</Typography></AccordionDetails></Accordion>}
+              {driverFor(selectedOrder) && <Accordion sx={{ bgcolor: "background.default", color: "text.primary" }}><AccordionSummary expandIcon={<ExpandMore color="action" />}>Delivery timeline</AccordionSummary><AccordionDetails><Typography>Picked up: {dateTime(driverFor(selectedOrder)?.pickedUpAt)}</Typography><Typography>Started: {dateTime(driverFor(selectedOrder)?.startedAt)}</Typography><Typography>Delivered: {dateTime(driverFor(selectedOrder)?.deliveredAt)}</Typography><Typography>Delivery notes: {driverFor(selectedOrder)?.notes || "—"}</Typography></AccordionDetails></Accordion>}
             </Stack>
           )}
         </DialogContent>
         <DialogActions><Button onClick={() => setDetailsOpen(false)}>Close</Button></DialogActions>
       </Dialog>
 
-      <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} PaperProps={{ sx: { bgcolor: "#1E293B", color: "#fff" } }}>
+      <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} PaperProps={{ sx: { bgcolor: "background.paper", color: "text.primary", "& .MuiTypography-root": { color: "inherit" } } }}>
         <DialogTitle>Assign driver</DialogTitle>
         <DialogContent sx={{ minWidth: 320 }}>
           <FormControl fullWidth sx={{ mt: 1 }}>
