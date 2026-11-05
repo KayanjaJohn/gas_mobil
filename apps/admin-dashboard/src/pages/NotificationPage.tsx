@@ -99,7 +99,10 @@ export default function NotificationPage() {
     if (!token) return;
     setLoading(true); setError("");
     try {
-      const response = await fetch(API_ROOT + "/notifications?page=1&limit=100", {headers:{Authorization:"Bearer " + token}});
+      const response = await fetch(API_ROOT + "/notifications?page=1&limit=100", {
+        headers: { Authorization: "Bearer " + token },
+        cache: "no-store",
+      });
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error || "Unable to load notifications.");
       setNotifications(payload.data || []);
