@@ -38,6 +38,7 @@ function Main() {
           divider: mode === "light" ? "#D8CDBB" : "#315C4D",
         },
         components: {
+          MuiTypography: { styleOverrides: { h4: { color: "#FFF8EE", fontWeight: 800 } } },
           MuiTableCell: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE", borderColor: mode === "light" ? "#D8CDBB" : "#315C4D" }, head: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE", fontWeight: 700 } } },
           MuiInputBase: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
           MuiInputLabel: { styleOverrides: { root: { color: mode === "light" ? "#68786F" : "#D8E7DE", "&.Mui-focused": { color: "#F36A21" } } } },
