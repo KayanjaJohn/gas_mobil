@@ -8,7 +8,6 @@ import { Delivery } from "../entities/Delivery";
 import { Station } from "../entities/Station";
 import { StationActivity } from "../entities/StationActivity";
 import { inferUgandaRegion } from "../services/stationRegionService";
-import { inferUgandaRegion } from "../services/stationRegionService";
 import bcryptjs from "bcryptjs";
 
 const orderRepository = AppDataSource.getRepository(Order);
