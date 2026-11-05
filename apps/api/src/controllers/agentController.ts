@@ -6,12 +6,15 @@ import { User } from "../entities/User";
 import { Order } from "../entities/Order";
 import { Delivery } from "../entities/Delivery";
 import { Product } from "../entities/Product";
+import { Station } from "../entities/Station";
+import { isStationEligibleForLocation } from "../services/stationRegionService";
 import { createSystemNotification } from "../services/notificationService";
 
 const userRepo = () => AppDataSource.getRepository(User);
 const orderRepo = () => AppDataSource.getRepository(Order);
 const deliveryRepo = () => AppDataSource.getRepository(Delivery);
 const productRepo = () => AppDataSource.getRepository(Product);
+const stationRepo = () => AppDataSource.getRepository(Station);
 
 const getAgentStationId = async (req: Request): Promise<string | null> => {
   const agentId = (req as any).userId;
@@ -41,6 +44,14 @@ const verifyStationOrder = async (
   );
   if (hasForeignStock)
     return { order: null, error: "This order contains stock assigned to another station and has been withheld for administrator review." };
+  if (!order.station || !isStationEligibleForLocation(order.station, {
+    latitude: order.deliveryLatitude,
+    longitude: order.deliveryLongitude,
+    city: order.deliveryCity,
+    address: order.deliveryAddress,
+  })) {
+    return { order: null, error: "This customer's delivery location is outside your station's region and nearby service area." };
+  }
   return { order };
 };
 
@@ -52,27 +63,46 @@ const fetchOrdersWithDeliveries = async (where: any): Promise<Order[]> => {
   } as any);
 };
 
+const isSafeAgentOrder = (order: any, stationId: string, station: Station): boolean => {
+  const correctStation = order.stationId === stationId;
+  const correctProducts = (order.items || []).every((item: any) =>
+    !item.product?.stationId || item.product.stationId === stationId
+  );
+  const correctRegion = isStationEligibleForLocation(station, {
+    latitude: order.deliveryLatitude ?? order.user?.latitude,
+    longitude: order.deliveryLongitude ?? order.user?.longitude,
+    city: order.deliveryCity || order.user?.city,
+    address: order.deliveryAddress || order.user?.address,
+  });
+  return correctStation && correctProducts && correctRegion;
+};
+
 export const getAgentCustomers = async (req: Request, res: Response) => {
   try {
     const stationId = await getAgentStationId(req);
     if (!stationId)
       return res.status(400).json({ success: false, error: "Agent has no station" });
+    const station = await stationRepo().findOne({ where: { id: stationId } });
+    if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
     const stationOrders = await orderRepo().find({
       where: { stationId },
-      relations: ["items", "items.product"],
+      relations: ["user", "items", "items.product"],
     } as any);
-    const orders = stationOrders.filter((order: any) =>
-      order.stationId === stationId &&
-      !(order.items || []).some((item: any) =>
-        item.product?.stationId && item.product.stationId !== stationId
-      )
-    );
+    const orders = stationOrders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
     const customerIds = [...new Set(orders.map((o: any) => o.userId))].filter(Boolean);
     const customers = customerIds.length > 0 ? await userRepo().find({
       where: { id: In(customerIds) },
-      select: ["id", "name", "email", "phone", "address", "city", "createdAt"],
+      select: ["id", "name", "email", "phone", "address", "city", "latitude", "longitude", "createdAt"],
     } as any) : [];
-    res.json({ success: true, data: customers });
+    const eligibleCustomers = customers.filter((customer: any) =>
+      isStationEligibleForLocation(station, {
+        latitude: customer.latitude,
+        longitude: customer.longitude,
+        city: customer.city,
+        address: customer.address,
+      })
+    );
+    res.json({ success: true, data: eligibleCustomers });
   } catch (error) {
     console.error("getAgentCustomers error:", error);
     res.status(500).json({ success: false, error: "Server error" });
@@ -84,19 +114,11 @@ export const getAgentOrders = async (req: Request, res: Response) => {
     const stationId = await getAgentStationId(req);
     if (!stationId)
       return res.status(400).json({ success: false, error: "Agent has no station" });
+    const station = await stationRepo().findOne({ where: { id: stationId } });
+    if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
     const orders = await fetchOrdersWithDeliveries({ stationId });
-    const mismatchedOrders = orders.filter((order: any) =>
-      order.stationId !== stationId ||
-      (order.items || []).some((item: any) =>
-        item.product?.stationId && item.product.stationId !== stationId
-      )
-    );
-    const safeOrders = orders.filter((order: any) =>
-      order.stationId === stationId &&
-      !(order.items || []).some((item: any) =>
-        item.product?.stationId && item.product.stationId !== stationId
-      )
-    );
+    const safeOrders = orders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
+    const mismatchedOrders = orders.filter((order: any) => !isSafeAgentOrder(order, stationId, station));
     res.json({
       success: true,
       data: safeOrders,
@@ -152,7 +174,8 @@ export const getAgentDashboard = async (req: Request, res: Response) => {
     if (!stationId)
       return res.status(400).json({ success: false, error: "Agent has no station" });
 
-    const [stationOrders, drivers, products] = await Promise.all([
+    const [station, stationOrders, drivers, products] = await Promise.all([
+      stationRepo().findOne({ where: { id: stationId } }),
       orderRepo().find({
         where: { stationId } as any,
         order: { createdAt: "DESC" },
@@ -161,12 +184,8 @@ export const getAgentDashboard = async (req: Request, res: Response) => {
       userRepo().find({ where: { role: "driver", stationId, isActive: true } as any }),
       productRepo().find({ where: { stationId } }),
     ]);
-    const orders = stationOrders.filter((order: any) =>
-      order.stationId === stationId &&
-      !(order.items || []).some((item: any) =>
-        item.product?.stationId && item.product.stationId !== stationId
-      )
-    );
+    if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
+    const orders = stationOrders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
