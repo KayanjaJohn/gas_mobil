@@ -17,27 +17,23 @@ router.get('/', requireAuth, async (req, res, next) => {
     if (req.query.region && !selectedRegion) {
       return res.status(400).json({ success: false, error: 'Unknown station region.' });
     }
-    const location = {
-      latitude: req.query.latitude ?? user?.latitude,
-      longitude: req.query.longitude ?? user?.longitude,
-      city: req.query.city ?? user?.city,
-      address: req.query.address ?? user?.address,
-    };
-    const hasLocation = Boolean(
-      (location.latitude != null && location.longitude != null) ||
-      location.city || location.address
-    );
+    // The customer stations directory is intentionally nationwide. Filtering
+    // by saved profile GPS/address hid stations from customers outside the
+    // nearest 50 km and made regional browsing incomplete. Only an explicit
+    // region tab selection should filter the directory.
+    const directory = stations.map((station) => ({
+      ...station,
+      region: inferUgandaRegion(station) ?? normalizeUgandaRegion(station.region) ?? station.region,
+    }));
     const filtered = selectedRegion
-      ? stations.filter((station) => inferUgandaRegion(station) === selectedRegion)
-      : user?.role === 'customer' && hasLocation
-        ? stations.filter((station) => isStationEligibleForLocation(station, location))
-        : stations;
+      ? directory.filter((station) => inferUgandaRegion(station) === selectedRegion)
+      : directory;
     res.json({
       success: true,
       data: filtered,
       meta: {
         selectedRegion,
-        detectedRegion: inferUgandaRegion(location),
+        detectedRegion: null,
         totalActiveStations: stations.length,
         eligibleStations: filtered.length,
       },
