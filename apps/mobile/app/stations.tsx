@@ -28,7 +28,7 @@ interface Station {
 function inferStationRegion(station: Station): string {
   const location = `${station.name || ""} ${station.city || ""} ${station.address || ""}`.toLowerCase();
   const terms: Record<string, string[]> = {
-    south: ["rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
+    south: ["masaka", "kalungu", "bukomansimbi", "lwengo", "rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
     north: ["gulu", "lira", "arua", "kitgum", "pader", "agago", "amuru", "nwoya", "omoro", "otuke", "alebtong", "kole", "dokolo", "apac", "nebbi", "zombo", "moyo", "obongi", "adjumani", "yumbe", "koboko", "maracha", "lamwo", "karenga", "kaabong", "kotido", "moroto", "napak", "nakapiripirit", "abim"],
     east: ["jinja", "iganga", "kamuli", "mbale", "tororo", "busia", "bugiri", "mayuge", "namutumba", "buyende", "pallisa", "budaka", "bududa", "sironko", "bulambuli", "kapchorwa", "kumi", "katakwi", "amuria", "kaberamaido", "serere", "ngora", "bukedea", "butaleja", "manafa"],
     west: ["mbarara", "hoima", "masindi", "kigumba", "kiryandongo", "buliisa", "fort portal", "kabale", "kasese", "bushenyi", "ibanda", "ntungamo", "rukungiri", "kanungu", "kisoro", "bundibugyo", "kabarole", "kagadi", "kibaale", "mitooma", "rubirizi", "sheema", "buhweju", "kiruhura", "kamwenge", "kikuube"],
