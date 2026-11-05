@@ -4,7 +4,7 @@ export type UgandaRegion = "central" | "north" | "east" | "west" | "south";
 export const NEARBY_STATION_RADIUS_KM = 50;
 
 const REGION_TERMS: Record<UgandaRegion, string[]> = {
-  south: ["rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
+  south: ["masaka", "kalungu", "bukomansimbi", "lwengo", "rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
   north: [
     "gulu", "lira", "arua", "kitgum", "pader",
     "agago", "amuru", "nwoya", "omoro", "otuke", "alebtong", "kole",
