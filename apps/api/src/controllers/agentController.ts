@@ -115,7 +115,7 @@ export const getAgentOrders = async (req: Request, res: Response) => {
     if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
     const orders = await fetchOrdersWithDeliveries({ stationId });
     const safeOrders = orders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
-    const mismatchedOrders = orders.filter((order: any) =>
+    const mismatchedOrders = safeOrders.filter((order: any) =>
       (order.items || []).some((item: any) =>
         item.product?.stationId && item.product.stationId !== stationId
       )
