@@ -35,10 +35,10 @@ const REGION_TERMS: Record<UgandaRegion, string[]> = {
 export function normalizeUgandaRegion(value: unknown): UgandaRegion | null {
   const text = String(value || "").trim().toLowerCase();
   if (!text) return null;
-  if (text === "northern" || text === "northern uganda") return "north";
-  if (text === "eastern" || text === "eastern uganda") return "east";
-  if (text === "western" || text === "western uganda") return "west";
-  if (text === "southern" || text === "southern uganda") return "south";
+  if (["northern", "northern uganda", "northern region"].includes(text)) return "north";
+  if (["eastern", "eastern uganda", "eastern region"].includes(text)) return "east";
+  if (["western", "western uganda", "western region"].includes(text)) return "west";
+  if (["southern", "southern uganda", "southern region"].includes(text)) return "south";
   if (text === "central uganda") return "central";
   return (["central", "north", "east", "west", "south"] as UgandaRegion[])
     .find((region) => text === region) || null;
@@ -68,15 +68,14 @@ export function inferUgandaRegion(input: {
   latitude?: unknown;
   longitude?: unknown;
 }): UgandaRegion | null {
-  const explicit = normalizeUgandaRegion(input.region);
-  if (explicit) return explicit;
-
+  // A persisted "central" value may be the entity's historical default, not
+  // the station's real region. Prefer a recognized locality, then valid GPS,
+  // and only use the stored region when neither can identify the location.
   const locationText = [input.name, input.city, input.address]
     .map((value) => String(value || "").trim().toLowerCase())
     .filter(Boolean)
     .join(" ");
 
-  // Use more specific southern/northern/eastern/western locality names first.
   for (const region of ["south", "north", "east", "west", "central"] as UgandaRegion[]) {
     if (REGION_TERMS[region].some((term) => locationText.includes(term))) return region;
   }
@@ -84,6 +83,7 @@ export function inferUgandaRegion(input: {
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
   if (
+    input.latitude != null && input.longitude != null &&
     Number.isFinite(latitude) && Number.isFinite(longitude) &&
     latitude >= -1.5 && latitude <= 4.5 &&
     longitude >= 29.5 && longitude <= 35
@@ -94,7 +94,8 @@ export function inferUgandaRegion(input: {
     if (latitude <= -0.2) return "south";
     return "central";
   }
-  return null;
+
+  return normalizeUgandaRegion(input.region);
 }
 
 export function isStationEligibleForLocation(
