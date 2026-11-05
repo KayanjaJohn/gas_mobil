@@ -12,7 +12,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { useLocation } from '../src/hooks/useLocation';
 import { apiRequest } from '../src/services/api';
@@ -47,6 +47,7 @@ const ORDER_TYPES = [
 
 export default function OrderScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ stationId?: string; stationName?: string }>();
   const { user } = useAuth();
   const { showAlert, alertModal } = useThemedAlert();
   const { location, loading: locLoading, error: locError, getCurrentLocation, clearLocation } = useLocation();
@@ -60,15 +61,22 @@ export default function OrderScreen() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
-  const [selectedStationId, setSelectedStationId] = useState("");
+  const [selectedStationId, setSelectedStationId] = useState(params.stationId || "");
   const [selectedStationManually, setSelectedStationManually] = useState(false);
   const [stationsLoading, setStationsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
+    const queryParts: string[] = [];
+    if (location) {
+      queryParts.push(`latitude=${location.latitude}`, `longitude=${location.longitude}`);
+      if (location.city) queryParts.push(`city=${encodeURIComponent(location.city)}`);
+      if (location.address) queryParts.push(`address=${encodeURIComponent(location.address)}`);
+    }
+    const locationQuery = queryParts.length ? `?${queryParts.join("&")}` : "";
     Promise.all([
-      apiRequest<Product[]>("get", "/products"),
-      apiRequest<Station[]>("get", "/stations"),
+      apiRequest<Product[]>("get", `/products${locationQuery}`),
+      apiRequest<Station[]>("get", `/stations${locationQuery}`),
     ]).then(([productResponse, stationResponse]) => {
       if (!active) return;
       if (productResponse.success && Array.isArray(productResponse.data)) {
@@ -77,10 +85,17 @@ export default function OrderScreen() {
       if (stationResponse.success && Array.isArray(stationResponse.data)) {
         setStations(stationResponse.data.filter((station) => station.isActive));
       }
-    }).catch((error) => console.error("[Order] Products/stations fetch failed:", error))
+    }).catch((error) => console.error("[Order] Regional products/stations fetch failed:", error))
       .finally(() => { if (active) setStationsLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [location?.latitude, location?.longitude, location?.city, location?.address]);
+
+  useEffect(() => {
+    if (params.stationId) {
+      setSelectedStationId(params.stationId);
+      setSelectedStationManually(true);
+    }
+  }, [params.stationId]);
 
   const distanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const radians = (value: number) => value * Math.PI / 180;
