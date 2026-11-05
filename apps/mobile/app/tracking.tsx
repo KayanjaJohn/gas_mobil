@@ -1,13 +1,15 @@
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import TopBar from "../src/components/TopBar";
 import BottomNav from "../src/components/BottomNav";
 import { COLORS } from "../src/utils/constants";
 import { apiRequest } from "../src/services/api";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useOrderTracking } from "../src/hooks/useOrderTracking";
 import { LiveTrackingMap } from "../src/components/LiveTrackingMap";
 
@@ -52,6 +54,9 @@ interface Order {
   deliveryLongitude?: number;
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
+  station?: { name?: string };
+  user?: { name?: string; phone?: string; email?: string };
   items?: OrderItem[];
   deliveries?: Array<{
     driverName?: string;
@@ -70,6 +75,7 @@ export default function TrackingScreen() {
   const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
 
   // ── SOCKET TRACKING (only when orderId is present) ──
   const { driverLocation, orderStatus, isConnected } = useOrderTracking(orderId || null);
@@ -128,6 +134,72 @@ export default function TrackingScreen() {
       setOrder((prev) => (prev ? { ...prev, status: orderStatus.status || prev.status } : prev));
     }
   }, [orderStatus]);
+
+  const escapeReceiptHtml = (value: unknown) =>
+    String(value ?? "").replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[character] || character));
+
+  const createReceiptHtml = (receipt: Order) => {
+    const orderNumber = receipt.id.slice(0, 12).toUpperCase();
+    const itemRows = (receipt.items || []).map((item) => `
+      <tr>
+        <td>${escapeReceiptHtml(item.product?.name || "Gas product")}<small>${escapeReceiptHtml([item.product?.type, item.product?.size, item.product?.weight ? item.product.weight + " kg" : ""].filter(Boolean).join(" · "))}</small></td>
+        <td class="num">${Number(item.quantity || 0)}</td>
+        <td class="num">UGX ${Number(item.price || 0).toLocaleString("en-UG")}</td>
+        <td class="num">UGX ${Number(item.subtotal || 0).toLocaleString("en-UG")}</td>
+      </tr>`).join("");
+    return `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+      body{font-family:Arial,sans-serif;color:#12372b;padding:24px;max-width:760px;margin:auto}
+      .brand{font-size:23px;font-weight:800;color:#08763f}.muted{color:#68786f;font-size:12px}
+      .heading{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f36a21;padding-bottom:14px}
+      .status{padding:7px 12px;border-radius:20px;background:#e6f5ec;color:#08763f;font-weight:700;font-size:12px}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+      .panel{background:#fff8ee;border:1px solid #e1d6c6;border-radius:10px;padding:12px}
+      .panel b{display:block;margin-bottom:5px}.panel p{margin:4px 0;font-size:12px}
+      table{width:100%;border-collapse:collapse;margin-top:18px;font-size:12px}
+      th,td{padding:11px 8px;border-bottom:1px solid #e1d6c6;text-align:left}
+      th{background:#f5eddf}.num{text-align:right;white-space:nowrap}small{display:block;color:#68786f;margin-top:4px}
+      .total{display:flex;justify-content:space-between;border-top:2px solid #0b3d2e;margin-top:18px;padding-top:15px;font-size:19px;font-weight:800}
+      .footer{margin-top:28px;text-align:center;color:#68786f;font-size:11px}
+      @media print{body{padding:0}}
+    </style></head><body>
+      <div class="heading"><div><div class="brand">GasMobil Uganda</div><div class="muted">OFFICIAL CUSTOMER RECEIPT</div><h2>Order #${orderNumber}</h2></div><span class="status">${escapeReceiptHtml(receipt.status || "pending").replace(/_/g," ").toUpperCase()}</span></div>
+      <div class="grid">
+        <div class="panel"><b>Customer</b><p>${escapeReceiptHtml(receipt.user?.name || "Customer")}</p><p>${escapeReceiptHtml(receipt.user?.phone || "")}</p><p>${escapeReceiptHtml(receipt.user?.email || "")}</p></div>
+        <div class="panel"><b>Delivery details</b><p>${escapeReceiptHtml(receipt.deliveryAddress || "Not provided")}</p><p>${escapeReceiptHtml(receipt.deliveryCity || "")}</p><p>Station: ${escapeReceiptHtml(receipt.station?.name || "GasMobil station")}</p></div>
+        <div class="panel"><b>Order details</b><p>Placed: ${escapeReceiptHtml(new Date(receipt.createdAt).toLocaleString())}</p><p>Updated: ${escapeReceiptHtml(receipt.updatedAt ? new Date(receipt.updatedAt).toLocaleString() : "—")}</p></div>
+        <div class="panel"><b>Payment</b><p>Method: Cash on Delivery</p><p>Status: ${escapeReceiptHtml(receipt.paymentStatus || "pending").toUpperCase()}</p></div>
+      </div>
+      <table><thead><tr><th>Product</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Line total</th></tr></thead>
+      <tbody>${itemRows || '<tr><td colspan="4">Product details unavailable</td></tr>'}</tbody></table>
+      <div class="total"><span>TOTAL DUE</span><span>UGX ${Number(receipt.totalAmount || 0).toLocaleString("en-UG")}</span></div>
+      <div class="footer">Thank you for choosing GasMobil Uganda.<br>Keep this receipt for your records.</div>
+    </body></html>`;
+  };
+
+  const downloadReceipt = async () => {
+    if (!order) return;
+    setReceiptLoading(true);
+    try {
+      const html = createReceiptHtml(order);
+      const file = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: "application/pdf",
+          dialogTitle: `GasMobil receipt #${order.id.slice(0, 8).toUpperCase()}`,
+          UTI: ".pdf",
+        });
+      } else {
+        await Print.printAsync({ html });
+      }
+    } catch (receiptError: any) {
+      console.error("[Receipt] PDF generation failed:", receiptError);
+      Alert.alert("Receipt unavailable", "We couldn't prepare this receipt. Please try again.");
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
 
   const getTimeline = () => {
     const status = order?.status || "pending";
@@ -217,6 +289,15 @@ export default function TrackingScreen() {
               <Text style={[styles.statusBadge, { color: order.status === "cancelled" ? COLORS.danger : COLORS.accent }]}>
                 Status: {(order.status || "pending").replace("_", " ").toUpperCase()}
               </Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => void downloadReceipt()}
+                disabled={receiptLoading}
+                style={styles.receiptButton}
+              >
+                {receiptLoading ? <ActivityIndicator color="#FFFFFF" /> : <Icon name="file-pdf-box" size={19} color="#FFFFFF" />}
+                <Text style={styles.receiptButtonText}>{receiptLoading ? "Preparing receipt..." : "Download order receipt (PDF)"}</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.card}>
@@ -337,6 +418,8 @@ const styles = StyleSheet.create({
   retryBtn: { backgroundColor: COLORS.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999, marginTop: 16 },
   retryText: { color: "#fff", fontWeight: "600" },
   card: { marginHorizontal: 16, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 16, marginBottom: 14 },
+  receiptButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#12834B", paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, marginTop: 12 },
+  receiptButtonText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
   orderId: { color: COLORS.text, fontSize: 14, fontWeight: "700" },
   driver: { color: COLORS.muted, fontSize: 12, marginTop: 4 },
   statusBadge: { fontSize: 12, fontWeight: "700", marginTop: 8 },
