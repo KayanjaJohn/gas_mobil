@@ -85,6 +85,19 @@ export function inferUgandaRegion(input: {
 
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
+
+  // Bunyoro sub-region (Masindi, Hoima, Kigumba/Kiryandongo) lies north
+  // of the Equator but is Western Uganda. Handle its GPS area before the
+  // simplistic latitude-based north/central fallback.
+  if (
+    input.latitude != null && input.longitude != null &&
+    Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    latitude >= 1.0 && latitude <= 2.6 &&
+    longitude >= 30.5 && longitude <= 32.6
+  ) {
+    return "west";
+  }
+
   if (
     input.latitude != null && input.longitude != null &&
     Number.isFinite(latitude) && Number.isFinite(longitude) &&
