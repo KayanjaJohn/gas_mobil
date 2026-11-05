@@ -1,6 +1,7 @@
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useEffect, useState } from "react";
 import { Linking } from "react-native";
+import * as Location from "expo-location";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from "react-native";
@@ -27,39 +28,35 @@ interface Station {
 // coordinates as a fallback so all station filters work with existing records.
 function inferStationRegion(station: Station): string {
   const explicit = String(station.region || "").trim().toLowerCase();
-  if (explicit) {
-    for (const region of ["central", "western", "eastern", "northern"]) {
-      if (explicit.includes(region)) return region;
-    }
-  }
+  if (explicit.includes("central")) return "central";
+  if (explicit.includes("north")) return "north";
+  if (explicit.includes("east")) return "east";
+  if (explicit.includes("west")) return "west";
+  if (explicit.includes("south")) return "south";
 
-  const location = `${station.city || ""} ${station.address || ""}`.toLowerCase();
-  const regions: Record<string, RegExp> = {
-    central: /kampala|wakiso|mukono|mpigi|masaka|mityana|mubende|luwero|nakaseke|kayunga|buikwe|gomba|butambala|kalangala|kyotera|rakai|ssembabule|kassanda|kyankwanzi|kira|ente?bbe/,
-    western: /mbarara|hoima|fort portal|fort-portal|kabale|kasese|bushenyi|ibanda|ntungamo|rukungiri|kanungu|kisoro|bundibugyo|kabarole|kagadi|kibaale|kiryandongo|masindi|mitooma|rubirizi|sheema|buhweju|kiruhura|kamwenge/,
-    eastern: /jinja|iganga|kamuli|mbale|tororo|busia|bugiri|mayuge|namutumba|buyende|pallisa|budaka|bududa|sironko|bulambuli|kapchorwa|kumi|katakwi|amuria|kaberamaido|serere|ngora|bukedea|butaleja|manat/,
-    northern: /gulu|lira|arua|kitgum|pader|agago|amuru|nwo?ya|omoro|otuke|ale?t|kole|dokolo|apac|nebbi|zombo|moyo|obongi|adjumani|yumbe|koboko|maracha|lamwo|karenga|kaabong|kotido|moroto|napak|nakapiripirit|abim/,
+  const location = `${station.name || ""} ${station.city || ""} ${station.address || ""}`.toLowerCase();
+  const terms: Record<string, string[]> = {
+    south: ["rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
+    north: ["kigumba", "kiryandongo", "gulu", "lira", "arua", "kitgum", "pader", "agago", "amuru", "nwoya", "omoro", "otuke", "alebtong", "kole", "dokolo", "apac", "nebbi", "zombo", "moyo", "obongi", "adjumani", "yumbe", "koboko", "maracha", "lamwo", "karenga", "kaabong", "kotido", "moroto", "napak", "nakapiripirit", "abim"],
+    east: ["jinja", "iganga", "kamuli", "mbale", "tororo", "busia", "bugiri", "mayuge", "namutumba", "buyende", "pallisa", "budaka", "bududa", "sironko", "bulambuli", "kapchorwa", "kumi", "katakwi", "amuria", "kaberamaido", "serere", "ngora", "bukedea", "butaleja", "manafa"],
+    west: ["mbarara", "hoima", "fort portal", "kabale", "kasese", "bushenyi", "ibanda", "ntungamo", "rukungiri", "kanungu", "kisoro", "bundibugyo", "kabarole", "kagadi", "kibaale", "mitooma", "rubirizi", "sheema", "buhweju", "kiruhura", "kamwenge", "kikuube"],
+    central: ["kampala", "kalerwe", "wakiso", "mukono", "mpigi", "mityana", "mubende", "luwero", "nakaseke", "nakasongola", "kayunga", "buikwe", "gomba", "butambala", "kassanda", "kira", "entebbe"],
   };
-  for (const [region, pattern] of Object.entries(regions)) {
-    if (pattern.test(location)) return region;
+  for (const candidate of ["south", "north", "east", "west", "central"]) {
+    if (terms[candidate].some((term) => location.includes(term))) return candidate;
   }
 
   const latitude = Number(station.latitude);
   const longitude = Number(station.longitude);
-  if (
-    Number.isFinite(latitude) && Number.isFinite(longitude) &&
-    latitude >= -1.5 && latitude <= 4.5 &&
-    longitude >= 29.5 && longitude <= 35.0
-  ) {
-    if (latitude >= 1.5) return "northern";
-    if (longitude >= 33.0) return "eastern";
-    if (longitude <= 31.0) return "western";
+  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    if (latitude >= 1.5) return "north";
+    if (longitude >= 33) return "east";
+    if (longitude <= 30.5) return "west";
+    if (latitude <= -0.2) return "south";
     return "central";
   }
-
   return "other";
 }
-
 function openStationLocation(station: Station) {
   const latitude = Number(station.latitude);
   const longitude = Number(station.longitude);
@@ -76,7 +73,7 @@ function openStationLocation(station: Station) {
   void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
 }
 
-const REGIONS = ["All", "Central", "Western", "Eastern", "Northern"];
+const REGIONS = ["All", "Central", "North", "East", "West", "South"];
 
 export default function StationsScreen() {
   const router = useRouter();
@@ -92,9 +89,36 @@ export default function StationsScreen() {
   const fetchStations = async () => {
     setLoading(true);
     try {
-      const res = await apiRequest<Station[]>("get", "/stations");
+      const query: string[] = [];
+      let detectedCity = "";
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status === "granted") {
+        const gps = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        latitude = gps.coords.latitude;
+        longitude = gps.coords.longitude;
+        const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+        const place = places[0];
+        detectedCity = place?.city || place?.district || place?.subregion || place?.region || "";
+      }
+      if (latitude !== null && longitude !== null) {
+        query.push(`latitude=${latitude}`, `longitude=${longitude}`);
+      }
+      if (detectedCity) query.push(`city=${encodeURIComponent(detectedCity)}`);
+      const endpoint = query.length ? `/stations?${query.join("&")}` : "/stations";
+      const res = await apiRequest<Station[]>("get", endpoint);
       if (res.success && res.data) {
         setStations(res.data);
+        if (latitude !== null && longitude !== null) {
+          const detected = inferStationRegion({
+            id: "customer-location", name: "", address: "", city: detectedCity,
+            latitude, longitude, isActive: true,
+          });
+          if (detected !== "other") {
+            setRegion(detected.replace(/^./, (letter) => letter.toUpperCase()));
+          }
+        }
       }
     } catch (err: any) {
       console.error("[Stations] Fetch error:", err.message);
@@ -168,7 +192,16 @@ export default function StationsScreen() {
                     <Text style={styles.stationSub}>{station.city || station.address}</Text>
                     <Text style={styles.stationSold}>{inferStationRegion(station) === "other" ? "Uganda" : `${inferStationRegion(station).replace(/^./, (c) => c.toUpperCase())} Region`}</Text>
                   </View>
-                  <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7} onPress={() => openStationLocation(station)} accessibilityRole="button" accessibilityLabel={`Open ${station.name} on map`}><Icon name="map-marker-outline" size={20} color={COLORS.accent} /></TouchableOpacity>
+                  <View style={{ alignItems: "center", gap: 6 }}>
+                    <TouchableOpacity style={styles.sendBtn} activeOpacity={0.7} onPress={() => openStationLocation(station)} accessibilityRole="button" accessibilityLabel={`Open ${station.name} on map`}><Icon name="map-marker-outline" size={20} color={COLORS.accent} /></TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.selectStationBtn}
+                      activeOpacity={0.8}
+                      onPress={() => router.push({ pathname: "/order", params: { stationId: station.id, stationName: station.name } } as any)}
+                    >
+                      <Text style={styles.selectStationText}>Select</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
               {filtered.length === 0 && (
@@ -211,4 +244,6 @@ const styles = StyleSheet.create({
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   pillText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
   sendBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(20,132,255,0.12)", alignItems: "center", justifyContent: "center" },
+  selectStationBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: COLORS.accent },
+  selectStationText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800" },
 });
