@@ -5,6 +5,7 @@ import { User } from '../entities/User';
 import { Station } from '../entities/Station';
 import { isStationEligibleForLocation } from '../services/stationRegionService';
 import { getIO } from '../config/socket';
+import { createSystemNotification } from '../services/notificationService';
 
 const productRepository = AppDataSource.getRepository(Product);
 const userRepository = AppDataSource.getRepository(User);
@@ -96,6 +97,20 @@ export const createProduct = async (req: Request, res: Response) => {
     });
 
     await productRepository.save(product);
+    if (user.role === 'admin') {
+      try {
+        await createSystemNotification({
+          type: 'system_announcement',
+          stationId: product.stationId,
+          title: 'Station Product Added',
+          message: `${product.name} was added to your station inventory with ${product.stock} units.`,
+          data: { productId: product.id, stock: product.stock },
+          notifyAgent: true,
+        });
+      } catch (notificationError) {
+        console.error('[Product] Station notification failed:', notificationError);
+      }
+    }
 
     const io = getIO();
     io.to(`station_${finalStationId}`).emit('product_created', product);
@@ -154,8 +169,28 @@ export const updateProduct = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
+    const previousStock = Number(product.stock);
+    // Keep station ownership server-controlled; stock updates must not silently
+    // transfer inventory across stations.
+    if (updates.stationId && updates.stationId !== product.stationId) {
+      return res.status(400).json({ success: false, error: 'Transfer station inventory through an authorized transfer workflow.' });
+    }
     Object.assign(product, updates);
     await productRepository.save(product);
+    if (user.role === 'admin' && updates.stock !== undefined && Number(product.stock) !== previousStock) {
+      try {
+        await createSystemNotification({
+          type: 'system_announcement',
+          stationId: product.stationId,
+          title: 'Station Stock Updated',
+          message: `${product.name}: stock changed from ${previousStock} to ${product.stock} units.`,
+          data: { productId: product.id, previousStock, stock: Number(product.stock) },
+          notifyAgent: true,
+        });
+      } catch (notificationError) {
+        console.error('[Product] Station stock notification failed:', notificationError);
+      }
+    }
 
     const io = getIO();
     io.to(`station_${product.stationId}`).emit('product_updated', product);
