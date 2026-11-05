@@ -26,6 +26,15 @@ interface Station {
 // persist a separate region field. Use the real location text first, then Uganda
 // coordinates as a fallback so all station filters work with existing records.
 function inferStationRegion(station: Station): string {
+  // The API returns the normalized, admin-selected region. Trust explicit
+  // non-central selections before looking at names or addresses, which may
+  // contain unrelated locality words and previously overrode the tab.
+  const explicit = String(station.region || "").trim().toLowerCase();
+  if (explicit.includes("north")) return "north";
+  if (explicit.includes("east")) return "east";
+  if (explicit.includes("west")) return "west";
+  if (explicit.includes("south")) return "south";
+
   const location = `${station.name || ""} ${station.city || ""} ${station.address || ""}`.toLowerCase();
   const terms: Record<string, string[]> = {
     south: ["masaka", "kalungu", "bukomansimbi", "lwengo", "rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
@@ -41,12 +50,6 @@ function inferStationRegion(station: Station): string {
   // Non-central admin selections are authoritative. "central" is the
   // legacy DB default, however, so GPS must be allowed to correct that
   // default for older Northern, Eastern, Western and Southern stations.
-  const explicit = String(station.region || "").trim().toLowerCase();
-  if (explicit.includes("north")) return "north";
-  if (explicit.includes("east")) return "east";
-  if (explicit.includes("west")) return "west";
-  if (explicit.includes("south")) return "south";
-
   const latitude = Number(station.latitude);
   const longitude = Number(station.longitude);
   if (
