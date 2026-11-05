@@ -11,7 +11,31 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import ImageUpload from '../components/ImageUpload';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "/api";
+
+function resolveProductImageUrl(value?: string | null): string {
+  if (!value) return "";
+  if (/^(data:|blob:)/i.test(value)) return value;
+  const apiBase = new URL(API_URL, window.location.origin);
+  try {
+    const parsed = new URL(value, apiBase);
+    // Old records sometimes stored a relative upload path or the public
+    // frontend host. Uploaded files are served by the API host.
+    if ((parsed.pathname.startsWith("/api/uploads/") || parsed.pathname.startsWith("/uploads/")) &&
+        apiBase.origin !== window.location.origin &&
+        (parsed.origin === window.location.origin || !/^https?:/i.test(value))) {
+      return new URL(parsed.pathname, apiBase.origin).toString();
+    }
+    if (!/^https?:/i.test(value)) {
+      const path = value.replace(/^\/+/, "");
+      if (path.startsWith("uploads/")) return new URL("/api/" + path, apiBase.origin).toString();
+    }
+    return parsed.toString();
+  } catch {
+    return value;
+  }
+}
+
 
 interface Product {
   id: string;
@@ -265,7 +289,7 @@ export default function Products() {
                       <TableCell>
                         {product.imageUrl ? (
                           <Avatar
-                            src={product.imageUrl}
+                            src={resolveProductImageUrl(product.imageUrl)}
                             alt={product.name}
                             variant="rounded"
                             sx={{ width: 48, height: 48 }}
