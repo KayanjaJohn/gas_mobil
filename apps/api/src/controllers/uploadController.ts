@@ -6,7 +6,7 @@ export const uploadImage = async (req: Request, res: Response) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: 'No image file provided. Field name must be "image".',
+        error: "Choose an image before uploading.",
       });
     }
 
@@ -34,7 +34,7 @@ export const uploadImage = async (req: Request, res: Response) => {
     console.error('[Upload] Error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to upload image',
+      error: "The image upload service is temporarily unavailable. Please try again.",
     });
   }
 };
