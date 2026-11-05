@@ -83,8 +83,12 @@ api.interceptors.response.use(
       request.headers = request.headers || ({} as any);
       request.headers.Authorization = `Bearer ${newToken}`;
       return api.request(request);
-    } catch (refreshError) {
-      clearAgentSession();
+    } catch (refreshError: any) {
+      const refreshStatus = refreshError?.response?.status;
+      if (refreshStatus === 400 || refreshStatus === 401 || refreshStatus === 403) {
+        clearAgentSession();
+      }
+      // Keep the saved session during network/5xx outages; a later request can retry.
       return Promise.reject(refreshError);
     }
   }
