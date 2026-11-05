@@ -50,6 +50,7 @@ services:
     volumes:
       - ./apps/api/src:/app/src
       - ./apps/api/.env:/app/.env:ro
+      - gas_mobil_uploads:/app/uploads
     networks:
       - gas-mobil-network
     command: npm run dev
@@ -65,6 +66,7 @@ services:
 
 volumes:
   mysql_data:
+  gas_mobil_uploads:
 
 networks:
   gas-mobil-network:
