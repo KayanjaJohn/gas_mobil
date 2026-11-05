@@ -35,7 +35,8 @@ initializeSocket(httpServer);
 const PORT = Number(process.env.PORT || 5000);
 
 // ── Ensure uploads directory exists ──────────
-const uploadsDir = path.join(__dirname, "../uploads/products");
+const uploadsRoot = path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads"));
+const uploadsDir = path.join(uploadsRoot, "products");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log("[Server] Created uploads directory:", uploadsDir);
@@ -123,8 +124,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Static Files ─────────────────
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-app.use("/api/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/uploads", express.static(uploadsRoot, { fallthrough: false, immutable: true, maxAge: "7d" }));
+app.use("/api/uploads", express.static(uploadsRoot, { fallthrough: false, immutable: true, maxAge: "7d" }));
 
 // ── Health Check ─────────────────
 app.get('/health', (req, res) => {
