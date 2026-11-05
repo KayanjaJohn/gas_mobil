@@ -20,7 +20,7 @@ const getAgentStationId = async (req: Request): Promise<string | null> => {
     relations: ["station"],
   });
   if (!agent) return null;
-  return (agent as any).station?.id || null;
+  return (agent as any).stationId || (agent as any).station?.id || null;
 };
 
 const verifyStationOrder = async (
@@ -71,7 +71,26 @@ export const getAgentOrders = async (req: Request, res: Response) => {
     if (!stationId)
       return res.status(400).json({ success: false, error: "Agent has no station" });
     const orders = await fetchOrdersWithDeliveries({ stationId });
-    res.json({ success: true, data: orders });
+    const mismatchedOrders = orders.filter((order: any) =>
+      order.stationId !== stationId ||
+      (order.items || []).some((item: any) =>
+        item.product?.stationId && item.product.stationId !== stationId
+      )
+    );
+    const safeOrders = orders.filter((order: any) =>
+      order.stationId === stationId &&
+      !(order.items || []).some((item: any) =>
+        item.product?.stationId && item.product.stationId !== stationId
+      )
+    );
+    res.json({
+      success: true,
+      data: safeOrders,
+      meta: {
+        stationId,
+        excludedIntegrityOrders: mismatchedOrders.length,
+      },
+    });
   } catch (error) {
     console.error("getAgentOrders error:", error);
     res.status(500).json({ success: false, error: "Server error" });
