@@ -5,12 +5,14 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 // Use the shared Axios singleton so legacy pages importing axios directly
 // receive the same token and single-flight refresh interceptors.
 const api = axios;
-api.defaults.baseURL = API_URL.replace(/\\/+$/, "");
+const API_BASE_URL = API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL;
+api.defaults.baseURL = API_BASE_URL;
 api.defaults.timeout = 45000;
 
 const configuredApiPath = (() => {
   try {
-    return new URL(api.defaults.baseURL || "/api", window.location.origin).pathname.replace(/\\/+$/, "");
+    const pathname = new URL(API_BASE_URL || "/api", window.location.origin).pathname;
+    return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
   } catch {
     return "";
   }
@@ -37,7 +39,8 @@ api.interceptors.request.use((config) => {
     configuredApiPath &&
     config.url &&
     config.url.startsWith(configuredApiPath + "/") &&
-    !/^https?:\\/\\//i.test(config.url)
+    !config.url.startsWith("http://") &&
+    !config.url.startsWith("https://")
   ) {
     config.url = config.url.slice(configuredApiPath.length);
   }
