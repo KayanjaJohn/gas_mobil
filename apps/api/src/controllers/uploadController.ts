@@ -11,8 +11,8 @@ export const uploadImage = async (req: Request, res: Response) => {
     }
 
     // The public API may be configured as either https://api.gas-mobil.com
-    // or https://api.gas-mobil.com/api. Uploaded files are served from /uploads,
-    // not /api/uploads, so use only the configured origin.
+    // or https://api.gas-mobil.com/api. Files are publicly served through the
+    // same /api prefix used by the browser and mobile clients.
     const configuredUrl = process.env.API_PUBLIC_URL?.trim();
     const forwardedProtocol = req.headers["x-forwarded-proto"];
     const forwardedHost = req.headers["x-forwarded-host"];
@@ -22,7 +22,7 @@ export const uploadImage = async (req: Request, res: Response) => {
       ? new URL(configuredUrl).origin
       : `${protocol}://${host}`;
 
-    const relativePath = `/uploads/products/${path.basename(req.file.path)}`;
+    const relativePath = `/api/uploads/products/${path.basename(req.file.path)}`;
     const imageUrl = `${baseUrl}${relativePath}`;
 
     res.json({
