@@ -111,6 +111,11 @@ axios.interceptors.response.use(
 );
 
 function friendlyAuthError(error: any): string {
+  // Preserve intentional application errors (for example, a role mismatch)
+  // rather than presenting them as an internet connection problem.
+  if (error instanceof Error && !error?.response && !error?.request && !error?.code) {
+    return error.message;
+  }
   if (error?.code === "ECONNABORTED") {
     return "GasMobil could not be reached in time. Check your internet connection and try again.";
   }
