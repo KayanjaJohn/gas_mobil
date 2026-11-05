@@ -354,8 +354,8 @@ export default function Stations() {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-          <Table>
+        <TableContainer component={Paper} sx={{ borderRadius: 2, width: "100%", overflowX: "auto", border: "1px solid", borderColor: "divider" }}>
+          <Table sx={{ minWidth: 1150, tableLayout: "auto", "& th": { whiteSpace: "nowrap", fontWeight: 700, color: "text.primary", bgcolor: "action.hover" }, "& td": { color: "text.primary", verticalAlign: "top", overflowWrap: "anywhere", borderColor: "divider" }, "& .MuiButton-root": { fontWeight: 700 } }}>
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
@@ -396,8 +396,10 @@ export default function Stations() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {Number(station.latitude).toFixed(4)},{' '}
-                    {Number(station.longitude).toFixed(4)}
+                    {Number.isFinite(Number(station.latitude)) && Number(station.latitude) >= -1.5 && Number(station.latitude) <= 4.5 &&
+                     Number.isFinite(Number(station.longitude)) && Number(station.longitude) >= 29.5 && Number(station.longitude) <= 35
+                      ? `${Number(station.latitude).toFixed(4)}, ${Number(station.longitude).toFixed(4)}`
+                      : "Invalid coordinates — edit station"}
                   </TableCell>
                   <TableCell>
                     {station.agents && station.agents.length > 0 ? (
