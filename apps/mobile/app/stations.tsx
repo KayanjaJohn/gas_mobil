@@ -27,13 +27,6 @@ interface Station {
 // persist a separate region field. Use the real location text first, then Uganda
 // coordinates as a fallback so all station filters work with existing records.
 function inferStationRegion(station: Station): string {
-  const explicit = String(station.region || "").trim().toLowerCase();
-  if (explicit.includes("central")) return "central";
-  if (explicit.includes("north")) return "north";
-  if (explicit.includes("east")) return "east";
-  if (explicit.includes("west")) return "west";
-  if (explicit.includes("south")) return "south";
-
   const location = `${station.name || ""} ${station.city || ""} ${station.address || ""}`.toLowerCase();
   const terms: Record<string, string[]> = {
     south: ["rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
@@ -48,13 +41,25 @@ function inferStationRegion(station: Station): string {
 
   const latitude = Number(station.latitude);
   const longitude = Number(station.longitude);
-  if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+  if (
+    Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    latitude >= -1.5 && latitude <= 4.5 &&
+    longitude >= 29.5 && longitude <= 35
+  ) {
     if (latitude >= 1.5) return "north";
     if (longitude >= 33) return "east";
     if (longitude <= 30.5) return "west";
     if (latitude <= -0.2) return "south";
     return "central";
   }
+
+  // Use a stored region only when address/name and valid GPS cannot identify it.
+  const explicit = String(station.region || "").trim().toLowerCase();
+  if (explicit.includes("central")) return "central";
+  if (explicit.includes("north")) return "north";
+  if (explicit.includes("east")) return "east";
+  if (explicit.includes("west")) return "west";
+  if (explicit.includes("south")) return "south";
   return "other";
 }
 function openStationLocation(station: Station) {
