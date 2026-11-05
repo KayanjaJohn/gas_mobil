@@ -79,9 +79,11 @@ export function inferUgandaRegion(input: {
     if (REGION_TERMS[region].some((term) => locationText.includes(term))) return region;
   }
 
-  // An admin-selected region is more reliable than broad coordinate cut-offs.
+  // Explicit non-central regions are intentional admin selections. "central"
+  // is also the legacy database default, so do not let that default mask a
+  // station whose GPS clearly places it in another region.
   const explicit = normalizeUgandaRegion(input.region);
-  if (explicit) return explicit;
+  if (explicit && explicit !== "central") return explicit;
 
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
@@ -111,7 +113,9 @@ export function inferUgandaRegion(input: {
     return "central";
   }
 
-  return null;
+  // Keep a valid explicit Central selection as the final fallback when
+  // coordinates are missing or inconclusive.
+  return explicit;
 }
 
 export function isStationEligibleForLocation(
