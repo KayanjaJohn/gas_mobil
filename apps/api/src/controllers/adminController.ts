@@ -7,6 +7,7 @@ import { Product } from "../entities/Product";
 import { Delivery } from "../entities/Delivery";
 import { Station } from "../entities/Station";
 import { StationActivity } from "../entities/StationActivity";
+import { inferUgandaRegion } from "../services/stationRegionService";
 import bcryptjs from "bcryptjs";
 
 const orderRepository = AppDataSource.getRepository(Order);
@@ -593,7 +594,7 @@ export const getAllStations = async (req: Request, res: Response) => {
 					select: ["id", "name", "email", "phone", "isActive", "createdAt"],
 				});
 
-				return { ...station, agents: agents };
+				return { ...station, region: inferUgandaRegion(station) ?? station.region, agents: agents };
 			}),
 		);
 
