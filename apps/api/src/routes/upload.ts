@@ -8,7 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 const router = Router();
 
 // Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../../uploads/products');
+const uploadRoot = path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'));
+const uploadDir = path.join(uploadRoot, 'products');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
