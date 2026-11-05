@@ -81,6 +81,7 @@ export default function StationsScreen() {
   const [region, setRegion] = useState("All");
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     fetchStations();
@@ -88,6 +89,7 @@ export default function StationsScreen() {
 
   const fetchStations = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const query: string[] = [];
       let detectedCity = "";
@@ -106,7 +108,8 @@ export default function StationsScreen() {
         query.push(`latitude=${latitude}`, `longitude=${longitude}`);
       }
       if (detectedCity) query.push(`city=${encodeURIComponent(detectedCity)}`);
-      const endpoint = query.length ? `/stations?${query.join("&")}` : "/stations";
+      // Load the full station directory so the customer can browse every region.
+      const endpoint = "/stations";
       const res = await apiRequest<Station[]>("get", endpoint);
       if (res.success && res.data) {
         setStations(res.data);
@@ -122,6 +125,7 @@ export default function StationsScreen() {
       }
     } catch (err: any) {
       console.error("[Stations] Fetch error:", err.message);
+      setLoadError("Unable to load stations. Please retry.");
     } finally {
       setLoading(false);
     }
@@ -171,6 +175,7 @@ export default function StationsScreen() {
           ))}
         </ScrollView>
 
+        {loadError ? <TouchableOpacity onPress={fetchStations}><Text style={{ color: "#B91C1C", padding: 16 }}>{loadError} Tap to retry.</Text></TouchableOpacity> : null}
         {loading ? (
           <ActivityIndicator color={COLORS.accent} style={{ marginTop: 40 }} />
         ) : (
