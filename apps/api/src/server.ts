@@ -124,6 +124,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ── Static Files ─────────────────
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/api/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ── Health Check ─────────────────
 app.get('/health', (req, res) => {
