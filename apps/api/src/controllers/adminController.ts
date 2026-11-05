@@ -8,6 +8,7 @@ import { Delivery } from "../entities/Delivery";
 import { Station } from "../entities/Station";
 import { StationActivity } from "../entities/StationActivity";
 import { inferUgandaRegion } from "../services/stationRegionService";
+import { inferUgandaRegion } from "../services/stationRegionService";
 import bcryptjs from "bcryptjs";
 
 const orderRepository = AppDataSource.getRepository(Order);
@@ -502,8 +503,11 @@ export const createStation = async (req: Request, res: Response) => {
 		const { name, address, latitude, longitude, phone, email, agentName, agentPassword, region } =
 			req.body;
 		const allowedRegions = ["central", "north", "east", "west", "south"] as const;
-		const stationRegion: Station["region"] =
-			allowedRegions.find((candidate) => candidate === String(region || "").toLowerCase()) || "central";
+		const requestedRegion = allowedRegions.find(
+			(candidate) => candidate === String(region || "").toLowerCase()
+		);
+		const inferredRegion = inferUgandaRegion({ name, address, latitude, longitude });
+		const stationRegion: Station["region"] = requestedRegion || inferredRegion || "central";
 
 		if (!name || !address || latitude === undefined || longitude === undefined || !phone || !email || !agentPassword) {
 			return res.status(400).json({
