@@ -44,12 +44,13 @@ router.post('/', upload.single('image'), uploadImage);
 router.use((err: any, req: any, res: any, next: any) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ success: false, error: 'File too large. Max 5MB.' });
+      return res.status(400).json({ success: false, error: 'This image is larger than 5 MB. Choose a smaller image.' });
     }
     return res.status(400).json({ success: false, error: err.message });
   }
   if (err) {
-    return res.status(400).json({ success: false, error: err.message });
+    console.error("[Upload] File processing failed:", err?.message || err);
+    return res.status(500).json({ success: false, error: "The image upload service is temporarily unavailable. Please try again." });
   }
   next();
 });
