@@ -39,6 +39,7 @@ interface Station {
   latitude?: string | number;
   longitude?: string | number;
   isActive: boolean;
+  region?: string;
 }
 
 export default function HomeScreen() {
@@ -155,13 +156,13 @@ export default function HomeScreen() {
         apiRequest<Station[]>("get", "/stations"),
         Location.requestForegroundPermissionsAsync(),
       ]);
-      const activeStations = stationResponse.success && stationResponse.data
+      let eligibleStations = stationResponse.success && stationResponse.data
         ? stationResponse.data.filter((station: Station) => station.isActive)
         : [];
-      setStations(activeStations);
 
       let currentLatitude: number | null = null;
       let currentLongitude: number | null = null;
+      let detectedCity = user?.city || "";
       if (permission.status === "granted") {
         try {
           const location = await Location.getCurrentPositionAsync({
@@ -176,7 +177,8 @@ export default function HomeScreen() {
           });
           const place = places[0];
           const actualCity = place?.city || place?.district || place?.subregion || place?.region;
-          setCustomerCity(actualCity ? actualCity.trim() : (user?.city || "Current city unavailable"));
+          detectedCity = actualCity ? actualCity.trim() : (user?.city || "");
+          setCustomerCity(detectedCity || "Current city unavailable");
         } catch (locationError: any) {
           console.warn("[Home] Could not resolve current city:", locationError?.message || locationError);
           setCustomerCity("Current city unavailable");
@@ -185,7 +187,22 @@ export default function HomeScreen() {
         setCustomerCity("Enable location to show your city");
       }
 
-      if (activeStations.length === 0) {
+      // Re-query with the freshly detected GPS and city. The API applies the
+      // same-region OR within-50-km rule before returning customer stations.
+      const stationQuery: string[] = [];
+      if (currentLatitude !== null && currentLongitude !== null) {
+        stationQuery.push(`latitude=${currentLatitude}`, `longitude=${currentLongitude}`);
+      }
+      if (detectedCity) stationQuery.push(`city=${encodeURIComponent(detectedCity)}`);
+      if (stationQuery.length > 0) {
+        const scopedResponse = await apiRequest<Station[]>("get", `/stations?${stationQuery.join("&")}`);
+        if (scopedResponse.success && Array.isArray(scopedResponse.data)) {
+          eligibleStations = scopedResponse.data.filter((station) => station.isActive);
+        }
+      }
+      setStations(eligibleStations);
+
+      if (eligibleStations.length === 0) {
         setNearestStation(null);
         return;
       }
@@ -193,7 +210,7 @@ export default function HomeScreen() {
       if (currentLatitude !== null && currentLongitude !== null) {
         let best: Station | null = null;
         let bestDistance = Number.POSITIVE_INFINITY;
-        for (const station of activeStations) {
+        for (const station of eligibleStations) {
           const latitude = Number(station.latitude ?? (station as any).lat);
           const longitude = Number(station.longitude ?? (station as any).lng);
           if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
@@ -205,9 +222,15 @@ export default function HomeScreen() {
             best = station;
           }
         }
-        setNearestStation(best || activeStations[0]);
+        setNearestStation(best || eligibleStations[0]);
+      } else if (detectedCity) {
+        // No GPS but a saved/reverse-geocoded city exists. The API has already
+        // constrained this list to that city’s region.
+        setNearestStation(eligibleStations[0]);
       } else {
-        setNearestStation(activeStations[0]);
+        // Do not auto-assign a customer to an arbitrary distant station.
+        // They can choose a regional station from the Stations screen.
+        setNearestStation(null);
       }
     } catch (error: any) {
       console.error("[Home] Failed to load stations/location:", error?.message || error);
