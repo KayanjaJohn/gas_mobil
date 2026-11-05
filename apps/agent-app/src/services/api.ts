@@ -29,6 +29,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
+    if (error.code === "ECONNABORTED") {
+      error.message = "GasMobil is taking too long to respond. Check your connection and try again.";
+    } else if (!error.response) {
+      error.message = "We couldn't connect to GasMobil. Check your internet connection and try again.";
+    } else if (error.response.status === 429) {
+      error.response.data = { ...(error.response.data || {}), error: "Too many requests were made. Please wait a moment and try again." };
+    } else if (error.response.status >= 500) {
+      error.response.data = { ...(error.response.data || {}), error: "GasMobil is temporarily unavailable. Please try again shortly." };
+    }
     const request = error.config as RetriableRequest | undefined;
     const status = error.response?.status;
     const url = request?.url || "";
