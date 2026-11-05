@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:3200';
+const CONFIGURED_API_URL = import.meta.env.VITE_API_URL || "/api";
+const NORMALIZED_API_URL = CONFIGURED_API_URL.endsWith("/") ? CONFIGURED_API_URL.slice(0, -1) : CONFIGURED_API_URL;
+const API_ROOT = NORMALIZED_API_URL.endsWith("/api") ? NORMALIZED_API_URL : NORMALIZED_API_URL + "/api";
+const SOCKET_ORIGIN = NORMALIZED_API_URL.startsWith("http") ? new URL(NORMALIZED_API_URL).origin : window.location.origin;
 const MAX_NOTIFICATIONS = 200;
 const alertedNotificationIds = new Set<string>();
 
@@ -74,15 +77,18 @@ export function useAdminNotifications(token: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/notifications?page=1&limit=100`, {
+      const res = await fetch(`${API_ROOT}/notifications?page=1&limit=100`, {
         headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
       });
-      const json = await res.json();
-      if (json.success) {
-        (json.data as Notification[]).forEach((item) => receivedNotificationIdsRef.current.add(item.id));
-        setNotifications(json.data);
-        setUnreadCount(json.meta?.unreadCount || 0);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "We couldn't refresh notifications. Please try again.");
       }
+      const items = Array.isArray(json.data) ? json.data as Notification[] : [];
+      items.forEach((item) => receivedNotificationIdsRef.current.add(item.id));
+      setNotifications(items);
+      setUnreadCount(json.meta?.unreadCount || 0);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -93,7 +99,7 @@ export function useAdminNotifications(token: string | null) {
   const markAsRead = useCallback(async (id: string) => {
     if (!token) return;
     try {
-      await fetch(`${API_URL}/api/notifications/${id}/read`, {
+      await fetch(`${API_ROOT}/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -109,7 +115,7 @@ export function useAdminNotifications(token: string | null) {
   const markAllAsRead = useCallback(async () => {
     if (!token) return;
     try {
-      await fetch(`${API_URL}/api/notifications/read-all`, {
+      await fetch(`${API_ROOT}/notifications/read-all`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -123,7 +129,7 @@ export function useAdminNotifications(token: string | null) {
   const deleteNotification = useCallback(async (id: string) => {
     if (!token) return;
     try {
-      await fetch(`${API_URL}/api/notifications/${id}`, {
+      await fetch(`${API_ROOT}/notifications/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -143,7 +149,7 @@ export function useAdminNotifications(token: string | null) {
   useEffect(() => {
     if (!token) return;
 
-    const socket = io(API_URL, {
+    const socket = io(SOCKET_ORIGIN, {
       auth: { token },
       transports: ['websocket'],
       reconnection: true,
