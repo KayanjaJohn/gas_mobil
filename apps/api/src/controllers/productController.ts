@@ -175,7 +175,16 @@ export const updateProduct = async (req: Request, res: Response) => {
     if (updates.stationId && updates.stationId !== product.stationId) {
       return res.status(400).json({ success: false, error: 'Transfer station inventory through an authorized transfer workflow.' });
     }
+
     Object.assign(product, updates);
+    // Restocking must restore customer availability. Previously depleted
+    // products could remain isAvailable=false after the admin raised stock.
+    if (updates.stock !== undefined && Number(updates.stock) > 0 && updates.isAvailable === undefined) {
+      product.isAvailable = true;
+    }
+    if (updates.stock !== undefined && Number(updates.stock) <= 0) {
+      product.isAvailable = false;
+    }
     await productRepository.save(product);
     if (user.role === 'admin' && updates.stock !== undefined && Number(product.stock) !== previousStock) {
       try {
