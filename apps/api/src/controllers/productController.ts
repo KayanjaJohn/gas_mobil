@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import AppDataSource from '../config/database';
 import { Product } from '../entities/Product';
 import { User } from '../entities/User';
+import { Station } from '../entities/Station';
+import { isStationEligibleForLocation } from '../services/stationRegionService';
 import { getIO } from '../config/socket';
 
 const productRepository = AppDataSource.getRepository(Product);
@@ -14,12 +16,35 @@ export const getProducts = async (req: Request, res: Response) => {
       .leftJoinAndSelect('product.station', 'station');
 
     if (user.role === 'agent') {
+      // Never fall back to a global product list when an agent has no station.
       const agent = await userRepository.findOne({ where: { id: user.id } });
-      if (agent?.stationId) {
-        query = query.where('product.stationId = :stationId', { stationId: agent.stationId });
+      if (!agent?.stationId) {
+        return res.status(403).json({
+          success: false,
+          error: "This agent account is not assigned to a station. Ask an administrator to assign one.",
+        });
       }
+      query = query.where('product.stationId = :stationId', { stationId: agent.stationId });
     } else if (user.role === 'customer') {
+      const stationRepository = AppDataSource.getRepository(Station);
+      const stations = await stationRepository.find({ where: { isActive: true } });
+      const location = {
+        latitude: req.query.latitude ?? user.latitude,
+        longitude: req.query.longitude ?? user.longitude,
+        city: req.query.city ?? user.city,
+        address: req.query.address ?? user.address,
+        region: req.query.region,
+      };
+      const hasLocation = location.latitude != null || location.longitude != null ||
+        Boolean(location.city || location.address || location.region);
+      const eligibleStationIds = hasLocation
+        ? stations.filter((station) => isStationEligibleForLocation(station, location)).map((station) => station.id)
+        : stations.map((station) => station.id);
+      if (eligibleStationIds.length === 0) {
+        return res.json({ success: true, data: [], meta: { message: "No stations are currently available in your region or within 50 km." } });
+      }
       query = query.where('product.isAvailable = :isAvailable', { isAvailable: true })
+        .andWhere('product.stationId IN (:...stationIds)', { stationIds: eligibleStationIds })
         .andWhere('station.isActive = :isActive', { isActive: true });
     }
 
