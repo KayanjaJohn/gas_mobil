@@ -370,8 +370,8 @@ export default function Reports() {
             </Box>
           </Paper>
 
-          <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-            <Table>
+          <TableContainer component={Paper} sx={{ borderRadius: 2, width: "100%", overflowX: "auto", border: "1px solid", borderColor: "divider" }}>
+            <Table size="small" sx={{ minWidth: 1250, "& th": { whiteSpace: "nowrap", fontWeight: 800, bgcolor: "action.hover", color: "text.primary" }, "& td": { verticalAlign: "top", color: "text.primary", borderColor: "divider" } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Order ID</TableCell>
