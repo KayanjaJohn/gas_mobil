@@ -23,7 +23,7 @@ function Main() {
         typography: { fontFamily: '"DM Sans", sans-serif', h1: { fontFamily: '"DM Sans", sans-serif' }, h2: { fontFamily: '"DM Sans", sans-serif' }, h3: { fontFamily: '"DM Sans", sans-serif' }, h4: { fontFamily: '"DM Sans", sans-serif' }, h5: { fontFamily: '"DM Sans", sans-serif' }, h6: { fontFamily: '"DM Sans", sans-serif' }, button: { fontFamily: '"DM Sans", sans-serif', fontWeight: 800 } },
         palette: {
           mode,
-          primary: { main: "#0B3D2E", contrastText: "#FFF8EE" },
+          primary: { main: "#12834B", dark: "#0B6339", contrastText: "#FFFFFF" },
           secondary: { main: "#F36A21", contrastText: "#FFF8EE" },
           success: { main: "#21865D" },
           warning: { main: "#D97706" },
@@ -46,7 +46,11 @@ function Main() {
           MuiMenuItem: { styleOverrides: { root: { color: "#0B3D2E" } } },
           MuiDialogTitle: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
           MuiDialogContent: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
-          MuiButton: { styleOverrides: { root: { textTransform: "none", fontWeight: 600 } } },
+          MuiButton: { styleOverrides: {
+            root: { textTransform: "none", fontWeight: 700 },
+            containedPrimary: { backgroundColor: "#12834B", color: "#FFFFFF", "&:hover": { backgroundColor: "#0B6339" } },
+            outlinedPrimary: { borderColor: "#F36A21", color: "#D95B17", "&:hover": { borderColor: "#F36A21", backgroundColor: "rgba(243,106,33,.08)" } },
+          } },
           MuiChip: { styleOverrides: { label: { fontWeight: 600 } } },
         },
       }),
