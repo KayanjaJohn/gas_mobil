@@ -498,7 +498,7 @@ export const createStation = async (req: Request, res: Response) => {
 			return res.status(403).json({ success: false, error: "Admin access only" });
 		}
 
-		const { name, address, latitude, longitude, phone, email, agentName, agentPassword } =
+		const { name, address, latitude, longitude, phone, email, agentName, agentPassword, region } =
 			req.body;
 
 		if (!name || !address || latitude === undefined || longitude === undefined || !phone || !email || !agentPassword) {
@@ -530,6 +530,7 @@ export const createStation = async (req: Request, res: Response) => {
 			longitude,
 			phone,
 			email,
+			region: ["central", "north", "east", "west", "south"].includes(String(region || "").toLowerCase()) ? String(region).toLowerCase() : "central",
 			isActive: true,
 		});
 
@@ -608,12 +609,14 @@ export const updateStation = async (req: Request, res: Response) => {
 		}
 
 		const { id } = req.params;
-		const { name, address, latitude, longitude, phone, email, isActive } = req.body;
+		const { name, address, latitude, longitude, phone, email, isActive, region } = req.body;
 
 		const station = await stationRepository.findOne({ where: { id } });
 		if (!station) {
 			return res.status(404).json({ success: false, error: "Station not found" });
 		}
+
+		const previousEmail = station.email;
 
 		// If email is changing, check it's not used elsewhere
 		if (email && email !== station.email) {
@@ -631,12 +634,18 @@ export const updateStation = async (req: Request, res: Response) => {
 		station.longitude = longitude !== undefined ? longitude : station.longitude;
 		station.phone = phone !== undefined ? phone : station.phone;
 		station.email = email !== undefined ? email : station.email;
+		if (region !== undefined) {
+			if (!["central", "north", "east", "west", "south"].includes(String(region).toLowerCase())) {
+				return res.status(400).json({ success: false, error: "Choose Central, North, East, West or South as the station region." });
+			}
+			station.region = String(region).toLowerCase() as any;
+		}
 		station.isActive = isActive !== undefined ? isActive : station.isActive;
 
 		await stationRepository.save(station);
 
 		// Update agent email if station email changed
-		if (email && email !== station.email) {
+		if (email && email !== previousEmail) {
 			await userRepository.update({ stationId: id, role: "agent" }, { email: email });
 		}
 
