@@ -51,6 +51,12 @@ router.use((err: any, req: any, res: any, next: any) => {
     }
     return res.status(400).json({ success: false, error: "We couldn't process that image. Use a JPG, PNG or WebP file." });
   }
+  if (err && /Only JPG, PNG, and WebP/i.test(String(err.message || ""))) {
+    return res.status(400).json({
+      success: false,
+      error: "Choose a JPG, PNG or WebP image.",
+    });
+  }
   if (err) {
     console.error("[Upload] File processing failed:", err?.message || err);
     return res.status(500).json({ success: false, error: "The image upload service is temporarily unavailable. Please try again." });
