@@ -3,7 +3,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Typography, Box, Alert, CircularProgress, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Switch, Snackbar, IconButton, Chip, Grid, Divider
+  Switch, Snackbar, IconButton, Chip, Grid, Divider, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import { Edit, Delete, ContentCopy, PersonAdd } from '@mui/icons-material';
 import axios from 'axios';
@@ -28,6 +28,7 @@ interface Station {
   longitude: number | string;
   phone?: string;
   email?: string;
+  region?: string;
   isActive: boolean;
   agents: Agent[];
 }
@@ -56,6 +57,7 @@ export default function Stations() {
     longitude: '',
     phone: '',
     email: '',
+    region: 'central',
     agentName: '',
     agentPassword: ''
   });
@@ -104,6 +106,7 @@ export default function Stations() {
       longitude: '',
       phone: '',
       email: '',
+      region: 'central',
       agentName: '',
       agentPassword: ''
     });
@@ -119,6 +122,7 @@ export default function Stations() {
       longitude: String(station.longitude),
       phone: station.phone || '',
       email: station.email || '',
+      region: station.region || 'central',
       agentName: '',
       agentPassword: ''
     });
@@ -190,6 +194,7 @@ export default function Stations() {
       address: form.address.trim(),
       phone: form.phone.trim(),
       email: form.email.trim().toLowerCase(),
+      region: form.region,
       agentName: form.agentName.trim(),
       agentPassword: form.agentPassword,
       latitude,
@@ -520,6 +525,23 @@ export default function Stations() {
                 required
                 helperText="This email is used for the first agent login"
               />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth required>
+                <InputLabel id="station-region-label">Service region</InputLabel>
+                <Select
+                  labelId="station-region-label"
+                  label="Service region"
+                  value={form.region}
+                  onChange={(e) => updateFormField('region', String(e.target.value))}
+                >
+                  <MenuItem value="central">Central Uganda</MenuItem>
+                  <MenuItem value="north">Northern Uganda</MenuItem>
+                  <MenuItem value="east">Eastern Uganda</MenuItem>
+                  <MenuItem value="west">Western Uganda</MenuItem>
+                  <MenuItem value="south">Southern Uganda</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
