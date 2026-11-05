@@ -36,6 +36,7 @@ services:
       CLIENT_URL: ${CLIENT_URL:?Set CLIENT_URL}
       ADMIN_URL: ${ADMIN_URL:-}
       AGENT_URL: ${AGENT_URL:-}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-}
     ports:
       - "127.0.0.1:5000:5000"
     volumes:
