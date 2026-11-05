@@ -5,7 +5,16 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 // Use the shared Axios singleton so legacy pages importing axios directly
 // receive the same token and single-flight refresh interceptors.
 const api = axios;
+api.defaults.baseURL = API_URL.replace(/\\/+$/, "");
 api.defaults.timeout = 45000;
+
+const configuredApiPath = (() => {
+  try {
+    return new URL(api.defaults.baseURL || "/api", window.location.origin).pathname.replace(/\\/+$/, "");
+  } catch {
+    return "";
+  }
+})();
 // Do not set a global Content-Type. Axios must set the multipart boundary
 // itself for FormData uploads; JSON requests are serialized automatically.
 
@@ -21,6 +30,17 @@ function clearAgentSession() {
 }
 
 api.interceptors.request.use((config) => {
+  // Older helpers pass a full "/api/..." path while newer pages call
+  // "/agent/..." or "/catalog/..." relative to the configured API base.
+  // Strip an already-present API prefix before Axios combines baseURL.
+  if (
+    configuredApiPath &&
+    config.url &&
+    config.url.startsWith(configuredApiPath + "/") &&
+    !/^https?:\\/\\//i.test(config.url)
+  ) {
+    config.url = config.url.slice(configuredApiPath.length);
+  }
   const token = localStorage.getItem("agent_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
