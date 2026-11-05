@@ -131,7 +131,7 @@ export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [excludedIntegrityOrders, setExcludedIntegrityOrders] = useState(0);
+  const [historicalProductMismatches, setHistoricalProductMismatches] = useState(0);
 
   useEffect(() => {
     if (!token || !user?.station?.id) {
@@ -150,7 +150,7 @@ export default function Reports() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setOrders(Array.isArray(res.data.data) ? res.data.data : []);
-      setExcludedIntegrityOrders(Number(res.data.meta?.excludedIntegrityOrders || 0));
+      setHistoricalProductMismatches(Number(res.data.meta?.ordersWithHistoricalProductStationMismatch || 0));
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load report data');
     } finally {
@@ -293,9 +293,9 @@ export default function Reports() {
           This agent account does not have an assigned station. Contact an administrator; no report can be generated until a station is assigned.
         </Alert>
       )}
-      {excludedIntegrityOrders > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {excludedIntegrityOrders} order(s) were withheld because at least one product belongs to another station. Ask an administrator to review these legacy records.
+      {historicalProductMismatches > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {historicalProductMismatches} historical order(s) contain products whose current inventory station differs from the station recorded on the order. These orders remain included under this station's original order records. Review stock transfers before attempting any cancellation or inventory adjustment.
         </Alert>
       )}
 
