@@ -46,7 +46,10 @@ router.use((err: any, req: any, res: any, next: any) => {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ success: false, error: 'This image is larger than 5 MB. Choose a smaller image.' });
     }
-    return res.status(400).json({ success: false, error: err.message });
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({ success: false, error: "Select one image file and try again." });
+    }
+    return res.status(400).json({ success: false, error: "We couldn't process that image. Use a JPG, PNG or WebP file." });
   }
   if (err) {
     console.error("[Upload] File processing failed:", err?.message || err);
