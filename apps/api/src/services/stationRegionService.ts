@@ -68,8 +68,15 @@ export function inferUgandaRegion(input: {
   latitude?: unknown;
   longitude?: unknown;
 }): UgandaRegion | null {
-  // Match known districts/localities first. Kigumba, Kiryandongo and
-  // Masindi are in Western Uganda despite their relatively northern latitude.
+  // An admin-selected non-central region is authoritative. Do this before
+  // locality matching: station display names can contain unrelated place words
+  // (for example "Kampala Road") and must never override the saved selection.
+  // "central" remains a legacy DB default, so it is only a fallback below.
+  const explicit = normalizeUgandaRegion(input.region);
+  if (explicit && explicit !== "central") return explicit;
+
+  // Match known districts/localities. This also correctly classifies older
+  // records whose region column still contains the legacy "central" default.
   const locationText = [input.name, input.city, input.address]
     .map((value) => String(value || "").trim().toLowerCase())
     .filter(Boolean)
@@ -78,12 +85,6 @@ export function inferUgandaRegion(input: {
   for (const region of ["south", "north", "east", "west", "central"] as UgandaRegion[]) {
     if (REGION_TERMS[region].some((term) => locationText.includes(term))) return region;
   }
-
-  // Explicit non-central regions are intentional admin selections. "central"
-  // is also the legacy database default, so do not let that default mask a
-  // station whose GPS clearly places it in another region.
-  const explicit = normalizeUgandaRegion(input.region);
-  if (explicit && explicit !== "central") return explicit;
 
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
