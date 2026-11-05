@@ -135,10 +135,12 @@ export default function TrackingScreen() {
     }
   }, [orderStatus]);
 
-  const escapeReceiptHtml = (value: unknown) =>
-    String(value ?? "").replace(/[&<>"']/g, (character) => ({
+  const escapeReceiptHtml = (value: unknown) => {
+    const replacements: Record<string, string> = {
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    }[character] || character));
+    };
+    return String(value ?? "").replace(/[&<>"']/g, (character) => replacements[character] || character);
+  };
 
   const createReceiptHtml = (receipt: Order) => {
     const orderNumber = receipt.id.slice(0, 12).toUpperCase();
