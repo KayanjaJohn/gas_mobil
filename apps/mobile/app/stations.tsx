@@ -96,23 +96,25 @@ export default function StationsScreen() {
     setLoading(true);
     setLoadError("");
     try {
-      const query: string[] = [];
       let detectedCity = "";
       let latitude: number | null = null;
       let longitude: number | null = null;
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status === "granted") {
-        const gps = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        latitude = gps.coords.latitude;
-        longitude = gps.coords.longitude;
-        const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-        const place = places[0];
-        detectedCity = place?.city || place?.district || place?.subregion || place?.region || "";
+
+      // Location is optional: never let a GPS permission/fix failure prevent
+      // customers from loading the nationwide station directory.
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status === "granted") {
+          const gps = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          latitude = gps.coords.latitude;
+          longitude = gps.coords.longitude;
+          const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+          const place = places[0];
+          detectedCity = place?.city || place?.district || place?.subregion || place?.region || "";
+        }
+      } catch (locationError: any) {
+        console.warn("[Stations] Location unavailable; loading all stations:", locationError?.message);
       }
-      if (latitude !== null && longitude !== null) {
-        query.push(`latitude=${latitude}`, `longitude=${longitude}`);
-      }
-      if (detectedCity) query.push(`city=${encodeURIComponent(detectedCity)}`);
       // Load the full station directory so the customer can browse every region.
       const endpoint = "/stations";
       const res = await apiRequest<Station[]>("get", endpoint);
