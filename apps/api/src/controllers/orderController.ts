@@ -9,6 +9,7 @@ import { Delivery } from "../entities/Delivery";
 import { createSystemNotification } from "../services/notificationService";
 import { NotificationType } from "../entities/Notification";
 import { recordStationActivity } from "../services/stationActivityService";
+import { isStationEligibleForLocation } from "../services/stationRegionService";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const productRepository = AppDataSource.getRepository(Product);
@@ -132,6 +133,20 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
+    const deliveryLocation = {
+      latitude: lat,
+      longitude: lng,
+      city: deliveryCity,
+      address: deliveryAddress,
+    };
+    if (fulfilmentStation && !isStationEligibleForLocation(fulfilmentStation, deliveryLocation)) {
+      await queryRunner.rollbackTransaction();
+      return res.status(403).json({
+        success: false,
+        error: "That station is outside your region and more than 50 km from your delivery location. Choose a station in your region or a nearby station.",
+      });
+    }
+
     let totalAmount = 0;
     const orderItems: OrderItem[] = [];
 
@@ -153,6 +168,13 @@ export const createOrder = async (req: Request, res: Response) => {
       }
       if (!fulfilmentStation || product.stationId !== fulfilmentStation.id) {
         throw new Error("This product is not stocked at the selected station. Choose a station that has the item.");
+      }
+      if (!isStationEligibleForLocation(fulfilmentStation, deliveryLocation)) {
+        await queryRunner.rollbackTransaction();
+        return res.status(403).json({
+          success: false,
+          error: "This product belongs to a station outside your region and more than 50 km away. Select products from a regional or nearby station.",
+        });
       }
       if (Number(product.stock) < Number(item.quantity)) {
         throw new Error(`Insufficient stock for ${product.name} at ${fulfilmentStation.name}`);
