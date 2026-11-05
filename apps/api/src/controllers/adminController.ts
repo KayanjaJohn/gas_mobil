@@ -500,6 +500,9 @@ export const createStation = async (req: Request, res: Response) => {
 
 		const { name, address, latitude, longitude, phone, email, agentName, agentPassword, region } =
 			req.body;
+		const allowedRegions = ["central", "north", "east", "west", "south"] as const;
+		const stationRegion: Station["region"] =
+			allowedRegions.find((candidate) => candidate === String(region || "").toLowerCase()) || "central";
 
 		if (!name || !address || latitude === undefined || longitude === undefined || !phone || !email || !agentPassword) {
 			return res.status(400).json({
@@ -530,7 +533,7 @@ export const createStation = async (req: Request, res: Response) => {
 			longitude,
 			phone,
 			email,
-			region: ["central", "north", "east", "west", "south"].includes(String(region || "").toLowerCase()) ? String(region).toLowerCase() : "central",
+			region: stationRegion,
 			isActive: true,
 		});
 
