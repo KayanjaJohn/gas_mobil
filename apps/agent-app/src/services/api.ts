@@ -5,8 +5,9 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 // Use the shared Axios singleton so legacy pages importing axios directly
 // receive the same token and single-flight refresh interceptors.
 const api = axios;
-api.defaults.timeout = 30000;
-api.defaults.headers.common["Content-Type"] = "application/json";
+api.defaults.timeout = 45000;
+// Do not set a global Content-Type. Axios must set the multipart boundary
+// itself for FormData uploads; JSON requests are serialized automatically.
 
 type RetriableRequest = InternalAxiosRequestConfig & { _gasmobilRetry?: boolean };
 let refreshInFlight: Promise<string> | null = null;
