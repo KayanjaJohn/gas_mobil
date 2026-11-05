@@ -38,10 +38,10 @@ function inferStationRegion(station: Station): string {
     if (terms[candidate].some((term) => location.includes(term))) return candidate;
   }
 
-  // Prefer the admin-selected region to broad coordinate cut-offs.
-  // The Bunyoro locality matches above identify Masindi and Kigumba as West.
+  // Non-central admin selections are authoritative. "central" is the
+  // legacy DB default, however, so GPS must be allowed to correct that
+  // default for older Northern, Eastern, Western and Southern stations.
   const explicit = String(station.region || "").trim().toLowerCase();
-  if (explicit.includes("central")) return "central";
   if (explicit.includes("north")) return "north";
   if (explicit.includes("east")) return "east";
   if (explicit.includes("west")) return "west";
@@ -60,6 +60,7 @@ function inferStationRegion(station: Station): string {
     if (latitude <= -0.2) return "south";
     return "central";
   }
+  if (explicit.includes("central")) return "central";
   return "other";
 }
 function openStationLocation(station: Station) {
