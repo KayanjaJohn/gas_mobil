@@ -25,6 +25,9 @@ export class Station {
   @Column({ type: 'varchar', length: 255, nullable: true })
   declare email: string | null;
 
+  @Column({ type: 'varchar', length: 20, default: 'central' })
+  declare region: 'central' | 'north' | 'east' | 'west' | 'south';
+
   @Column({ type: 'boolean', default: true })
   declare isActive: boolean;
 
