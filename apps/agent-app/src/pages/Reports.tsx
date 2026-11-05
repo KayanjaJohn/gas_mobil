@@ -135,7 +135,7 @@ export default function Reports() {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [token, user?.station?.id]);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -154,10 +154,16 @@ export default function Reports() {
     }
   };
 
+  const stationOrders = useMemo(() => {
+    const stationId = user?.station?.id;
+    if (!stationId) return [];
+    return orders.filter((order) => order.stationId === stationId);
+  }, [orders, user?.station?.id]);
+
   const periodStart = useMemo(() => getPeriodStart(period), [period]);
   const reportOrders = useMemo(() => {
-    return orders.filter((order) => new Date(order.createdAt) >= periodStart);
-  }, [orders, periodStart]);
+    return stationOrders.filter((order) => new Date(order.createdAt) >= periodStart);
+  }, [stationOrders, periodStart]);
 
   const paidOrders = reportOrders.filter((order) => order.paymentStatus === 'paid');
   const totalOrderValue = reportOrders.filter((order) => !['cancelled', 'failed', 'refunded'].includes(order.status)).reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
@@ -278,6 +284,16 @@ export default function Reports() {
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {!user?.station?.id && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          This agent account does not have an assigned station. Contact an administrator; no report can be generated until a station is assigned.
+        </Alert>
+      )}
+      {excludedIntegrityOrders > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {excludedIntegrityOrders} order(s) were withheld because at least one product belongs to another station. Ask an administrator to review these legacy records.
+        </Alert>
+      )}
       {!user?.station?.id && (
         <Alert severity="error" sx={{ mb: 2 }}>
           This agent account does not have an assigned station. Contact an administrator; no cross-station report will be generated.
