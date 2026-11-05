@@ -29,14 +29,23 @@ function inferStationRegion(station: Station): string {
   const location = `${station.name || ""} ${station.city || ""} ${station.address || ""}`.toLowerCase();
   const terms: Record<string, string[]> = {
     south: ["rakai", "kyotera", "lyantonde", "ssembabule", "kalangala"],
-    north: ["kigumba", "kiryandongo", "gulu", "lira", "arua", "kitgum", "pader", "agago", "amuru", "nwoya", "omoro", "otuke", "alebtong", "kole", "dokolo", "apac", "nebbi", "zombo", "moyo", "obongi", "adjumani", "yumbe", "koboko", "maracha", "lamwo", "karenga", "kaabong", "kotido", "moroto", "napak", "nakapiripirit", "abim"],
+    north: ["gulu", "lira", "arua", "kitgum", "pader", "agago", "amuru", "nwoya", "omoro", "otuke", "alebtong", "kole", "dokolo", "apac", "nebbi", "zombo", "moyo", "obongi", "adjumani", "yumbe", "koboko", "maracha", "lamwo", "karenga", "kaabong", "kotido", "moroto", "napak", "nakapiripirit", "abim"],
     east: ["jinja", "iganga", "kamuli", "mbale", "tororo", "busia", "bugiri", "mayuge", "namutumba", "buyende", "pallisa", "budaka", "bududa", "sironko", "bulambuli", "kapchorwa", "kumi", "katakwi", "amuria", "kaberamaido", "serere", "ngora", "bukedea", "butaleja", "manafa"],
-    west: ["mbarara", "hoima", "fort portal", "kabale", "kasese", "bushenyi", "ibanda", "ntungamo", "rukungiri", "kanungu", "kisoro", "bundibugyo", "kabarole", "kagadi", "kibaale", "mitooma", "rubirizi", "sheema", "buhweju", "kiruhura", "kamwenge", "kikuube"],
+    west: ["mbarara", "hoima", "masindi", "kigumba", "kiryandongo", "buliisa", "fort portal", "kabale", "kasese", "bushenyi", "ibanda", "ntungamo", "rukungiri", "kanungu", "kisoro", "bundibugyo", "kabarole", "kagadi", "kibaale", "mitooma", "rubirizi", "sheema", "buhweju", "kiruhura", "kamwenge", "kikuube"],
     central: ["kampala", "kalerwe", "wakiso", "mukono", "mpigi", "mityana", "mubende", "luwero", "nakaseke", "nakasongola", "kayunga", "buikwe", "gomba", "butambala", "kassanda", "kira", "entebbe"],
   };
   for (const candidate of ["south", "north", "east", "west", "central"]) {
     if (terms[candidate].some((term) => location.includes(term))) return candidate;
   }
+
+  // Prefer the admin-selected region to broad coordinate cut-offs.
+  // The Bunyoro locality matches above identify Masindi and Kigumba as West.
+  const explicit = String(station.region || "").trim().toLowerCase();
+  if (explicit.includes("central")) return "central";
+  if (explicit.includes("north")) return "north";
+  if (explicit.includes("east")) return "east";
+  if (explicit.includes("west")) return "west";
+  if (explicit.includes("south")) return "south";
 
   const latitude = Number(station.latitude);
   const longitude = Number(station.longitude);
@@ -45,20 +54,12 @@ function inferStationRegion(station: Station): string {
     latitude >= -1.5 && latitude <= 4.5 &&
     longitude >= 29.5 && longitude <= 35
   ) {
-    if (latitude >= 1.5) return "north";
+    if (latitude >= 2.5) return "north";
     if (longitude >= 33) return "east";
     if (longitude <= 30.5) return "west";
     if (latitude <= -0.2) return "south";
     return "central";
   }
-
-  // Use a stored region only when address/name and valid GPS cannot identify it.
-  const explicit = String(station.region || "").trim().toLowerCase();
-  if (explicit.includes("central")) return "central";
-  if (explicit.includes("north")) return "north";
-  if (explicit.includes("east")) return "east";
-  if (explicit.includes("west")) return "west";
-  if (explicit.includes("south")) return "south";
   return "other";
 }
 function openStationLocation(station: Station) {
