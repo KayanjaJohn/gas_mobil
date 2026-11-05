@@ -130,8 +130,8 @@ export default function Drivers() {
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
       ) : (
-        <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-          <Table>
+        <TableContainer component={Paper} sx={{ borderRadius: 2, width: "100%", overflowX: "auto", border: "1px solid", borderColor: "divider" }}>
+          <Table size="small" sx={{ minWidth: 950, "& th": { whiteSpace: "nowrap", fontWeight: 800, bgcolor: "action.hover", color: "text.primary" }, "& td": { verticalAlign: "top", color: "text.primary", borderColor: "divider" }, "& .MuiButton-root": { fontWeight: 700, whiteSpace: "nowrap" } }}>
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell><TableCell>Phone</TableCell><TableCell>Vehicle</TableCell>
