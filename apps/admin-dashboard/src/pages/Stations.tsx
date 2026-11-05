@@ -361,6 +361,7 @@ export default function Stations() {
                 <TableCell>Name</TableCell>
                 <TableCell>Address</TableCell>
                 <TableCell>Contact</TableCell>
+                <TableCell>Region</TableCell>
                 <TableCell>Coordinates</TableCell>
                 <TableCell>Station Agents</TableCell>
                 <TableCell>Active</TableCell>
@@ -376,6 +377,13 @@ export default function Stations() {
                     </Typography>
                   </TableCell>
                   <TableCell>{station.address}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={`${String(station.region || "central").toUpperCase()} REGION`}
+                      color="info"
+                    />
+                  </TableCell>
                   <TableCell>
                     {station.phone && <Typography variant="body2">{station.phone}</Typography>}
                     {station.email && (
@@ -471,7 +479,7 @@ export default function Stations() {
               ))}
               {stations.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                     <Typography color="textSecondary">No stations found</Typography>
                   </TableCell>
                 </TableRow>
