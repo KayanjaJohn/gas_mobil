@@ -358,7 +358,7 @@ export default function Stations() {
           <Table stickyHeader size="small" sx={{ minWidth: 1420, width: "100%", tableLayout: "fixed", "& th": { whiteSpace: "nowrap", fontWeight: 800, color: "text.primary", bgcolor: "action.hover", px: 1.5 }, "& td": { color: "text.primary", verticalAlign: "top", overflowWrap: "break-word", borderColor: "divider", px: 1.5, py: 2 }, "& .MuiButton-root": { fontWeight: 700 } }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ width: 175 }}>Name</TableCell>
+                <TableCell sx={{ width: 175, position: "sticky", left: 0, zIndex: 4, bgcolor: "action.hover" }}>Name</TableCell>
                 <TableCell sx={{ width: 190 }}>Address</TableCell>
                 <TableCell sx={{ width: 210 }}>Contact</TableCell>
                 <TableCell sx={{ width: 145 }}>Region</TableCell>
@@ -371,10 +371,8 @@ export default function Stations() {
             <TableBody>
               {stations.map((station) => (
                 <TableRow key={station.id} hover>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="medium">
-                      {station.name}
-                    </Typography>
+                  <TableCell sx={{ position: "sticky", left: 0, zIndex: 2, bgcolor: "background.paper", fontWeight: 700 }}>
+                    <Typography variant="body2" fontWeight="bold" sx={{ whiteSpace: "normal", overflowWrap: "anywhere" }}>{station.name}</Typography>
                   </TableCell>
                   <TableCell>{station.address}</TableCell>
                   <TableCell sx={{ minWidth: 190 }}>
@@ -458,18 +456,19 @@ export default function Stations() {
                     )}
                   </TableCell>
                   <TableCell>
+                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.25 }}>
                     <Switch
                       checked={station.isActive}
                       onChange={() => toggleActive(station)}
                     />
+                    <Typography variant="caption" color="text.secondary">{station.isActive ? "Active" : "Inactive"}</Typography>
+                    </Box>
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small" color="primary" onClick={() => openEdit(station)}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => deleteStation(station.id)}>
-                      <Delete />
-                    </IconButton>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-start" }}>
+                      <Button size="small" variant="outlined" color="primary" startIcon={<Edit />} onClick={() => openEdit(station)} sx={{ minWidth: 96, minHeight: 34 }}>Edit</Button>
+                      <Button size="small" variant="outlined" color="error" startIcon={<Delete />} onClick={() => deleteStation(station.id)} sx={{ minWidth: 96, minHeight: 34 }}>Delete</Button>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
