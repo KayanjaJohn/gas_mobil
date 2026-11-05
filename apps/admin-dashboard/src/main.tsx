@@ -6,7 +6,7 @@ import App from "./App";
 import ColorModeContext from "./theme";
 
 function Main() {
-  const [mode, setMode] = useState<"light" | "dark">("light");
+  const [mode, setMode] = useState<"light" | "dark">("dark");
 
   const colorMode = useMemo(
     () => ({
