@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:3200';
+const CONFIGURED_API_URL = import.meta.env.VITE_API_URL || "/api";
+const NORMALIZED_API_URL = CONFIGURED_API_URL.endsWith("/") ? CONFIGURED_API_URL.slice(0, -1) : CONFIGURED_API_URL;
+const API_ROOT = NORMALIZED_API_URL.endsWith("/api") ? NORMALIZED_API_URL : NORMALIZED_API_URL + "/api";
+const SOCKET_ORIGIN = NORMALIZED_API_URL.startsWith("http") ? new URL(NORMALIZED_API_URL).origin : window.location.origin;
 const MAX_NOTIFICATIONS = 200;
 const alertedNotificationIds = new Set<string>();
 
