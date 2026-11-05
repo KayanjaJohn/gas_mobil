@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import AppDataSource from '../config/database';
 import { Station } from '../entities/Station';
-import { inferUgandaRegion, isStationEligibleForLocation } from '../services/stationRegionService';
+import { inferUgandaRegion } from '../services/stationRegionService';
 
 const stationRepository = AppDataSource.getRepository(Station);
 
