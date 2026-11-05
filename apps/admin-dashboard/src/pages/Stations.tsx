@@ -355,17 +355,17 @@ export default function Stations() {
         </Box>
       ) : (
         <TableContainer component={Paper} sx={{ borderRadius: 2, width: "100%", overflowX: "auto", border: "1px solid", borderColor: "divider" }}>
-          <Table sx={{ minWidth: 1150, tableLayout: "auto", "& th": { whiteSpace: "nowrap", fontWeight: 700, color: "text.primary", bgcolor: "action.hover" }, "& td": { color: "text.primary", verticalAlign: "top", overflowWrap: "anywhere", borderColor: "divider" }, "& .MuiButton-root": { fontWeight: 700 } }}>
+          <Table stickyHeader size="small" sx={{ minWidth: 1420, width: "100%", tableLayout: "fixed", "& th": { whiteSpace: "nowrap", fontWeight: 800, color: "text.primary", bgcolor: "action.hover", px: 1.5 }, "& td": { color: "text.primary", verticalAlign: "top", overflowWrap: "break-word", borderColor: "divider", px: 1.5, py: 2 }, "& .MuiButton-root": { fontWeight: 700 } }}>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Address</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Region</TableCell>
-                <TableCell>Coordinates</TableCell>
-                <TableCell>Station Agents</TableCell>
-                <TableCell>Active</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell sx={{ width: 175 }}>Name</TableCell>
+                <TableCell sx={{ width: 190 }}>Address</TableCell>
+                <TableCell sx={{ width: 210 }}>Contact</TableCell>
+                <TableCell sx={{ width: 145 }}>Region</TableCell>
+                <TableCell sx={{ width: 175 }}>Coordinates</TableCell>
+                <TableCell sx={{ width: 260 }}>Station Agents</TableCell>
+                <TableCell sx={{ width: 100 }}>Active</TableCell>
+                <TableCell sx={{ width: 165 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -377,23 +377,17 @@ export default function Stations() {
                     </Typography>
                   </TableCell>
                   <TableCell>{station.address}</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={`${String(station.region || "central").toUpperCase()} REGION`}
-                      color="info"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {station.phone && <Typography variant="body2">{station.phone}</Typography>}
+                  <TableCell sx={{ minWidth: 190 }}>
+                    {station.phone && <Typography variant="body2" sx={{ whiteSpace: "nowrap", fontWeight: 600 }}>{station.phone}</Typography>}
                     {station.email && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="caption" color="textSecondary">{station.email}</Typography>
-                        <IconButton size="small" onClick={() => copyToClipboard(station.email!)}>
-                          <ContentCopy sx={{ fontSize: 14 }} />
-                        </IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                        <Typography variant="caption" sx={{ overflowWrap: "anywhere" }}>{station.email}</Typography>
+                        <IconButton size="small" aria-label="Copy station email" title="Copy email" onClick={() => copyToClipboard(station.email!)}><ContentCopy sx={{ fontSize: 16 }} /></IconButton>
                       </Box>
                     )}
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>
+                    <Chip size="small" label={`${String(station.region || "central").toUpperCase()} REGION`} color="info" />
                   </TableCell>
                   <TableCell>
                     {Number.isFinite(Number(station.latitude)) && Number(station.latitude) >= -1.5 && Number(station.latitude) <= 4.5 &&
