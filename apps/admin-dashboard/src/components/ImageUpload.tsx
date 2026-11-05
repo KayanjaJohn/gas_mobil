@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, ChangeEvent } from "react";
 import { Box, Button, CircularProgress, Typography, IconButton } from "@mui/material";
 import { CloudUpload, Delete, Image as ImageIcon } from "@mui/icons-material";
-import api from "../services/api";
+import axios from "axios";
 
 const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 
@@ -74,7 +74,7 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
       const formData = new FormData();
       formData.append("image", file, file.name);
 
-      const response = await api.post(API_URL + "/upload", formData, {
+      const response = await axios.post(API_URL + "/upload", formData, {
         headers: token ? { Authorization: "Bearer " + token } : undefined,
         timeout: 120000,
       });
@@ -107,7 +107,7 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
       setUploadError(friendly);
       // Keep the local preview for the user, but never submit its data URL as
       // the product image URL. The form keeps its previous persisted value.
-      setPreview(localPreview || "");
+      setPreview("");
     } finally {
       setLoading(false);
       if (inputRef.current) inputRef.current.value = "";
