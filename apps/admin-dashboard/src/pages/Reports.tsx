@@ -156,6 +156,7 @@ export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [excludedIntegrityOrders, setExcludedIntegrityOrders] = useState(0);
 
   useEffect(() => {
     fetchReportData();
@@ -166,21 +167,48 @@ export default function Reports() {
     setError('');
 
     try {
-      const [stationsRes, ordersRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/stations`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_URL}/admin/orders`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-
+      const stationsRes = await axios.get(`${API_URL}/admin/stations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const loadedStations = stationsRes.data.data || [];
       setStations(loadedStations);
-      setOrders(ordersRes.data.data || []);
       setSelectedStationId((current) => current || loadedStations[0]?.id || '');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load report data');
+      setError(err.response?.data?.error || 'We could not load the station list. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!selectedStationId || !token) {
+      setOrders([]);
+      setExcludedIntegrityOrders(0);
+      return;
+    }
+
+    let active = true;
+    setOrders([]);
+    setLoading(true);
+    setError('');
+
+    axios.get(`${API_URL}/admin/stations/${encodeURIComponent(selectedStationId)}/report-orders`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then((response) => {
+      if (!active) return;
+      setOrders(Array.isArray(response.data?.data) ? response.data.data : []);
+      setExcludedIntegrityOrders(Number(response.data?.meta?.excludedIntegrityOrders || 0));
+    }).catch((err: any) => {
+      if (active) {
+        setOrders([]);
+        setError(err.response?.data?.error || 'We could not load this station report. Please try again.');
+      }
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+
+    return () => { active = false; };
+  }, [selectedStationId, token]);
 
   const selectedStation = stations.find((station) => station.id === selectedStationId);
   const periodStart = useMemo(() => getPeriodStart(period), [period]);
@@ -189,8 +217,9 @@ export default function Reports() {
     if (!selectedStationId) return [];
 
     return orders.filter((order) => {
-      const orderStationId = order.stationId || order.station?.id;
-      return orderStationId === selectedStationId;
+      // The API has already queried by this station ID. Keep this second
+      // strict check so an incomplete legacy record is never attributed to it.
+      return order.stationId === selectedStationId;
     });
   }, [orders, selectedStationId]);
 
@@ -265,8 +294,8 @@ export default function Reports() {
             order.deliveryLatitude ?? '',
             order.deliveryLongitude ?? '',
             order.locationAccuracy ?? '',
-            order.stationId || selectedStation.id,
-            selectedStation.name,
+            order.stationId,
+            order.station?.name || selectedStation.name,
             order.deliveries?.[0]?.driverName || 'Not assigned',
             order.deliveries?.[0]?.driverPhone || '',
             order.deliveries?.[0]?.vehicleNumber || '',
@@ -305,17 +334,23 @@ export default function Reports() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, flexDirection: { xs: 'column', sm: 'row' } }}>
         <Box>
-          <Typography variant="h4">Station Reports</Typography>
-          <Typography variant="body2" color="textSecondary">
+          <Typography variant="h4" sx={{ color: "#FFF8EE", fontWeight: 800 }}>Station Reports</Typography>
+          <Typography variant="body2" sx={{ color: "#D8E7DE" }}>
             Select a station and generate daily, weekly, monthly, or yearly reports.
           </Typography>
         </Box>
-        <Button variant="outlined" startIcon={<Download />} onClick={handleDownload} disabled={!selectedStation}>
+        <Button variant="outlined" startIcon={<Download />} onClick={handleDownload} disabled={!selectedStation || loading}
+          sx={{ color: "#FFF8EE", borderColor: "rgba(255,248,238,.75)", "&:hover": { borderColor: "#F36A21", background: "rgba(243,106,33,.14)" }, "&.Mui-disabled": { color: "rgba(255,248,238,.45)", borderColor: "rgba(255,248,238,.25)" } }}>
           Download Report
         </Button>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {excludedIntegrityOrders > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {excludedIntegrityOrders} order(s) were excluded because at least one product is assigned to a different station. These legacy records need an administrator review before they can appear in this report.
+        </Alert>
+      )}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -366,7 +401,7 @@ export default function Reports() {
                 <Assessment color="primary" />
                 <Box>
                   <Typography variant="h6">{selectedStation?.name || 'Choose a station'}</Typography>
-                  <Typography variant="caption" color="textSecondary">
+                  <Typography variant="caption" sx={{ color: "#68786F" }}>
                     {selectedStation ? formatPeriodLabel(period, periodStart) : 'Reports appear after selecting a station.'}
                   </Typography>
                 </Box>
