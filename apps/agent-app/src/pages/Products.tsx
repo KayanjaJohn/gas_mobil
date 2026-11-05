@@ -448,8 +448,8 @@ export default function Products() {
             )}
           </Box>
         ) : (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ width: "100%", overflowX: "auto", border: "1px solid", borderColor: "divider" }}>
+            <Table size="small" sx={{ minWidth: 950, "& th": { whiteSpace: "nowrap", fontWeight: 800, bgcolor: "action.hover", color: "text.primary" }, "& td": { verticalAlign: "middle", color: "text.primary", borderColor: "divider" }, "& .MuiButton-root": { fontWeight: 700, whiteSpace: "nowrap" } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Product</TableCell>
