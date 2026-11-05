@@ -60,7 +60,10 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
       const res = await axios.post(`${API_URL}/upload`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
+          // Let the browser/Axios generate multipart/form-data; boundary is required by Multer.
+          "Content-Type": undefined,
         },
+        timeout: 120000,
       });
 
       if (res.data.success && res.data.data?.imageUrl) {
@@ -73,7 +76,18 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
       }
     } catch (err: any) {
       console.error('Upload error:', err);
-      const msg = err.response?.data?.error || err.message || 'Failed to upload image';
+      const status = err.response?.status;
+      const code = err.code;
+      const serverMessage = err.response?.data?.error || err.response?.data?.message;
+      const msg = code === "ECONNABORTED"
+        ? "The image upload took too long. Check your connection and try again."
+        : status === 413 || /LIMIT_FILE_SIZE/i.test(serverMessage || "")
+          ? "This image is larger than 5 MB. Choose a smaller image."
+          : status === 401
+            ? "Your session needs to be renewed. Sign in again, then retry the upload."
+            : status === 415 || /Only JPG/i.test(serverMessage || "")
+              ? "Choose a JPG, PNG or WebP image."
+              : serverMessage || "We couldn't upload this image. Check your connection and try again.";
       setUploadError(msg);
       // Keep the base64 preview on error so user still sees something
       // Don't reset to empty — user can retry or remove manually
@@ -117,7 +131,7 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
             }}
             onError={() => {
               if (!isBase64) {
-                setUploadError('The image was uploaded, but its public URL could not be reached. Check the API public URL and try again.');
+                setUploadError("The image was uploaded, but the server image link did not respond. Please retry or contact support if this continues.");
                 setPreview(localPreview || '');
               }
             }}
