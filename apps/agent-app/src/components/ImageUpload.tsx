@@ -201,9 +201,20 @@ export default function ImageUpload({ value, onChange, label = "Product Image", 
       )}
 
       {uploadError && (
-        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-          {uploadError}
-        </Typography>
+        <Box sx={{ mt: 0.5 }}>
+          <Typography variant="caption" color="error" sx={{ display: 'block', mb: 0.5 }}>
+            {uploadError}
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<CloudUpload />}
+            onClick={() => inputRef.current?.click()}
+            disabled={loading}
+          >
+            Choose another image
+          </Button>
+        </Box>
       )}
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
