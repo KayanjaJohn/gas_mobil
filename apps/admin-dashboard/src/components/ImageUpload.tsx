@@ -1,7 +1,7 @@
-import { useState, useRef, ChangeEvent, useEffect } from 'react';
-import { Box, Button, CircularProgress, Typography, IconButton } from '@mui/material';
-import { CloudUpload, Delete, Image as ImageIcon } from '@mui/icons-material';
-import axios from 'axios';
+import { useEffect, useRef, useState, ChangeEvent } from "react";
+import { Box, Button, CircularProgress, Typography, IconButton } from "@mui/material";
+import { CloudUpload, Delete, Image as ImageIcon } from "@mui/icons-material";
+import api from "../services/api";
 
 const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 
@@ -12,213 +12,154 @@ interface ImageUploadProps {
   token: string;
 }
 
+function verifyImageUrl(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const timeout = window.setTimeout(() => {
+      image.src = "";
+      reject(new Error("The uploaded image could not be reached. Check the API public URL and upload storage."));
+    }, 15000);
+    image.onload = () => {
+      window.clearTimeout(timeout);
+      resolve();
+    };
+    image.onerror = () => {
+      window.clearTimeout(timeout);
+      reject(new Error("The server saved the image but its public URL returned an error. Check API static-file routing and persistent storage."));
+    };
+    image.src = url;
+  });
+}
+
 export default function ImageUpload({ value, onChange, label = "Product Image", token }: ImageUploadProps) {
   const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState(value);
-  const [localPreview, setLocalPreview] = useState('');
-  const [uploadError, setUploadError] = useState('');
+  const [preview, setPreview] = useState(value || "");
+  const [localPreview, setLocalPreview] = useState("");
+  const [uploadError, setUploadError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // ── FIX: Sync preview when value prop changes (e.g., dialog reopen, edit different product) ──
   useEffect(() => {
-    setPreview(value);
-    setUploadError('');
+    setPreview(value || "");
+    setUploadError("");
   }, [value]);
 
-  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate before upload
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
-      setUploadError('Only JPG, PNG, and WebP images are allowed');
+      setUploadError("Only JPG, PNG and WebP images are supported.");
+      event.target.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError('File too large. Max 5MB.');
+      setUploadError("Image exceeds the 5 MB limit. Choose a smaller image.");
+      event.target.value = "";
       return;
     }
 
-    setUploadError('');
-
-    // Local preview (base64) — shows immediately
+    setUploadError("");
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
       setLocalPreview(dataUrl);
       setPreview(dataUrl);
     };
+    reader.onerror = () => setUploadError("Could not read the selected image.");
     reader.readAsDataURL(file);
 
-    // Upload
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append("image", file, file.name);
 
-      const res = await axios.post(`${API_URL}/upload`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": undefined,
-        },
+      const response = await api.post(API_URL + "/upload", formData, {
+        headers: token ? { Authorization: "Bearer " + token } : undefined,
         timeout: 120000,
       });
 
-      if (res.data.success && res.data.data?.imageUrl) {
-        const imageUrl = res.data.data.imageUrl;
-        // Keep the selected file as a fallback. We only commit the remote URL
-        // to the form after the browser confirms that the uploaded image loads.
-        setPreview(imageUrl);
-      } else {
-        throw new Error(res.data.error || 'Upload failed');
+      const imageUrl = response.data?.data?.imageUrl;
+      if (!response.data?.success || typeof imageUrl !== "string" || !imageUrl.trim()) {
+        throw new Error(response.data?.error || "The upload endpoint did not return an image URL.");
       }
-    } catch (err: any) {
-      console.error('Upload error:', err);
-      const status = err.response?.status;
-      const code = err.code;
-      const serverMessage = err.response?.data?.error || err.response?.data?.message;
-      const msg = code === "ECONNABORTED"
-        ? "The image upload took too long. Check your connection and try again."
-        : status === 413 || /LIMIT_FILE_SIZE/i.test(serverMessage || "")
-          ? "This image is larger than 5 MB. Choose a smaller image."
-          : status === 401
-            ? "Your session needs to be renewed. Sign in again, then retry the upload."
-            : status === 415 || /Only JPG/i.test(serverMessage || "")
-              ? "Choose a JPG, PNG or WebP image."
-              : serverMessage || "We couldn't upload this image. Check your connection and try again.";
-      setUploadError(msg);
-      // Keep the base64 preview on error so user still sees something
-      // Don't reset to empty — user can retry or remove manually
+
+      // Do not save a URL to the product form until the API's public static
+      // image route has been verified to return the uploaded file.
+      await verifyImageUrl(imageUrl);
+      setPreview(imageUrl);
+      setLocalPreview("");
+      onChange(imageUrl);
+      setUploadError("");
+    } catch (error: any) {
+      console.error("[GasMobil image upload]", error);
+      const status = error.response?.status;
+      const message = error.response?.data?.error || error.message;
+      const friendly = status === 401
+        ? "Your session expired. Sign in again and retry the upload."
+        : status === 413
+          ? "Image exceeds the server upload limit."
+          : status === 404
+            ? "The upload endpoint or public image route was not found. Check the API deployment."
+            : status >= 500
+              ? "The image service failed. Check API logs and upload-directory permissions."
+              : message || "Image upload failed. Please retry.";
+      setUploadError(friendly);
+      // Keep the local preview for the user, but never submit its data URL as
+      // the product image URL. The form keeps its previous persisted value.
+      setPreview(localPreview || "");
     } finally {
       setLoading(false);
-      if (inputRef.current) inputRef.current.value = '';
+      if (inputRef.current) inputRef.current.value = "";
     }
   };
 
-  const handleRemove = () => {
-    onChange('');
-    setPreview('');
-    setUploadError('');
+  const removeImage = () => {
+    setPreview("");
+    setLocalPreview("");
+    setUploadError("");
+    onChange("");
   };
-
-  const isBase64 = preview?.startsWith('data:');
 
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-        {label}
-      </Typography>
-
-      {preview ? (
-        <Box sx={{ position: 'relative', display: 'inline-block' }}>
-          <img
-            src={preview}
-            alt="Preview"
-            style={{
-              width: 120,
-              height: 120,
-              objectFit: 'cover',
-              borderRadius: 8,
-              border: '1px solid #e0e0e0',
-            }}
-            onLoad={() => {
-              if (!isBase64 && preview) {
-                onChange(preview);
-                setUploadError('');
-              }
-            }}
-            onError={() => {
-              if (!isBase64) {
-                setUploadError("The image was uploaded, but the server image link did not respond. Please retry or contact support if this continues.");
-                setPreview(localPreview || '');
-              }
-            }}
-          />
-          <IconButton
-            size="small"
-            onClick={handleRemove}
-            sx={{
-              position: 'absolute',
-              top: -8,
-              right: -8,
-              bgcolor: 'error.main',
-              color: '#fff',
-              '&:hover': { bgcolor: 'error.dark' },
-            }}
-          >
-            <Delete fontSize="small" />
-          </IconButton>
-          {isBase64 && (
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'warning.main' }}>
-              Uploading...
-            </Typography>
-          )}
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            width: 120,
-            height: 120,
-            border: '2px dashed #ccc',
-            borderRadius: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-          }}
-          onClick={() => inputRef.current?.click()}
-        >
-          <ImageIcon color="disabled" sx={{ fontSize: 32, mb: 0.5 }} />
-          <Typography variant="caption" color="text.secondary">
-            Click to upload
-          </Typography>
-        </Box>
-      )}
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/jpg"
-        style={{ display: 'none' }}
-        onChange={handleFileSelect}
-      />
-
-      {!preview && (
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<CloudUpload />}
-          onClick={() => inputRef.current?.click()}
-          disabled={loading}
-          sx={{ mt: 1 }}
-        >
-          {loading ? <CircularProgress size={16} /> : 'Upload Image'}
-        </Button>
-      )}
-
-      {uploadError && (
-        <Box sx={{ mt: 0.5 }}>
-          <Typography variant="caption" color="error" sx={{ display: 'block', mb: 0.5 }}>
-            {uploadError}
-          </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<CloudUpload />}
-            onClick={() => inputRef.current?.click()}
-            disabled={loading}
-          >
-            Choose another image
+      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>{label}</Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+        {preview ? (
+          <Box sx={{ position: "relative", display: "inline-flex" }}>
+            <img
+              src={preview}
+              alt="Product preview"
+              style={{ width: 120, height: 120, objectFit: "contain", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff" }}
+              onError={() => {
+                if (!preview.startsWith("data:")) {
+                  setUploadError("This saved image URL is unavailable. Re-upload the image or check the API storage volume.");
+                }
+              }}
+            />
+            <IconButton size="small" aria-label="Remove product image" onClick={removeImage}
+              sx={{ position: "absolute", top: -8, right: -8, bgcolor: "error.main", color: "#fff", "&:hover": { bgcolor: "error.dark" } }}>
+              <Delete fontSize="small" />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box onClick={() => inputRef.current?.click()} role="button" tabIndex={0}
+            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") inputRef.current?.click(); }}
+            sx={{ width: 120, height: 120, border: "2px dashed #b8c5bf", borderRadius: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", "&:hover": { borderColor: "primary.main", bgcolor: "action.hover" } }}>
+            <ImageIcon color="disabled" sx={{ fontSize: 32, mb: 0.5 }} />
+            <Typography variant="caption" color="text.secondary">Select image</Typography>
+          </Box>
+        )}
+        <Box>
+          <Button variant="outlined" size="small" startIcon={loading ? <CircularProgress size={16} /> : <CloudUpload />}
+            onClick={() => inputRef.current?.click()} disabled={loading}>
+            {loading ? "Uploading and verifying…" : preview ? "Replace image" : "Upload image"}
           </Button>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>JPG, PNG or WebP · Maximum 5 MB</Typography>
         </Box>
-      )}
-
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-        JPG, PNG, WebP. Max 5MB.
-      </Typography>
+      </Box>
+      {uploadError && <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>{uploadError}</Typography>}
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={handleFileSelect} />
     </Box>
   );
 }
