@@ -55,7 +55,7 @@ export default function Customers() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#fff' }}>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
         Customers
       </Typography>
 
@@ -68,7 +68,7 @@ export default function Customers() {
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon sx={{ color: '#94A3B8' }} />
+              <SearchIcon sx={{ color: 'text.secondary' }} />
             </InputAdornment>
           ),
         }}
@@ -76,15 +76,15 @@ export default function Customers() {
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress sx={{ color: '#F59E0B' }} />
+          <CircularProgress sx={{ color: 'warning.main' }} />
         </Box>
       ) : error ? (
         <Typography color="error" sx={{ textAlign: 'center', py: 4 }}>{error}</Typography>
       ) : (
-        <TableContainer component={Paper} sx={{ bgcolor: '#1E293B', border: '1px solid #334155' }}>
-          <Table>
+        <TableContainer component={Paper} sx={{ bgcolor: 'background.paper', color: 'text.primary', border: '1px solid', borderColor: 'divider', overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 1100 }}>
             <TableHead>
-              <TableRow sx={{ '& th': { color: '#94A3B8', fontWeight: 600, borderBottom: '1px solid #334155' } }}>
+              <TableRow sx={{ '& th': { color: 'text.primary', bgcolor: 'action.hover', fontWeight: 800, borderBottom: '1px solid', borderColor: 'divider', whiteSpace: 'nowrap' } }}>
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Phone</TableCell>
@@ -103,7 +103,7 @@ export default function Customers() {
                 </TableRow>
               ) : (
                 filtered.map((c) => (
-                  <TableRow key={c.id} sx={{ '& td': { color: '#E2E8F0', borderBottom: '1px solid #334155' } }}>
+                  <TableRow key={c.id} sx={{ '& td': { color: 'text.primary', borderBottom: '1px solid', borderColor: 'divider', verticalAlign: 'top' } }}>
                     <TableCell sx={{ fontWeight: 500 }}>{c.name}</TableCell>
                     <TableCell>{c.email}</TableCell>
                     <TableCell>{c.phone || '-'}</TableCell>
