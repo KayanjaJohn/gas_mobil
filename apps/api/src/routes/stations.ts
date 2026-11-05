@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/requireRole';
 import AppDataSource from '../config/database';
 import { Station } from '../entities/Station';
-import { inferUgandaRegion, normalizeUgandaRegion, isStationEligibleForLocation } from '../services/stationRegionService';
+import { inferUgandaRegion, normalizeUgandaRegion } from '../services/stationRegionService';
 
 const router = Router();
 
@@ -12,7 +12,6 @@ router.get('/', requireAuth, async (req, res, next) => {
       where: { isActive: true },
       order: { name: 'ASC' },
     });
-    const user = (req as any).user;
     const selectedRegion = normalizeUgandaRegion(req.query.region);
     if (req.query.region && !selectedRegion) {
       return res.status(400).json({ success: false, error: 'Unknown station region.' });
