@@ -142,6 +142,63 @@ export const getAllOrders = async (req: Request, res: Response) => {
 	}
 };
 
+// GET /api/admin/stations/:id/report-orders
+// Reports are fetched by the selected station on the server; do not download
+// all station orders and rely only on a browser-side filter.
+export const getStationReportOrders = async (req: Request, res: Response) => {
+  try {
+    const { user } = req as any;
+    if (user.role !== "admin") {
+      return res.status(403).json({ success: false, error: "Admin access only." });
+    }
+
+    const { id: stationId } = req.params;
+    const station = await stationRepository.findOne({ where: { id: stationId } });
+    if (!station) {
+      return res.status(404).json({ success: false, error: "The selected station could not be found." });
+    }
+
+    const orders = await orderRepository.find({
+      where: { stationId },
+      relations: ["items", "items.product", "user", "station", "deliveries"],
+      order: { createdAt: "DESC" },
+    } as any);
+
+    // Integrity guard: a station report must not include a line item whose
+    // inventory belongs to a different station. Keep the excluded count visible
+    // to admins so historic data inconsistencies can be investigated.
+    const mismatchedOrders = orders.filter((order: any) =>
+      order.stationId !== stationId ||
+      (order.items || []).some((item: any) =>
+        item.product?.stationId && item.product.stationId !== stationId
+      )
+    );
+    const safeOrders = orders.filter((order: any) =>
+      order.stationId === stationId &&
+      !(order.items || []).some((item: any) =>
+        item.product?.stationId && item.product.stationId !== stationId
+      )
+    );
+
+    return res.json({
+      success: true,
+      data: safeOrders,
+      meta: {
+        stationId,
+        stationName: station.name,
+        totalMatchingOrders: safeOrders.length,
+        excludedIntegrityOrders: mismatchedOrders.length,
+      },
+    });
+  } catch (error: any) {
+    console.error("[getStationReportOrders] error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "We could not prepare this station report. Please try again.",
+    });
+  }
+};
+
 // GET /api/admin/drivers
 export const getAllDrivers = async (req: Request, res: Response) => {
 	try {
