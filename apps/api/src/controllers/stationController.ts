@@ -8,36 +8,13 @@ const stationRepository = AppDataSource.getRepository(Station);
 export const getAllStations = async (req: Request, res: Response) => {
   try {
     const stations = await stationRepository.find({ where: { isActive: true } });
-    const { user } = req as any;
-
-    // Admins and agents need their operational station directory. Customers
-    // receive only same-region or genuinely nearby stations.
-    if (user?.role === "customer") {
-      const location = {
-        latitude: req.query.latitude ?? user.latitude,
-        longitude: req.query.longitude ?? user.longitude,
-        city: req.query.city ?? user.city,
-        address: req.query.address ?? user.address,
-        region: req.query.region,
-      };
-      const hasLocation = location.latitude != null || location.longitude != null ||
-        Boolean(location.city || location.address || location.region);
-      const eligible = hasLocation
-        ? stations.filter((station) => isStationEligibleForLocation(station, location))
-        : stations;
-      return res.json({
-        success: true,
-        data: eligible,
-        meta: {
-          detectedRegion: inferUgandaRegion(location),
-          totalActiveStations: stations.length,
-          eligibleStations: eligible.length,
-          nearbyRadiusKm: 50,
-        },
-      });
-    }
-
-    return res.json({ success: true, data: stations });
+    // Customer station browsing is nationwide; the mobile app provides
+    // optional region tabs. Never silently hide stations using stale profile GPS.
+    const data = stations.map((station) => ({
+      ...station,
+      region: inferUgandaRegion(station) ?? station.region,
+    }));
+    return res.json({ success: true, data, meta: { totalActiveStations: data.length } });
   } catch (error: any) {
     console.error("[getAllStations] failed:", error);
     res.status(500).json({ success: false, error: "We couldn't load stations. Please try again." });
