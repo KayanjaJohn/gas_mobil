@@ -134,7 +134,11 @@ export default function Reports() {
   const [excludedIntegrityOrders, setExcludedIntegrityOrders] = useState(0);
 
   useEffect(() => {
-    fetchOrders();
+    if (!token || !user?.station?.id) {
+      setOrders([]);
+      return;
+    }
+    void fetchOrders();
   }, [token, user?.station?.id]);
 
   const fetchOrders = async () => {
@@ -292,16 +296,6 @@ export default function Reports() {
       {excludedIntegrityOrders > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {excludedIntegrityOrders} order(s) were withheld because at least one product belongs to another station. Ask an administrator to review these legacy records.
-        </Alert>
-      )}
-      {!user?.station?.id && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          This agent account does not have an assigned station. Contact an administrator; no cross-station report will be generated.
-        </Alert>
-      )}
-      {excludedIntegrityOrders > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {excludedIntegrityOrders} order(s) were withheld because product stock belongs to another station. Please ask an administrator to review these legacy records.
         </Alert>
       )}
 
