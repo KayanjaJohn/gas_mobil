@@ -131,6 +131,7 @@ export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [excludedIntegrityOrders, setExcludedIntegrityOrders] = useState(0);
 
   useEffect(() => {
     fetchOrders();
@@ -144,7 +145,8 @@ export default function Reports() {
       const res = await axios.get(`${API_URL}/agent/orders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setOrders(res.data.data || []);
+      setOrders(Array.isArray(res.data.data) ? res.data.data : []);
+      setExcludedIntegrityOrders(Number(res.data.meta?.excludedIntegrityOrders || 0));
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load report data');
     } finally {
@@ -225,7 +227,7 @@ export default function Reports() {
             order.deliveryLatitude ?? '',
             order.deliveryLongitude ?? '',
             order.locationAccuracy ?? '',
-            order.stationId || user?.station?.id || '',
+            order.stationId || '',
             order.station?.name || stationName,
             getDriverName(order),
             order.deliveries?.[0]?.driverPhone || '',
@@ -264,17 +266,28 @@ export default function Reports() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, flexDirection: { xs: 'column', sm: 'row' } }}>
         <Box>
-          <Typography variant="h4">Station Reports</Typography>
-          <Typography variant="body2" color="textSecondary">
+          <Typography variant="h4" sx={{ color: "#FFF8EE", fontWeight: 800 }}>Station Reports</Typography>
+          <Typography variant="body2" sx={{ color: "#D8E7DE" }}>
             Generate daily, weekly, monthly, and yearly reports for {user?.station?.name || 'your station'}.
           </Typography>
         </Box>
-        <Button variant="outlined" startIcon={<Download />} onClick={handleDownload}>
+        <Button variant="outlined" startIcon={<Download />} onClick={handleDownload} disabled={!user?.station?.id || loading}
+          sx={{ color: "#FFF8EE", borderColor: "rgba(255,248,238,.75)", "&:hover": { borderColor: "#F36A21", background: "rgba(243,106,33,.14)" }, "&.Mui-disabled": { color: "rgba(255,248,238,.45)", borderColor: "rgba(255,248,238,.25)" } }}>
           Download Report
         </Button>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {!user?.station?.id && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          This agent account does not have an assigned station. Contact an administrator; no cross-station report will be generated.
+        </Alert>
+      )}
+      {excludedIntegrityOrders > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {excludedIntegrityOrders} order(s) were withheld because product stock belongs to another station. Please ask an administrator to review these legacy records.
+        </Alert>
+      )}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
