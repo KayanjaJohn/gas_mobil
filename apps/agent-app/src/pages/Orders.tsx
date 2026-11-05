@@ -1,37 +1,79 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
+import {
+  Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Chip,
+  CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
+  Divider, FormControl, Grid, InputLabel, MenuItem, Paper, Select,
+  Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Typography,
+} from "@mui/material";
+import ExpandMore from "@mui/icons-material/ExpandMore";
+import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
+import Refresh from "@mui/icons-material/Refresh";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
-import {
-  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Chip, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, FormControl, InputLabel, Select, MenuItem,
-  CircularProgress, Alert,
-} from "@mui/material";
 
+interface OrderItem {
+  id?: string;
+  productId?: string;
+  quantity: number;
+  price?: number | string;
+  subtotal?: number | string;
+  product?: {
+    name?: string;
+    description?: string | null;
+    type?: string;
+    size?: string | null;
+    weight?: number | string | null;
+    imageUrl?: string | null;
+  };
+}
 interface Order {
   id: string;
   status: string;
-  totalAmount: number;
-  deliveryAddress: string;
+  totalAmount: number | string;
+  deliveryAddress?: string | null;
   deliveryCity?: string | null;
-  items?: Array<{ quantity: number; product?: { name?: string; size?: string | null; weight?: number | null } }>;
-  paymentMethod: string;
-  user?: { name: string; phone: string };
+  deliveryLatitude?: number | string | null;
+  deliveryLongitude?: number | string | null;
+  locationAccuracy?: number | string | null;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  notes?: string | null;
+  cancellationReason?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  user?: { id?: string; name?: string; phone?: string; email?: string; address?: string; city?: string };
+  station?: { id?: string; name?: string; phone?: string; address?: string };
+  items?: OrderItem[];
   deliveries?: Array<{
     driverName?: string;
     driverPhone?: string;
+    vehicleNumber?: string | null;
     status?: string;
+    pickedUpAt?: string | null;
+    startedAt?: string | null;
+    deliveredAt?: string | null;
+    notes?: string | null;
   }>;
-  createdAt: string;
 }
-
 interface Driver {
   id: string;
   name: string;
   phone: string;
   driverStatus: string;
 }
+
+const money = (value: number | string | null | undefined) =>
+  "UGX " + Number(value || 0).toLocaleString("en-UG");
+const dateTime = (value?: string | null) =>
+  value ? new Date(value).toLocaleString("en-UG") : "—";
+const statusColor = (status: string): any => ({
+  pending: "warning", confirmed: "info", driver_assigned: "primary",
+  picked_up: "secondary", in_transit: "info", nearby: "info",
+  delivered: "success", completed: "success", cancelled: "error",
+  failed: "error", refunded: "default",
+}[status] || "default");
 
 export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -40,207 +82,222 @@ export default function Orders() {
   const [error, setError] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedDriver, setSelectedDriver] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchOrders();
-    fetchDrivers();
-  }, []);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      const response = await api.get(`${API_URL}/agent/orders`);
-      const data = response.data;
-      const ordersData = data.data || data.orders || [];
-      setOrders(ordersData);
-    } catch {
-      setError("Network error");
+      const response = await api.get(API_URL + "/agent/orders");
+      const body = response.data;
+      const rows = body?.data ?? body?.orders ?? [];
+      setOrders(Array.isArray(rows) ? rows : []);
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || "Unable to load station orders.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     try {
-      const response = await api.get(`${API_URL}/agent/drivers`);
-      const data = response.data;
-      const driversData: Driver[] = data.data || data.drivers || [];
-      setDrivers(driversData.filter((driver) => driver.driverStatus === "online"));
+      const response = await api.get(API_URL + "/agent/drivers");
+      const rows = response.data?.data ?? response.data?.drivers ?? [];
+      setDrivers(Array.isArray(rows) ? rows.filter((d: Driver) => d.driverStatus === "online") : []);
     } catch {
-      console.error("Failed to fetch drivers");
+      setDrivers([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void fetchOrders();
+    void fetchDrivers();
+  }, [fetchOrders, fetchDrivers]);
 
   const handleAssign = async () => {
     if (!selectedOrder || !selectedDriver) return;
+    setSaving(true);
+    setError("");
     try {
-      await api.post(`${API_URL}/agent/orders/${selectedOrder.id}/assign`, { driverId: selectedDriver });
-      setDialogOpen(false);
-      fetchOrders();
-    } catch {
-      setError("Network error");
+      await api.post(API_URL + "/agent/orders/" + selectedOrder.id + "/assign", { driverId: selectedDriver });
+      setAssignOpen(false);
+      setSelectedDriver("");
+      await fetchOrders();
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Could not assign the driver.");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleCancel = async (orderId: string) => {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
+    if (!window.confirm("Are you sure you want to cancel this order?")) return;
+    setSaving(true);
     try {
-      await api.post(`${API_URL}/agent/orders/${orderId}/cancel`, {});
-      fetchOrders();
-    } catch {
-      setError("Network error");
+      await api.post(API_URL + "/agent/orders/" + orderId + "/cancel", {});
+      await fetchOrders();
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Could not cancel this order.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getDriverInfo = (order: Order) => {
-    const delivery = order.deliveries?.[0];
-    if (delivery?.driverName) {
-      return `${delivery.driverName} (${delivery.driverPhone || "No phone"})`;
-    }
-    return "Not assigned";
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending": return "warning";
-      case "confirmed": return "info";
-      case "driver_assigned": return "primary";
-      case "picked_up": return "secondary";
-      case "in_transit": return "info";
-      case "delivered": return "success";
-      case "cancelled": return "error";
-      default: return "default";
-    }
+  const driverFor = (order: Order) => order.deliveries?.[0];
+  const orderTotalQty = (order: Order) => (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const openDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setDetailsOpen(true);
   };
 
   return (
-    <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: "#fff" }}>
-        Orders
-      </Typography>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2, bgcolor: "rgba(239,68,68,0.1)", color: "#EF4444" }}>
-          {error}
-        </Alert>
-      )}
-
-      {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress sx={{ color: "#F59E0B" }} />
+    <Box sx={{ p: { xs: 1, md: 0 } }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>Orders</Typography>
+          <Typography variant="body2" sx={{ color: "#94A3B8" }}>Review customer orders, products, payments and delivery details.</Typography>
         </Box>
-      ) : (
-        <TableContainer component={Paper} sx={{ bgcolor: "#1E293B", border: "1px solid #334155" }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ "& th": { color: "#94A3B8", fontWeight: 600, borderBottom: "1px solid #334155" } }}>
-                <TableCell>Order ID</TableCell>
-                <TableCell>Customer</TableCell>
-                <TableCell>Products (Qty)</TableCell>
-                <TableCell>Delivery address & city</TableCell>
-                <TableCell>Amount</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Driver</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {orders.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} sx={{ textAlign: "center", color: "#94A3B8", py: 4 }}>
-                    No orders found
+        <Button variant="outlined" startIcon={<Refresh />} onClick={() => { void fetchOrders(); void fetchDrivers(); }} disabled={loading}>
+          Refresh
+        </Button>
+      </Stack>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert>}
+
+      <TableContainer component={Paper} sx={{ bgcolor: "#1E293B", border: "1px solid #334155", overflowX: "auto" }}>
+        <Table size="small" sx={{ minWidth: 1100 }}>
+          <TableHead>
+            <TableRow sx={{ "& th": { color: "#CBD5E1", fontWeight: 700, borderBottom: "1px solid #475569", whiteSpace: "nowrap" } }}>
+              <TableCell>Order ID / Date</TableCell>
+              <TableCell>Customer</TableCell>
+              <TableCell>Products (Qty)</TableCell>
+              <TableCell>Delivery address & city</TableCell>
+              <TableCell align="right">Amount</TableCell>
+              <TableCell>Payment</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Driver</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={9} sx={{ py: 6, textAlign: "center", color: "#CBD5E1" }}><CircularProgress size={28} /></TableCell></TableRow>
+            ) : orders.length === 0 ? (
+              <TableRow><TableCell colSpan={9} sx={{ py: 5, textAlign: "center", color: "#94A3B8" }}>No orders found for this station.</TableCell></TableRow>
+            ) : orders.map((order) => {
+              const delivery = driverFor(order);
+              const itemText = (order.items || []).map((item) =>
+                (item.product?.name || "Product") + " × " + Number(item.quantity || 0)
+              ).join(", ");
+              return (
+                <TableRow key={order.id} hover sx={{ "& td": { color: "#E2E8F0", borderBottom: "1px solid #334155", verticalAlign: "top" } }}>
+                  <TableCell>
+                    <Typography sx={{ fontFamily: "monospace", fontWeight: 700 }}>#{order.id.slice(0, 8).toUpperCase()}</Typography>
+                    <Typography variant="caption" sx={{ color: "#94A3B8" }}>{dateTime(order.createdAt)}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography fontWeight={600}>{order.user?.name || "Unknown customer"}</Typography>
+                    <Typography variant="caption" sx={{ color: "#94A3B8" }}>{order.user?.phone || "No phone"}{order.user?.email ? " · " + order.user.email : ""}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 170 }}>
+                    {order.items?.length ? (
+                      <Stack spacing={0.5}>
+                        {order.items.map((item, index) => (
+                          <Typography key={item.id || item.productId || index} variant="body2">
+                            {item.product?.name || "Product"} × {Number(item.quantity || 0)}
+                          </Typography>
+                        ))}
+                        <Typography variant="caption" sx={{ color: "#94A3B8" }}>Total quantity: {orderTotalQty(order)}</Typography>
+                      </Stack>
+                    ) : <Typography variant="caption" sx={{ color: "#F59E0B" }}>Item details unavailable</Typography>}
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>
+                    <Typography variant="body2">{order.deliveryAddress || "Address not provided"}</Typography>
+                    <Typography variant="caption" sx={{ color: "#94A3B8" }}>{order.deliveryCity || "City not provided"}</Typography>
+                  </TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: "nowrap", fontWeight: 700, color: "#FBBF24 !important" }}>{money(order.totalAmount)}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ textTransform: "capitalize" }}>{order.paymentMethod || "cash"}</Typography>
+                    <Chip size="small" label={order.paymentStatus || "pending"} color={order.paymentStatus === "paid" ? "success" : "warning"} />
+                  </TableCell>
+                  <TableCell><Chip size="small" label={(order.status || "pending").replace(/_/g, " ")} color={statusColor(order.status)} sx={{ textTransform: "capitalize" }} /></TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>
+                    <Typography variant="body2">{delivery?.driverName || "Not assigned"}</Typography>
+                    <Typography variant="caption" sx={{ color: "#94A3B8" }}>{delivery?.driverPhone || "—"}</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                      <Button size="small" startIcon={<VisibilityOutlined />} onClick={() => openDetails(order)}>Details</Button>
+                      {["pending", "confirmed"].includes(order.status) && (
+                        <Button size="small" onClick={() => { setSelectedOrder(order); setAssignOpen(true); }}>Assign</Button>
+                      )}
+                      {["pending", "confirmed"].includes(order.status) && (
+                        <Button size="small" color="error" disabled={saving} onClick={() => void handleCancel(order.id)}>Cancel</Button>
+                      )}
+                    </Stack>
                   </TableCell>
                 </TableRow>
-              ) : (
-                orders.map((order) => (
-                  <TableRow key={order.id} sx={{ "& td": { color: "#E2E8F0", borderBottom: "1px solid #334155" } }}>
-                    <TableCell sx={{ fontFamily: "monospace", fontSize: 13 }}>
-                      #{order.id.slice(0, 8)}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {order.user?.name || "Unknown"}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "#94A3B8" }}>
-                        {order.user?.phone || "No phone"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "#F59E0B" }}>
-                      UGX {order.totalAmount?.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={order.status.replace("_", " ")}
-                        color={getStatusColor(order.status) as any}
-                        size="small"
-                        sx={{ textTransform: "capitalize", fontWeight: 600 }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: order.deliveries?.[0]?.driverName ? "#22C55E" : "#94A3B8" }}>
-                        {getDriverInfo(order)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", gap: 1 }}>
-                        {order.status === "pending" && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={() => { setSelectedOrder(order); setDialogOpen(true); }}
-                            sx={{ bgcolor: "#F59E0B", color: "#fff", fontSize: 12 }}
-                          >
-                            Assign Driver
-                          </Button>
-                        )}
-                        {order.status !== "cancelled" && order.status !== "delivered" && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            onClick={() => handleCancel(order.id)}
-                            sx={{ fontSize: 12 }}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} PaperProps={{ sx: { bgcolor: "#1E293B", color: "#fff" } }}>
-        <DialogTitle>Assign Driver</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth sx={{ mt: 1 }}>
-            <InputLabel sx={{ color: "#94A3B8" }}>Available driver</InputLabel>
-            <Select
-              value={selectedDriver}
-              onChange={(e) => setSelectedDriver(e.target.value)}
-              sx={{ color: "#fff", ".MuiOutlinedInput-notchedOutline": { borderColor: "#334155" } }}
-            >
-              {drivers.length === 0 && <MenuItem value="" disabled>No online drivers available</MenuItem>}
-              {drivers.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.name} · Available ({d.phone})
-                </MenuItem>
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} fullWidth maxWidth="md" PaperProps={{ sx: { bgcolor: "#102B25", color: "#F8FAFC" } }}>
+        <DialogTitle>Order details · #{selectedOrder?.id.slice(0, 8).toUpperCase()}</DialogTitle>
+        <DialogContent dividers sx={{ borderColor: "#315248" }}>
+          {selectedOrder && (
+            <Stack spacing={2}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Customer</Typography><Typography>{selectedOrder.user?.name || "Unknown"}</Typography><Typography>{selectedOrder.user?.phone || "No phone"}</Typography><Typography>{selectedOrder.user?.email || "No email"}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Order</Typography><Typography>{dateTime(selectedOrder.createdAt)}</Typography><Typography>Status: {selectedOrder.status}</Typography><Typography>Payment: {selectedOrder.paymentMethod || "cash"} / {selectedOrder.paymentStatus || "pending"}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Delivery destination</Typography><Typography>{selectedOrder.deliveryAddress || "—"}</Typography><Typography>{selectedOrder.deliveryCity || "—"}</Typography><Typography>GPS: {selectedOrder.deliveryLatitude ?? "—"}, {selectedOrder.deliveryLongitude ?? "—"}</Typography><Typography>GPS accuracy: {selectedOrder.locationAccuracy ?? "—"} m</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Station & driver</Typography><Typography>{selectedOrder.station?.name || "Current station"}</Typography><Typography>{driverFor(selectedOrder)?.driverName || "Driver not assigned"}</Typography><Typography>{driverFor(selectedOrder)?.driverPhone || "—"}</Typography><Typography>Vehicle: {driverFor(selectedOrder)?.vehicleNumber || "—"}</Typography></Grid>
+              </Grid>
+              <Divider sx={{ borderColor: "#315248" }} />
+              <Typography variant="h6">Ordered products</Typography>
+              {(selectedOrder.items || []).map((item, index) => (
+                <Paper key={item.id || item.productId || index} sx={{ p: 2, bgcolor: "#193B32", color: "#F8FAFC" }} variant="outlined">
+                  <Stack direction="row" justifyContent="space-between" gap={2}>
+                    <Box>
+                      <Typography fontWeight={700}>{item.product?.name || "Product"}</Typography>
+                      <Typography variant="body2" color="#B7C9C2">{item.product?.type || "—"} · {item.product?.size || "—"} · {item.product?.weight ? item.product.weight + " kg" : "Weight not specified"}</Typography>
+                      {item.product?.description && <Typography variant="body2" color="#B7C9C2">{item.product.description}</Typography>}
+                      <Typography variant="body2">Quantity: {item.quantity}</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: "right", minWidth: 125 }}>
+                      <Typography variant="body2">Unit: {money(item.price)}</Typography>
+                      <Typography fontWeight={700}>{money(item.subtotal)}</Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
               ))}
+              <Stack direction="row" justifyContent="space-between"><Typography fontWeight={700}>Total payable</Typography><Typography fontWeight={800} color="#FBBF24">{money(selectedOrder.totalAmount)}</Typography></Stack>
+              {selectedOrder.notes && <Alert severity="info">Customer notes: {selectedOrder.notes}</Alert>}
+              {selectedOrder.cancellationReason && <Alert severity="warning">Cancellation reason: {selectedOrder.cancellationReason}</Alert>}
+              {driverFor(selectedOrder) && <Accordion sx={{ bgcolor: "#193B32", color: "#F8FAFC" }}><AccordionSummary expandIcon={<ExpandMore sx={{ color: "#fff" }} />}>Delivery timeline</AccordionSummary><AccordionDetails><Typography>Picked up: {dateTime(driverFor(selectedOrder)?.pickedUpAt)}</Typography><Typography>Started: {dateTime(driverFor(selectedOrder)?.startedAt)}</Typography><Typography>Delivered: {dateTime(driverFor(selectedOrder)?.deliveredAt)}</Typography><Typography>Delivery notes: {driverFor(selectedOrder)?.notes || "—"}</Typography></AccordionDetails></Accordion>}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions><Button onClick={() => setDetailsOpen(false)}>Close</Button></DialogActions>
+      </Dialog>
+
+      <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} PaperProps={{ sx: { bgcolor: "#1E293B", color: "#fff" } }}>
+        <DialogTitle>Assign driver</DialogTitle>
+        <DialogContent sx={{ minWidth: 320 }}>
+          <FormControl fullWidth sx={{ mt: 1 }}>
+            <InputLabel sx={{ color: "#CBD5E1" }}>Available driver</InputLabel>
+            <Select value={selectedDriver} label="Available driver" onChange={(e) => setSelectedDriver(e.target.value)} sx={{ color: "#fff" }}>
+              {drivers.length === 0 && <MenuItem value="" disabled>No online drivers available</MenuItem>}
+              {drivers.map((driver) => <MenuItem key={driver.id} value={driver.id}>{driver.name} · {driver.phone}</MenuItem>)}
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} sx={{ color: "#94A3B8" }}>
-            Cancel
-          </Button>
-          <Button onClick={handleAssign} disabled={!selectedDriver} variant="contained" sx={{ bgcolor: "#F59E0B", color: "#fff" }}>
-            Assign
-          </Button>
+          <Button onClick={() => setAssignOpen(false)}>Close</Button>
+          <Button onClick={() => void handleAssign()} disabled={!selectedDriver || saving} variant="contained">{saving ? "Assigning…" : "Assign driver"}</Button>
         </DialogActions>
       </Dialog>
     </Box>
