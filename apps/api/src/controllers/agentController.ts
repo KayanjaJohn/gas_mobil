@@ -39,11 +39,9 @@ const verifyStationOrder = async (
   if (!order) return { order: null, error: "Order not found" };
   if ((order as any).stationId !== stationId)
     return { order: null, error: "Not your station order" };
-  const hasForeignStock = ((order as any).items || []).some((item: any) =>
-    item.product?.stationId && item.product.stationId !== stationId
-  );
-  if (hasForeignStock)
-    return { order: null, error: "This order contains stock assigned to another station and has been withheld for administrator review." };
+  // Order.stationId is the historical fulfilment owner. Product.stationId can
+  // change after a sale, so it must not hide valid historical orders or block
+  // driver assignment. Cancellation still checks stock ownership before restocking.
   if (!order.station || !isStationEligibleForLocation(order.station, {
     latitude: order.deliveryLatitude,
     longitude: order.deliveryLongitude,
@@ -65,16 +63,15 @@ const fetchOrdersWithDeliveries = async (where: any): Promise<Order[]> => {
 
 const isSafeAgentOrder = (order: any, stationId: string, station: Station): boolean => {
   const correctStation = order.stationId === stationId;
-  const correctProducts = (order.items || []).every((item: any) =>
-    !item.product?.stationId || item.product.stationId === stationId
-  );
+  // Product ownership is mutable inventory metadata. A completed order remains
+  // associated with the station recorded on the order, even if stock is later moved.
   const correctRegion = isStationEligibleForLocation(station, {
     latitude: order.deliveryLatitude ?? order.user?.latitude,
     longitude: order.deliveryLongitude ?? order.user?.longitude,
     city: order.deliveryCity || order.user?.city,
     address: order.deliveryAddress || order.user?.address,
   });
-  return correctStation && correctProducts && correctRegion;
+  return correctStation && correctRegion;
 };
 
 export const getAgentCustomers = async (req: Request, res: Response) => {
@@ -118,13 +115,19 @@ export const getAgentOrders = async (req: Request, res: Response) => {
     if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
     const orders = await fetchOrdersWithDeliveries({ stationId });
     const safeOrders = orders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
-    const mismatchedOrders = orders.filter((order: any) => !isSafeAgentOrder(order, stationId, station));
+    const mismatchedOrders = orders.filter((order: any) =>
+      (order.items || []).some((item: any) =>
+        item.product?.stationId && item.product.stationId !== stationId
+      )
+    );
     res.json({
       success: true,
       data: safeOrders,
       meta: {
         stationId,
-        excludedIntegrityOrders: mismatchedOrders.length,
+        // Historical orders are returned using Order.stationId as the source
+        // of truth. This count is informational and does not withhold the order.
+        ordersWithHistoricalProductStationMismatch: mismatchedOrders.length,
       },
     });
   } catch (error) {
@@ -383,6 +386,15 @@ export const cancelOrder = async (req: Request, res: Response) => {
     }
     if (!["pending", "confirmed"].includes((order as any).status)) {
       return res.status(400).json({ success: false, error: "Order cannot be cancelled at this stage" });
+    }
+    const hasMovedProductStock = ((order as any).items || []).some((item: any) =>
+      item.product?.stationId && item.product.stationId !== order.stationId
+    );
+    if (hasMovedProductStock) {
+      return res.status(409).json({
+        success: false,
+        error: "This historical order contains stock now assigned to another station. An administrator must reconcile the stock before cancellation so inventory is not returned to the wrong station.",
+      });
     }
     await orderRepo().update(orderId, {
       status: "cancelled",
