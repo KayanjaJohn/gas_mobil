@@ -89,8 +89,13 @@ axios.interceptors.response.use(
       request.headers = request.headers || ({} as any);
       request.headers.Authorization = `Bearer ${newToken}`;
       return axios.request(request);
-    } catch (refreshError) {
-      clearAdminSession();
+    } catch (refreshError: any) {
+      const status = refreshError?.response?.status;
+      if (status === 400 || status === 401 || status === 403) {
+        clearAdminSession();
+      }
+      // A network timeout or server outage is not proof that the refresh
+      // credential is invalid. Keep the session and let the next request retry.
       return Promise.reject(refreshError);
     }
   }
