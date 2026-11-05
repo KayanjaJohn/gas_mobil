@@ -38,12 +38,12 @@ function Main() {
           divider: mode === "light" ? "#D8CDBB" : "#315C4D",
         },
         components: {
-          MuiTypography: { styleOverrides: { h4: { color: "#FFF8EE", fontWeight: 800 } } },
+          MuiTypography: { styleOverrides: { h4: { color: mode === "dark" ? "#FFF8EE" : "#0B3D2E", fontWeight: 800 } } },
           MuiTableCell: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE", borderColor: mode === "light" ? "#D8CDBB" : "#315C4D" }, head: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE", fontWeight: 700 } } },
           MuiInputBase: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
           MuiInputLabel: { styleOverrides: { root: { color: mode === "light" ? "#68786F" : "#D8E7DE", "&.Mui-focused": { color: "#F36A21" } } } },
           MuiFormLabel: { styleOverrides: { root: { color: mode === "light" ? "#68786F" : "#D8E7DE" } } },
-          MuiMenuItem: { styleOverrides: { root: { color: "#0B3D2E" } } },
+          MuiMenuItem: { styleOverrides: { root: { color: mode === "dark" ? "#FFF8EE" : "#0B3D2E" } } },
           MuiDialogTitle: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
           MuiDialogContent: { styleOverrides: { root: { color: mode === "light" ? "#0B3D2E" : "#FFF8EE" } } },
           MuiButton: { styleOverrides: {
