@@ -15,6 +15,7 @@ RUN npm run build
 FROM node:20-alpine AS production
 
 WORKDIR /app
+ENV UPLOAD_DIR=/app/uploads
 
 # Install production dependencies only
 COPY package*.json ./
