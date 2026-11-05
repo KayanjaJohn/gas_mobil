@@ -156,8 +156,8 @@ export default function Orders() {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto", border: "1px solid", borderColor: "divider" }}>
+          <Table size="small" sx={{ minWidth: 1250, tableLayout: "auto", "& th": { whiteSpace: "nowrap", fontWeight: 800, bgcolor: "action.hover", color: "text.primary" }, "& td": { verticalAlign: "top", color: "text.primary", borderColor: "divider" }, "& .MuiButton-root": { fontWeight: 700, whiteSpace: "nowrap" } }}>
             <TableHead>
               <TableRow>
                 <TableCell>Order ID</TableCell>
