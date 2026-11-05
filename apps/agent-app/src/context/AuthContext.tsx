@@ -170,7 +170,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       return { success: true };
     } catch (loginError: any) {
-      const message = loginError.response?.data?.error || loginError.message || "Login failed";
+      const status = loginError.response?.status;
+      const message = loginError.code === "ECONNABORTED"
+        ? "GasMobil is taking too long to respond. Check your internet connection and try again."
+        : !loginError.response
+          ? "We couldn't connect to GasMobil. Check your internet connection and try again."
+          : status === 401
+            ? "The email/phone or password is incorrect. Please check and try again."
+            : status === 403
+              ? "This account is not authorised to access the agent portal."
+              : status >= 500
+                ? "GasMobil is temporarily unavailable. Please try again shortly."
+                : loginError.response.data?.error || "We couldn't sign you in. Please try again.";
       return { success: false, error: message };
     }
   };
