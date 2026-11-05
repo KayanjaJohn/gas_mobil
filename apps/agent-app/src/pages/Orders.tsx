@@ -156,7 +156,7 @@ export default function Orders() {
     <Box sx={{ p: { xs: 1, md: 0 } }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>Orders</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: "text.primary" }}>Orders</Typography>
           <Typography variant="body2" sx={{ color: "#94A3B8" }}>Review customer orders, products, payments and delivery details.</Typography>
         </Box>
         <Button variant="outlined" startIcon={<Refresh />} onClick={() => { void fetchOrders(); void fetchDrivers(); }} disabled={loading}>
@@ -245,26 +245,26 @@ export default function Orders() {
         </Table>
       </TableContainer>
 
-      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} fullWidth maxWidth="md" PaperProps={{ sx: { bgcolor: "#102B25", color: "#F8FAFC" } }}>
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} fullWidth maxWidth="md" PaperProps={{ sx: { bgcolor: "background.paper", color: "text.primary", "& .MuiTypography-root": { color: "inherit" }, "& .MuiDialogTitle-root": { color: "text.primary", fontWeight: 700 }, "& .MuiButton-root": { color: "primary.main", fontWeight: 700 } } }}>
         <DialogTitle>Order details · #{selectedOrder?.id.slice(0, 8).toUpperCase()}</DialogTitle>
-        <DialogContent dividers sx={{ borderColor: "#315248" }}>
+        <DialogContent dividers sx={{ borderColor: "divider" }}>
           {selectedOrder && (
             <Stack spacing={2}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Customer</Typography><Typography>{selectedOrder.user?.name || "Unknown"}</Typography><Typography>{selectedOrder.user?.phone || "No phone"}</Typography><Typography>{selectedOrder.user?.email || "No email"}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Order</Typography><Typography>{dateTime(selectedOrder.createdAt)}</Typography><Typography>Status: {selectedOrder.status}</Typography><Typography>Payment: {selectedOrder.paymentMethod || "cash"} / {selectedOrder.paymentStatus || "pending"}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Delivery destination</Typography><Typography>{selectedOrder.deliveryAddress || "—"}</Typography><Typography>{selectedOrder.deliveryCity || "—"}</Typography><Typography>GPS: {selectedOrder.deliveryLatitude ?? "—"}, {selectedOrder.deliveryLongitude ?? "—"}</Typography><Typography>GPS accuracy: {selectedOrder.locationAccuracy ?? "—"} m</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography color="#9FB5AD" variant="caption">Station & driver</Typography><Typography>{selectedOrder.station?.name || "Current station"}</Typography><Typography>{driverFor(selectedOrder)?.driverName || "Driver not assigned"}</Typography><Typography>{driverFor(selectedOrder)?.driverPhone || "—"}</Typography><Typography>Vehicle: {driverFor(selectedOrder)?.vehicleNumber || "—"}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography color="text.secondary" variant="caption">Customer</Typography><Typography>{selectedOrder.user?.name || "Unknown"}</Typography><Typography>{selectedOrder.user?.phone || "No phone"}</Typography><Typography>{selectedOrder.user?.email || "No email"}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography color="text.secondary" variant="caption">Order</Typography><Typography>{dateTime(selectedOrder.createdAt)}</Typography><Typography>Status: {selectedOrder.status}</Typography><Typography>Payment: {selectedOrder.paymentMethod || "cash"} / {selectedOrder.paymentStatus || "pending"}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography color="text.secondary" variant="caption">Delivery destination</Typography><Typography>{selectedOrder.deliveryAddress || "—"}</Typography><Typography>{selectedOrder.deliveryCity || "—"}</Typography><Typography>GPS: {selectedOrder.deliveryLatitude ?? "—"}, {selectedOrder.deliveryLongitude ?? "—"}</Typography><Typography>GPS accuracy: {selectedOrder.locationAccuracy ?? "—"} m</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography color="text.secondary" variant="caption">Station & driver</Typography><Typography>{selectedOrder.station?.name || "Current station"}</Typography><Typography>{driverFor(selectedOrder)?.driverName || "Driver not assigned"}</Typography><Typography>{driverFor(selectedOrder)?.driverPhone || "—"}</Typography><Typography>Vehicle: {driverFor(selectedOrder)?.vehicleNumber || "—"}</Typography></Grid>
               </Grid>
-              <Divider sx={{ borderColor: "#315248" }} />
+              <Divider sx={{ borderColor: "divider" }} />
               <Typography variant="h6">Ordered products</Typography>
               {(selectedOrder.items || []).map((item, index) => (
-                <Paper key={item.id || item.productId || index} sx={{ p: 2, bgcolor: "#193B32", color: "#F8FAFC" }} variant="outlined">
+                <Paper key={item.id || item.productId || index} sx={{ p: 2, bgcolor: "background.default", color: "text.primary" }} variant="outlined">
                   <Stack direction="row" justifyContent="space-between" gap={2}>
                     <Box>
                       <Typography fontWeight={700}>{item.product?.name || "Product"}</Typography>
-                      <Typography variant="body2" color="#B7C9C2">{item.product?.type || "—"} · {item.product?.size || "—"} · {item.product?.weight ? item.product.weight + " kg" : "Weight not specified"}</Typography>
-                      {item.product?.description && <Typography variant="body2" color="#B7C9C2">{item.product.description}</Typography>}
+                      <Typography variant="body2" color="text.secondary">{item.product?.type || "—"} · {item.product?.size || "—"} · {item.product?.weight ? item.product.weight + " kg" : "Weight not specified"}</Typography>
+                      {item.product?.description && <Typography variant="body2" color="text.secondary">{item.product.description}</Typography>}
                       <Typography variant="body2">Quantity: {item.quantity}</Typography>
                     </Box>
                     <Box sx={{ textAlign: "right", minWidth: 125 }}>
@@ -274,10 +274,10 @@ export default function Orders() {
                   </Stack>
                 </Paper>
               ))}
-              <Stack direction="row" justifyContent="space-between"><Typography fontWeight={700}>Total payable</Typography><Typography fontWeight={800} color="#FBBF24">{money(selectedOrder.totalAmount)}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between"><Typography fontWeight={700}>Total payable</Typography><Typography fontWeight={800} color="primary.main">{money(selectedOrder.totalAmount)}</Typography></Stack>
               {selectedOrder.notes && <Alert severity="info">Customer notes: {selectedOrder.notes}</Alert>}
               {selectedOrder.cancellationReason && <Alert severity="warning">Cancellation reason: {selectedOrder.cancellationReason}</Alert>}
-              {driverFor(selectedOrder) && <Accordion sx={{ bgcolor: "#193B32", color: "#F8FAFC" }}><AccordionSummary expandIcon={<ExpandMore sx={{ color: "#fff" }} />}>Delivery timeline</AccordionSummary><AccordionDetails><Typography>Picked up: {dateTime(driverFor(selectedOrder)?.pickedUpAt)}</Typography><Typography>Started: {dateTime(driverFor(selectedOrder)?.startedAt)}</Typography><Typography>Delivered: {dateTime(driverFor(selectedOrder)?.deliveredAt)}</Typography><Typography>Delivery notes: {driverFor(selectedOrder)?.notes || "—"}</Typography></AccordionDetails></Accordion>}
+              {driverFor(selectedOrder) && <Accordion sx={{ bgcolor: "background.default", color: "text.primary" }}><AccordionSummary expandIcon={<ExpandMore sx={{ color: "#fff" }} />}>Delivery timeline</AccordionSummary><AccordionDetails><Typography>Picked up: {dateTime(driverFor(selectedOrder)?.pickedUpAt)}</Typography><Typography>Started: {dateTime(driverFor(selectedOrder)?.startedAt)}</Typography><Typography>Delivered: {dateTime(driverFor(selectedOrder)?.deliveredAt)}</Typography><Typography>Delivery notes: {driverFor(selectedOrder)?.notes || "—"}</Typography></AccordionDetails></Accordion>}
             </Stack>
           )}
         </DialogContent>
