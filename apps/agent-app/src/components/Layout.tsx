@@ -65,7 +65,7 @@ export default function Layout() {
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", background: "radial-gradient(ellipse at 50% 22%, rgba(0,154,69,.36) 0%, rgba(0,74,40,.16) 42%, transparent 76%), linear-gradient(180deg,#002A19 0%,#00170C 100%)", color: "#FFF8EE", "& .MuiTypography-root": { color: "#FFF8EE" }, "& .MuiListItemIcon-root": { color: "#FFF8EE" }, "& .MuiDivider-root": { borderColor: "#315C4D" } }}>
       <Toolbar sx={{ justifyContent: "center", background: "radial-gradient(ellipse at 50% 22%, rgba(0,154,69,.36) 0%, rgba(0,74,40,.16) 42%, transparent 76%), linear-gradient(180deg,#002A19 0%,#00170C 100%)", gap: 1 }}>
-        <Box component="img" src="/agent/gasmobil-icon.png" alt="GasMobil" sx={{ width: 30, height: 30, borderRadius: 1 }} />
+        <Box component="img" src="/agent/gasmobil-mark.png?v=20261105" alt="GasMobil" sx={{ width: 38, height: 38, objectFit: "contain" }} />
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {drawerCollapsed ? "GM" : "GasMobil"}
         </Typography>
