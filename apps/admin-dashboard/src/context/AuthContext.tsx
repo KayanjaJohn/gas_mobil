@@ -113,7 +113,8 @@ axios.interceptors.response.use(
 function friendlyAuthError(error: any): string {
   // Preserve intentional application errors (for example, a role mismatch)
   // rather than presenting them as an internet connection problem.
-  if (error instanceof Error && !error?.response && !error?.request && !error?.code) {
+  const axiosLike = error as any;
+  if (error instanceof Error && !axiosLike.response && !axiosLike.request && !axiosLike.code) {
     return error.message;
   }
   if (error?.code === "ECONNABORTED") {
