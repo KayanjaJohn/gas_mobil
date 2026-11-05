@@ -269,8 +269,8 @@ export default function Products() {
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
           ) : (
-            <TableContainer component={Paper}>
-              <Table>
+            <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto", border: "1px solid", borderColor: "divider" }}>
+              <Table size="small" sx={{ minWidth: 1050, tableLayout: "auto", "& th": { whiteSpace: "nowrap", fontWeight: 800, bgcolor: "action.hover", color: "text.primary" }, "& td": { verticalAlign: "middle", color: "text.primary", borderColor: "divider" }, "& .MuiButton-root": { fontWeight: 700, whiteSpace: "nowrap" } }}>
                 <TableHead>
                   <TableRow>
                     <TableCell>Image</TableCell>
