@@ -1,7 +1,6 @@
 import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 import React, { useEffect, useState } from "react";
 import { Linking } from "react-native";
-import * as Location from "expo-location";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from "react-native";
@@ -96,39 +95,15 @@ export default function StationsScreen() {
     setLoading(true);
     setLoadError("");
     try {
-      let detectedCity = "";
-      let latitude: number | null = null;
-      let longitude: number | null = null;
-
-      // Location is optional: never let a GPS permission/fix failure prevent
-      // customers from loading the nationwide station directory.
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status === "granted") {
-          const gps = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          latitude = gps.coords.latitude;
-          longitude = gps.coords.longitude;
-          const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-          const place = places[0];
-          detectedCity = place?.city || place?.district || place?.subregion || place?.region || "";
-        }
-      } catch (locationError: any) {
-        console.warn("[Stations] Location unavailable; loading all stations:", locationError?.message);
-      }
-      // Load the full station directory so the customer can browse every region.
-      const endpoint = "/stations";
-      const res = await apiRequest<Station[]>("get", endpoint);
+      // Load the complete active station directory. Regional tabs are an
+      // optional customer filter, not a GPS-based restriction.
+      const res = await apiRequest<Station[]>("get", "/stations");
       if (res.success && res.data) {
         setStations(res.data);
-        if (latitude !== null && longitude !== null) {
-          const detected = inferStationRegion({
-            id: "customer-location", name: "", address: "", city: detectedCity,
-            latitude, longitude, isActive: true,
-          });
-          if (detected !== "other") {
-            setRegion(detected.replace(/^./, (letter) => letter.toUpperCase()));
-          }
-        }
+        setRegion("All");
+      } else {
+        setStations([]);
+        setLoadError(res.error || "No stations are currently available.");
       }
     } catch (err: any) {
       console.error("[Stations] Fetch error:", err.message);
