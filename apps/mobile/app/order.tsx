@@ -19,6 +19,7 @@ import { apiRequest } from '../src/services/api';
 
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/utils/constants';
+import { useThemedAlert } from '../src/hooks/useThemedAlert';
 
 interface Station {
   id: string;
