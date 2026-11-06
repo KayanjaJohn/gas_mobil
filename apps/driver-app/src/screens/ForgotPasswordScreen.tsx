@@ -36,7 +36,7 @@ export default function ForgotPasswordScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
-            <Image source={require('../../assets/gasmobil-icon.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.brand}>GasMobil <Text style={{ color: '#F36A21' }}>Driver</Text></Text>
             <Text style={styles.title}>Reset your password</Text>
             <Text style={styles.subtitle}>Enter your account email and we'll send a secure reset link if the account exists.</Text>
