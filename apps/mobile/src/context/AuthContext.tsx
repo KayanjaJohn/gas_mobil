@@ -119,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Register the customer's EAS push token so order and account updates can
   // be delivered by the OS even when the app is not running in the foreground.
   useEffect(() => {
-    if (!user?.id || Platform.OS === 'web') return;
+    // Expo Go (StoreClient) removed remote push notification support in SDK 53+.
+    // Keep Expo Go usable for functional testing; register push tokens in EAS builds.
+    if (!user?.id || Platform.OS === 'web' || Constants.executionEnvironment === 'storeClient') return;
     let active = true;
     const registerDevice = async () => {
       try {
