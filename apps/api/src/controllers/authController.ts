@@ -144,13 +144,13 @@ export const login = async (req: Request, res: Response) => {
 
     if (!user) {
       console.log(`[LOGIN] Rejected: user not found for identifier=${emailOrPhone}`);
-      return res.status(401).json({ success: false, error: "Invalid credentials — user not found" });
+      return res.status(401).json({ success: false, error: "Invalid email/phone or password" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       console.log(`[LOGIN] Rejected: wrong password for user=${user.email}`);
-      return res.status(401).json({ success: false, error: "Invalid credentials — wrong password" });
+      return res.status(401).json({ success: false, error: "Invalid email/phone or password" });
     }
 
     const accessToken = generateToken(user.id, user.email, user.name, user.role);
