@@ -25,6 +25,8 @@ function RootLayoutInner() {
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
+    // Remote notifications are not supported in Expo Go on Android SDK 53+.
+    if (Constants.executionEnvironment === "storeClient" || Platform.OS === "web") return;
     const configureNotifications = async () => {
       const permission = await Notifications.getPermissionsAsync();
       if (!permission.granted) {
