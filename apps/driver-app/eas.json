@@ -6,7 +6,8 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "node": "22.23.4"
     },
     "preview": {
       "distribution": "internal",
@@ -15,7 +16,8 @@
       },
       "ios": {
         "simulator": false
-      }
+      },
+      "node": "22.23.4"
     },
     "production": {
       "autoIncrement": true,
@@ -24,7 +26,8 @@
       },
       "ios": {
         "distribution": "store"
-      }
+      },
+      "node": "22.23.4"
     },
     "production-apk": {
       "extends": "production",
@@ -32,7 +35,8 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "node": "22.23.4"
     }
   },
   "submit": {
