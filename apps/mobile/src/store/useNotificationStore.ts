@@ -46,7 +46,9 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         notifications: state.notifications.map((n) =>
           n.id === id ? { ...n, isRead: true } : n
         ),
-        unreadCount: Math.max(0, state.unreadCount - 1),
+        unreadCount: state.notifications.some((n) => n.id === id && !n.isRead)
+          ? Math.max(0, state.unreadCount - 1)
+          : state.unreadCount,
       }));
     } catch (err) {
       console.error('markAsRead error:', err);
