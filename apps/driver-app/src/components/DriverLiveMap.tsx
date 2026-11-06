@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import Constants from "expo-constants";
+import { Linking, TouchableOpacity } from "react-native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import { Map, Camera, Marker, GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
+
 import type { LocationPoint } from "../types";
 
 type Coordinate = { latitude: number; longitude: number };
@@ -16,6 +18,17 @@ const KAMPALA: Coordinate = { latitude: 0.3476, longitude: 32.5825 };
 
 export default function DriverLiveMap({ destination, driverLocation, status }: Props) {
   const cameraRef = useRef<any>(null);
+  // MapLibre is a native module absent from the Expo Go binary.
+  let NativeMap: any = null, Camera: any = null, Marker: any = null, GeoJSONSource: any = null, Layer: any = null;
+  let nativeMapAvailable = false;
+  if (Constants.executionEnvironment !== "storeClient") {
+    try {
+      const maplibre = require("@maplibre/maplibre-react-native");
+      NativeMap = maplibre.Map; Camera = maplibre.Camera; Marker = maplibre.Marker;
+      GeoJSONSource = maplibre.GeoJSONSource; Layer = maplibre.Layer;
+      nativeMapAvailable = !!(NativeMap && Camera && Marker && GeoJSONSource && Layer);
+    } catch { nativeMapAvailable = false; }
+  }
 
   const driverPoint = useMemo<Coordinate | null>(() => {
     if (!driverLocation) return null;
@@ -89,7 +102,7 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
 
   return (
     <View style={styles.container}>
-      <Map
+      {nativeMapAvailable ? <NativeMap
         style={StyleSheet.absoluteFillObject}
         mapStyle={MAP_STYLE}
         attribution
@@ -131,7 +144,21 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
             />
           </GeoJSONSource>
         )}
-      </Map>
+      </NativeMap> : (
+        <View style={styles.expoFallback}>
+          <Text style={styles.fallbackTitle}>Delivery map preview</Text>
+          <Text style={styles.fallbackCopy}>Your GPS and delivery updates can still be tested in Expo Go. The embedded live map requires the GasMobil development or production build.</Text>
+          {driverPoint && <Text style={styles.fallbackCoordinate}>Your GPS: {driverPoint.latitude.toFixed(5)}, {driverPoint.longitude.toFixed(5)}</Text>}
+          {destinationPoint && <Text style={styles.fallbackCoordinate}>Customer: {destinationPoint.latitude.toFixed(5)}, {destinationPoint.longitude.toFixed(5)}</Text>}
+          <TouchableOpacity style={styles.navigateButton} onPress={() => {
+            if (!destinationPoint) return;
+            const url = driverPoint
+              ? "https://www.google.com/maps/dir/" + driverPoint.latitude + "," + driverPoint.longitude + "/" + destinationPoint.latitude + "," + destinationPoint.longitude
+              : "https://www.google.com/maps/search/?api=1&query=" + destinationPoint.latitude + "," + destinationPoint.longitude;
+            void Linking.openURL(url);
+          }}><Text style={styles.navigateText}>Open Google Maps navigation</Text></TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.statusPanel}>
         <View style={[styles.dot, driverPoint && inMotion ? styles.liveDot : styles.waitDot]} />
@@ -155,7 +182,13 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, overflow: "hidden", borderRadius: 16, backgroundColor: "#D9E6E0" },
+  container: { flex: 1, overflow: "hidden", borderRadius: 16, backgroundColor: "#E8F0E9" },
+  expoFallback: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", padding: 22, backgroundColor: "#E8F0E9" },
+  fallbackTitle: { color: "#0B3D2E", fontSize: 19, fontWeight: "900", marginBottom: 8 },
+  fallbackCopy: { color: "#52685B", textAlign: "center", fontSize: 12, lineHeight: 18 },
+  fallbackCoordinate: { color: "#0B3D2E", fontSize: 12, fontWeight: "700", marginTop: 8 },
+  navigateButton: { marginTop: 14, backgroundColor: "#F36A21", paddingHorizontal: 16, paddingVertical: 11, borderRadius: 10 },
+  navigateText: { color: "#FFFFFF", fontWeight: "800", fontSize: 12 },
   destinationPin: {
     width: 30, height: 30, borderRadius: 15, backgroundColor: "#F36A21",
     borderWidth: 2, borderColor: "#FFF8EE", alignItems: "center", justifyContent: "center",
