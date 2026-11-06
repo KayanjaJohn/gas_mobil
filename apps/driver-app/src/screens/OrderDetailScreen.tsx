@@ -208,7 +208,7 @@ export default function OrderDetailScreen() {
         )}
         {order.status === 'nearby' && (
           <View style={styles.arrivedNotice}>
-            <Icon name="bell-check" size={18} color="#0B3D2E" />
+            <Icon name="bell-check" size={18} color="#0A3D2E" />
             <Text style={styles.arrivedNoticeText}>Customer has been alerted that you have arrived.</Text>
           </View>
         )}
@@ -234,30 +234,30 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B3D2E' },
+  container: { flex: 1, backgroundColor: '#0A3D2E' },
   content: { paddingBottom: 24 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B3D2E' },
-  loadingText: { color: '#0B3D2E', marginTop: 10 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A3D2E' },
+  loadingText: { color: '#0A3D2E', marginTop: 10 },
   mapCard: { height: 300, margin: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#102D25' },
   mapPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8, backgroundColor: '#102D25' },
   mapPlaceholderTitle: { color: '#FFF8EE', fontSize: 17, fontWeight: '800' },
   mapPlaceholderText: { color: '#D6E4DC', fontSize: 12, textAlign: 'center' },
-  mapStatus: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, backgroundColor: '#0B3D2E' },
+  mapStatus: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, backgroundColor: '#0A3D2E' },
   dot: { width: 9, height: 9, borderRadius: 5 },
   dotLive: { backgroundColor: '#168447' },
   dotWaiting: { backgroundColor: '#F36A21' },
-  mapStatusText: { color: '#0B3D2E', fontSize: 11, fontWeight: '800', flex: 1 },
+  mapStatusText: { color: '#0A3D2E', fontSize: 11, fontWeight: '800', flex: 1 },
   card: { backgroundColor: '#FFF8EE', marginHorizontal: 12, marginTop: 0, marginBottom: 12, borderRadius: 12, padding: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#0B3D2E', marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#0A3D2E', marginBottom: 12 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#D8CDBB' },
-  detailLabel: { fontSize: 14, color: '#68786F' },
-  detailValue: { fontSize: 14, fontWeight: '500', color: '#0B3D2E', flex: 1, textAlign: 'right' },
+  detailLabel: { fontSize: 14, color: '#52685B' },
+  detailValue: { fontSize: 14, fontWeight: '500', color: '#0A3D2E', flex: 1, textAlign: 'right' },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#D8CDBB' },
-  itemName: { color: '#0B3D2E', flex: 2, fontSize: 14 },
-  itemQty: { flex: 1, textAlign: 'center', fontSize: 14, color: '#68786F' },
+  itemName: { color: '#0A3D2E', flex: 2, fontSize: 14 },
+  itemQty: { flex: 1, textAlign: 'center', fontSize: 14, color: '#52685B' },
   itemPrice: { textAlign: 'right', fontSize: 12, fontWeight: '800', color: '#F36A21' },
-  itemMeta: { color: '#68786F', fontSize: 10, marginTop: 3 },
-  navigationButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: '#0B3D2E' },
+  itemMeta: { color: '#52685B', fontSize: 10, marginTop: 3 },
+  navigationButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: '#0A3D2E' },
   navigationText: { color: '#FFF8EE', fontWeight: '700', fontSize: 12 },
   warningText: { color: '#FDBA74', marginTop: 8, fontSize: 12 },
   actions: { paddingHorizontal: 12, gap: 10 },
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   greenButton: { backgroundColor: '#168447' },
   arrivedButton: { backgroundColor: '#0D6B4B', flexDirection: 'row', justifyContent: 'center', gap: 9 },
   arrivedNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 2, padding: 13, borderRadius: 10, backgroundColor: '#D9F2E5' },
-  arrivedNoticeText: { color: '#0B3D2E', fontSize: 12, fontWeight: '700', flex: 1 },
+  arrivedNoticeText: { color: '#0A3D2E', fontSize: 12, fontWeight: '700', flex: 1 },
   actionText: { color: '#FFF8EE', fontWeight: '800', fontSize: 14, textAlign: 'center' },
-  codNote: { color: '#68786F', fontSize: 11, textAlign: 'center', margin: 14 },
+  codNote: { color: '#52685B', fontSize: 11, textAlign: 'center', margin: 14 },
 });
