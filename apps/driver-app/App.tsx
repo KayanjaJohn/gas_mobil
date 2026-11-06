@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -15,6 +14,8 @@ import EarningsScreen from './src/screens/EarningsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationScreen';
 
+const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
+
 const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
@@ -22,7 +23,7 @@ function AppNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B3D2E' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A3D2E' }}>
         <ActivityIndicator color="#F59E0B" />
         <Text style={{ color: '#94A3B8', marginTop: 12 }}>Loading...</Text>
       </View>
@@ -53,7 +54,7 @@ function AppNavigator() {
   );
 }
 
-if (Constants.executionEnvironment !== 'storeClient') Notifications.setNotificationHandler({
+if (Notifications) Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
@@ -64,14 +65,14 @@ if (Constants.executionEnvironment !== 'storeClient') Notifications.setNotificat
 
 export default function App() {
   useEffect(() => {
-    if (Constants.executionEnvironment === 'storeClient' || Platform.OS === 'web') return;
+    if (!Notifications || Platform.OS === 'web') return;
     const configure = async () => {
       const permission = await Notifications.getPermissionsAsync();
       if (!permission.granted) {
         await Notifications.requestPermissionsAsync();
       }
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
+        await Notifications.setNotificationChannelAsync('gasmobil-alerts-v2', {
           name: 'GasMobil alerts',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'default',
@@ -85,7 +86,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: "#0B3D2E" }}>
+      <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: "#0A3D2E" }}>
         <AuthProvider>
           <AppNavigator />
         </AuthProvider>
