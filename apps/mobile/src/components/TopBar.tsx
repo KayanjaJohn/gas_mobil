@@ -113,10 +113,11 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", position: "relative",
   },
   dot: {
-    position: "absolute", top: 6, right: 6, minWidth: 9, height: 9,
-    borderRadius: 6, backgroundColor: COLORS.accent, borderWidth: 1, borderColor: COLORS.card,
+    position: "absolute", top: 3, right: 3, minWidth: 14, height: 14,
+    borderRadius: 8, backgroundColor: "#E11D48", borderWidth: 1.5, borderColor: COLORS.card,
+    shadowColor: "#E11D48", shadowOpacity: 0.7, shadowRadius: 5, shadowOffset: { width: 0, height: 1 }, elevation: 8,
     alignItems: "center", justifyContent: "center",
   },
-  dotText: { color: "#fff", fontSize: 7, fontWeight: "800", paddingHorizontal: 2 },
+  dotText: { color: "#fff", fontSize: 8, fontWeight: "900", paddingHorizontal: 3 },
   trailingSpacer: { width: 40 },
 });
