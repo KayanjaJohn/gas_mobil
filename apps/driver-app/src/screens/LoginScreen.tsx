@@ -36,7 +36,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
-            <Image source={require('../../assets/gasmobil-icon.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.brand}>GasMobil <Text style={styles.brandAccent}>Driver</Text></Text>
             <Text style={styles.title}>Driver sign in</Text>
             <Text style={styles.subtitle}>Access assigned deliveries and update order progress.</Text>
