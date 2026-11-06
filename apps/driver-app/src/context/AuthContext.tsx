@@ -5,7 +5,7 @@ import api from '../services/api';
 import { disconnectSocket } from '../services/socketService';
 import type { User } from '../types';
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
+const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
 interface Station {
  id: string;
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  // Register the signed-in driver's EAS push token so assignments and arrival
  // alerts still reach the phone while the app is backgrounded or closed.
  useEffect(() => {
-   if (!user?.id || !token || Constants.executionEnvironment === 'storeClient') return;
+   if (!user?.id || !token || !Notifications) return;
    let active = true;
    const registerDevice = async () => {
      try {
