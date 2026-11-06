@@ -36,12 +36,13 @@ export function useDriverNotifications() {
     try {
       const token = await AsyncStorage.getItem('driver_token');
       if (!token) return;
-      await fetch(`${API_URL}/notifications/${id}/read`, {
+      const response = await fetch(`${API_URL}/notifications/${id}/read`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!response.ok) throw new Error('Could not mark notification as read');
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      await fetchNotifications();
     } catch (err: any) {
       console.error('[DriverNotif] markAsRead error:', err);
     }
@@ -51,12 +52,13 @@ export function useDriverNotifications() {
     try {
       const token = await AsyncStorage.getItem('driver_token');
       if (!token) return;
-      await fetch(`${API_URL}/notifications/read-all`, {
+      const response = await fetch(`${API_URL}/notifications/read-all`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!response.ok) throw new Error('Could not mark all notifications as read');
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
+      await fetchNotifications();
     } catch (err: any) {
       console.error('[DriverNotif] markAllAsRead error:', err);
     }
@@ -111,9 +113,8 @@ export function useDriverNotifications() {
         if (prev.some((item) => item.id === id)) return prev;
         return [newNotif, ...prev].slice(0, MAX_NOTIFICATIONS);
       });
-      if (isNewForThisHook && !newNotif.isRead) {
-        setUnreadCount((prev) => prev + 1);
-      }
+      // Reconcile live events against the server's authoritative unread count.
+      if (isNewForThisHook && !newNotif.isRead) void fetchNotifications();
 
     };
 
@@ -129,6 +130,7 @@ export function useDriverNotifications() {
       if (disposed || !socket) return;
       activeSocket = socket;
 
+      socket.on('connect', fetchNotifications);
       socket.on('notification', handleNotification);
       socket.on('new_order_assigned', handleLegacyAssignment);
       socket.on('order_status_changed', handleNotification);
@@ -144,6 +146,7 @@ export function useDriverNotifications() {
     return () => {
       disposed = true;
       if (socketCheckInterval) clearInterval(socketCheckInterval);
+      activeSocket?.off('connect', fetchNotifications);
       activeSocket?.off('notification', handleNotification);
       activeSocket?.off('new_order_assigned', handleLegacyAssignment);
       activeSocket?.off('order_status_changed', handleNotification);
