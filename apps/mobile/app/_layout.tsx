@@ -4,13 +4,15 @@ import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { View, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import * as Notifications from "expo-notifications";
+
 import Constants from "expo-constants";
 import { COLORS } from "../src/utils/constants";
+// Avoid importing expo-notifications in Expo Go (remote notifications were removed on Android SDK 53+).
+const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
 // Expo Go no longer supports remote push notifications on Android (SDK 53+).
 // Notification handling and permission prompts are configured only in native builds.
-if (Constants.executionEnvironment !== "storeClient") {
+if (Notifications) {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -26,7 +28,7 @@ function RootLayoutInner() {
 
   useEffect(() => {
     // Remote notifications are not supported in Expo Go on Android SDK 53+.
-    if (Constants.executionEnvironment === "storeClient" || Platform.OS === "web") return;
+    if (!Notifications || Platform.OS === "web") return;
     const configureNotifications = async () => {
       const permission = await Notifications.getPermissionsAsync();
       if (!permission.granted) {
