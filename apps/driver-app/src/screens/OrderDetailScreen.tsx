@@ -11,6 +11,14 @@ import { Order } from '../types';
 import { useDriverLocation } from '../hooks/useDriverLocation';
 
 
+function formatDeliveryAddress(address?: string, city?: string) {
+  const cityName = String(city || "").trim();
+  const district = String(address || "").split(",").map((part) => part.trim())
+    .find((part) => part && !part.includes("+") && part.toLowerCase() !== cityName.toLowerCase()) || "";
+  return [cityName, district ? (district.toLowerCase().endsWith("district") ? district : district + " District") : "", "Uganda"]
+    .filter(Boolean).join(", ") || "Customer address unavailable";
+}
+
 export default function OrderDetailScreen() {
   const { showAlert, alertModal } = useThemedAlert();
   const route = useRoute<any>();
@@ -138,7 +146,7 @@ export default function OrderDetailScreen() {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Customer Destination</Text>
-        <DetailRow label="Address" value={order.deliveryAddress || 'N/A'} />
+        <DetailRow label="Address" value={formatDeliveryAddress(order.deliveryAddress, order.deliveryCity)} />
         <DetailRow label="City" value={order.deliveryCity || 'N/A'} />
         {order.notes && <DetailRow label="Notes" value={order.notes} />}
         {isMoving && (
