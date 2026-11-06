@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          console.warn('[Push] Driver EAS project ID is missing.');
          return;
        }
+       if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('gasmobil-alerts-v2', { name: 'GasMobil alerts', importance: Notifications.AndroidImportance.MAX, sound: 'default', vibrationPattern: [0, 500, 180, 500, 180, 650], enableVibrate: true });
        const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
        if (active && pushToken) {
          await api.post('/notifications/push-token', { expoPushToken: pushToken });
