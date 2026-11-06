@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import Constants from "expo-constants";
 import { View, StyleSheet, Text, ActivityIndicator, Linking } from "react-native";
 
 
@@ -33,7 +34,7 @@ export const LiveTrackingMap: React.FC<Props> = ({
   let GeoJSONSource: any = null;
   let Layer: any = null;
   let nativeMapAvailable = false;
-  try {
+  if (Constants.executionEnvironment !== "storeClient") try {
     const maplibre = require("@maplibre/maplibre-react-native");
     NativeMap = maplibre.Map; Camera = maplibre.Camera; Marker = maplibre.Marker;
     GeoJSONSource = maplibre.GeoJSONSource; Layer = maplibre.Layer;
