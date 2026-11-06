@@ -325,7 +325,7 @@ export default function TrackingScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Customer destination</Text>
+              <Text style={styles.cardSectionTitle}>Customer destination</Text>
               <View style={styles.destinationRow}>
                 <Icon name="map-marker" size={21} color={COLORS.accent} />
                 <View style={styles.destinationCopy}>
@@ -336,7 +336,7 @@ export default function TrackingScreen() {
               {!!order.notes && <Text style={styles.destinationNotes}>Delivery instructions: {order.notes}</Text>}
             </View>
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Ordered products</Text>
+              <Text style={styles.cardSectionTitle}>Ordered products</Text>
               {order.items?.length ? (
                 <>
                   {order.items.map((item, index) => (
@@ -472,6 +472,7 @@ const styles = StyleSheet.create({
   tlTime: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   tlLine: { position: "absolute", left: 15, top: 32, bottom: 0, width: 2, backgroundColor: "#1a2236" },
   tlLineDone: { backgroundColor: COLORS.accent },
+  cardSectionTitle: { fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#FFF8EE", paddingHorizontal: 16, marginBottom: 12, marginTop: 8 },
   emptyTitle: { color: "#FFF8EE", fontSize: 16, fontWeight: "600" },
   emptySub: { color: COLORS.muted, fontSize: 13, marginTop: 4 },
