@@ -31,7 +31,12 @@ export default function LoginScreen() {
       await login({ emailOrPhone: emailOrPhone.trim(), password });
       router.replace("/(tabs)");
     } catch (error: any) {
-      showAlert("Sign in failed", error?.response?.data?.error || error?.message || "Please try again.", "error");
+      const status = error?.response?.status;
+      showAlert("Sign in failed", status === 401
+        ? "We couldn't sign you in with those details. Check your email or phone and password, then try again."
+        : status === 429
+          ? "Too many sign-in attempts. Please wait a while before trying again."
+          : "We couldn't sign you in right now. Please check your connection and try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -90,7 +95,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1, backgroundColor: "#061D16" },
+  background: { flex: 1, backgroundColor: "#0A3D2E" },
   shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(1,17,12,.38)" },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 18, alignItems: "center" },
