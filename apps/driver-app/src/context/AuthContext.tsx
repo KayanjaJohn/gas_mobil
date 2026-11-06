@@ -7,6 +7,19 @@ import type { User } from '../types';
 import Constants from 'expo-constants';
 const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
+// Show remote pushes while the app is open; Android channel settings still
+// control whether the user hears a sound or sees a heads-up alert.
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
+
 interface Station {
  id: string;
  name: string;
