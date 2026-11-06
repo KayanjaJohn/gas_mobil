@@ -12,6 +12,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useOrderTracking } from "../src/hooks/useOrderTracking";
 import { LiveTrackingMap } from "../src/components/LiveTrackingMap";
+import * as Location from "expo-location";
 
 const STATUS_MAP: Record<string, { label: string; icon: string; done: boolean }> = {
   pending: { label: "Order confirmed", icon: "check-circle", done: true },
@@ -76,6 +77,7 @@ export default function TrackingScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
+  const [friendlyAddress, setFriendlyAddress] = useState("");
 
   // ── SOCKET TRACKING (only when orderId is present) ──
   const { driverLocation, orderStatus, isConnected } = useOrderTracking(orderId || null);
@@ -128,6 +130,26 @@ export default function TrackingScreen() {
     }
   }, [orderId]);
 
+  useEffect(() => {
+    if (!order) { setFriendlyAddress(""); return; }
+    const raw = String(order.deliveryAddress || "");
+    const city = String(order.deliveryCity || "").trim();
+    const district = raw.split(",").map((part) => part.trim()).find((part) => part && !part.includes("+") && part.toLowerCase() !== city.toLowerCase()) || "";
+    const fallbackParts = [city, district ? (district.toLowerCase().endsWith("district") ? district : district + " District") : "", "Uganda"];
+    const fallback = fallbackParts.filter(Boolean).filter((part, index, all) => all.findIndex((item) => item.toLowerCase() === part.toLowerCase()) === index).join(", ");
+    setFriendlyAddress(fallback || raw.replace(/,?\\s*[23456789CFGHJMPQRVWX]{4,}\\+[23456789CFGHJMPQRVWX]{2,}/gi, "").trim() || "Address details unavailable");
+    const lat = Number(order.deliveryLatitude), lng = Number(order.deliveryLongitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) return;
+    let cancelled = false;
+    Location.reverseGeocodeAsync({ latitude: lat, longitude: lng }).then((places) => {
+      if (cancelled || !places?.length) return;
+      const place = places[0];
+      const parts = [place.name, place.street, place.district, place.subregion, place.city, place.region, place.country].map((part) => String(part || "").trim()).filter((part) => part && !part.includes("+"));
+      const unique = parts.filter((part, index) => parts.findIndex((item) => item.toLowerCase() === part.toLowerCase()) === index);
+      if (unique.length && !cancelled) setFriendlyAddress(unique.join(", "));
+    }).catch((error) => console.warn("[Tracking] Reverse geocoding unavailable:", error?.message));
+    return () => { cancelled = true; };
+  }, [order?.id, order?.deliveryAddress, order?.deliveryCity, order?.deliveryLatitude, order?.deliveryLongitude]);
   // Update local order status when socket pushes an update
   useEffect(() => {
     if (orderStatus && order) {
@@ -169,7 +191,7 @@ export default function TrackingScreen() {
       <div class="heading"><div><div class="brand">GasMobil Uganda</div><div class="muted">OFFICIAL CUSTOMER RECEIPT</div><h2>Order #${orderNumber}</h2></div><span class="status">${escapeReceiptHtml(receipt.status || "pending").replace(/_/g," ").toUpperCase()}</span></div>
       <div class="grid">
         <div class="panel"><b>Customer</b><p>${escapeReceiptHtml(receipt.user?.name || "Customer")}</p><p>${escapeReceiptHtml(receipt.user?.phone || "")}</p><p>${escapeReceiptHtml(receipt.user?.email || "")}</p></div>
-        <div class="panel"><b>Delivery details</b><p>${escapeReceiptHtml(receipt.deliveryAddress || "Not provided")}</p><p>${escapeReceiptHtml(receipt.deliveryCity || "")}</p><p>Station: ${escapeReceiptHtml(receipt.station?.name || "GasMobil station")}</p></div>
+        <div class="panel"><b>Delivery details</b><p>${escapeReceiptHtml(friendlyAddress || receipt.deliveryCity || "Not provided")}</p><p>${escapeReceiptHtml(receipt.deliveryCity || "")}</p><p>Station: ${escapeReceiptHtml(receipt.station?.name || "GasMobil station")}</p></div>
         <div class="panel"><b>Order details</b><p>Placed: ${escapeReceiptHtml(new Date(receipt.createdAt).toLocaleString())}</p><p>Updated: ${escapeReceiptHtml(receipt.updatedAt ? new Date(receipt.updatedAt).toLocaleString() : "—")}</p></div>
         <div class="panel"><b>Payment</b><p>Method: Cash on Delivery</p><p>Status: ${escapeReceiptHtml(receipt.paymentStatus || "pending").toUpperCase()}</p></div>
       </div>
@@ -303,6 +325,17 @@ export default function TrackingScreen() {
             </View>
 
             <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Customer destination</Text>
+              <View style={styles.destinationRow}>
+                <Icon name="map-marker" size={21} color={COLORS.accent} />
+                <View style={styles.destinationCopy}>
+                  <Text style={styles.destinationAddress}>{friendlyAddress || order.deliveryCity || "Address details unavailable"}</Text>
+                  <Text style={styles.destinationHint}>Delivery location · Uganda</Text>
+                </View>
+              </View>
+              {!!order.notes && <Text style={styles.destinationNotes}>Delivery instructions: {order.notes}</Text>}
+            </View>
+            <View style={styles.card}>
               <Text style={styles.sectionTitle}>Ordered products</Text>
               {order.items?.length ? (
                 <>
@@ -410,8 +443,13 @@ export default function TrackingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   mapContainer: { height: 280, marginHorizontal: 16, marginBottom: 14, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
-  mapFallback: { backgroundColor: "#0a1530", alignItems: "center", justifyContent: "center" },
-  mapFallbackText: { color: COLORS.muted, fontSize: 14 },
+  mapFallback: { backgroundColor: "#E8F0E9", alignItems: "center", justifyContent: "center" },
+  mapFallbackText: { color: COLORS.text, fontSize: 14 },
+  destinationRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  destinationCopy: { flex: 1 },
+  destinationAddress: { color: COLORS.text, fontSize: 14, fontWeight: "800", lineHeight: 20 },
+  destinationHint: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
+  destinationNotes: { color: COLORS.text, fontSize: 12, lineHeight: 18, marginTop: 10 },
   connectionBadge: { position: "absolute", top: 12, right: 12, backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   connectionText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   center: { alignItems: "center", marginTop: 60, paddingHorizontal: 24 },
@@ -430,12 +468,12 @@ const styles = StyleSheet.create({
   tlIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#1a2236", alignItems: "center", justifyContent: "center", zIndex: 1 },
   tlIconDone: { backgroundColor: COLORS.accent },
   tlText: { flex: 1 },
-  tlTitle: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  tlTitle: { color: "#FFF8EE", fontSize: 13, fontWeight: "600" },
   tlTime: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   tlLine: { position: "absolute", left: 15, top: 32, bottom: 0, width: 2, backgroundColor: "#1a2236" },
   tlLineDone: { backgroundColor: COLORS.accent },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#fff", paddingHorizontal: 16, marginBottom: 12, marginTop: 8 },
-  emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#FFF8EE", paddingHorizontal: 16, marginBottom: 12, marginTop: 8 },
+  emptyTitle: { color: "#FFF8EE", fontSize: 16, fontWeight: "600" },
   emptySub: { color: COLORS.muted, fontSize: 13, marginTop: 4 },
   orderCard: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, padding: 16, marginHorizontal: 16, marginBottom: 10 },
   orderCardId: { color: COLORS.text, fontSize: 14, fontWeight: "700" },
