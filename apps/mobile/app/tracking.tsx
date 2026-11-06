@@ -27,6 +27,14 @@ const STATUS_MAP: Record<string, { label: string; icon: string; done: boolean }>
 
 const TIMELINE_KEYS = ["pending", "picked_up", "in_transit", "delivered"];
 
+function formatFriendlyAddress(address?: string, city?: string) {
+  const cityName = String(city || "").trim();
+  const district = String(address || "").split(",").map((part) => part.trim())
+    .find((part) => part && !part.includes("+") && part.toLowerCase() !== cityName.toLowerCase()) || "";
+  const parts = [cityName, district ? (district.toLowerCase().endsWith("district") ? district : district + " District") : "", "Uganda"].filter(Boolean);
+  return parts.filter((part, index) => parts.findIndex((item) => item.toLowerCase() === part.toLowerCase()) === index).join(", ") || "Address details unavailable";
+}
+
 interface OrderItem {
   id: string;
   productId?: string;
@@ -420,7 +428,7 @@ export default function TrackingScreen() {
                     {(o.status || "pending").replace("_", " ").toUpperCase()}
                   </Text>
                   {o.deliveryAddress && (
-                    <Text style={styles.orderCardAddr}>{o.deliveryAddress}</Text>
+                    <Text style={styles.orderCardAddr}>{formatFriendlyAddress(o.deliveryAddress, o.deliveryCity)}</Text>
                   )}
                   {!!o.items?.length && (
                     <Text style={styles.orderCardAddr}>
