@@ -184,9 +184,9 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
 const styles = StyleSheet.create({
   container: { flex: 1, overflow: "hidden", borderRadius: 16, backgroundColor: "#E8F0E9" },
   expoFallback: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", padding: 22, backgroundColor: "#E8F0E9" },
-  fallbackTitle: { color: "#0B3D2E", fontSize: 19, fontWeight: "900", marginBottom: 8 },
+  fallbackTitle: { color: "#0A3D2E", fontSize: 19, fontWeight: "900", marginBottom: 8 },
   fallbackCopy: { color: "#52685B", textAlign: "center", fontSize: 12, lineHeight: 18 },
-  fallbackCoordinate: { color: "#0B3D2E", fontSize: 12, fontWeight: "700", marginTop: 8 },
+  fallbackCoordinate: { color: "#0A3D2E", fontSize: 12, fontWeight: "700", marginTop: 8 },
   navigateButton: { marginTop: 14, backgroundColor: "#F36A21", paddingHorizontal: 16, paddingVertical: 11, borderRadius: 10 },
   navigateText: { color: "#FFFFFF", fontWeight: "800", fontSize: 12 },
   destinationPin: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: "#FFF8EE", alignItems: "center", justifyContent: "center",
   },
   driverPin: {
-    width: 30, height: 30, borderRadius: 15, backgroundColor: "#0B3D2E",
+    width: 30, height: 30, borderRadius: 15, backgroundColor: "#0A3D2E",
     borderWidth: 2, borderColor: "#FFF8EE", alignItems: "center", justifyContent: "center",
   },
   pinLabel: { color: "#FFF8EE", fontSize: 11, fontWeight: "900" },
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   liveDot: { backgroundColor: "#168447" },
   waitDot: { backgroundColor: "#F36A21" },
   statusCopy: { flex: 1 },
-  statusTitle: { color: "#0B3D2E", fontSize: 12, fontWeight: "800" },
+  statusTitle: { color: "#0A3D2E", fontSize: 12, fontWeight: "800" },
   statusSub: { color: "#68786F", fontSize: 10, marginTop: 3 },
   waiting: { color: "#68786F", fontSize: 10 },
 });
