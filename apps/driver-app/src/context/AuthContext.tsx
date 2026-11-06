@@ -194,8 +194,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  if (status === 429) {
  return { success: false, error: 'Too many attempts. Please wait 15 minutes and try again.' };
  }
- if (apiError) {
- return { success: false, error: apiError };
+ if (status === 401) {
+ return { success: false, error: 'We could not sign you in with those details. Check your email or phone and password, then try again.' };
+ }
+ if (apiError && status !== 401) {
+ return { success: false, error: status >= 500 ? 'The service is temporarily unavailable. Please try again shortly.' : apiError };
  }
 
  return { success: false, error: 'Network error. Please check your connection.' };
