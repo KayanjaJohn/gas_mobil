@@ -76,7 +76,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1, backgroundColor: '#061D16' },
+  background: { flex: 1, backgroundColor: '#0A3D2E' },
   shade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(1,17,12,.38)' },
   scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 18 },
   card: { width: '100%', maxWidth: 460, alignSelf: 'center', padding: 26, borderRadius: 24,
