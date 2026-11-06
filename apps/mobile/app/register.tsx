@@ -120,7 +120,7 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1, backgroundColor: "#061D16" }, shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(1,17,12,.4)" },
+  background: { flex: 1, backgroundColor: "#0A3D2E" }, shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(1,17,12,.4)" },
   scroll: { flexGrow: 1, justifyContent: "center", padding: 20 },
   card: { width: "100%", maxWidth: 500, alignSelf: "center", padding: 24, borderRadius: 24, backgroundColor: "rgba(3,25,18,.74)", borderWidth: 1, borderColor: "#ffffff40" },
   logo: { width: 68, height: 68, alignSelf: "center" }, brand: { color: "#FFF8EE", textAlign: "center", fontSize: 22, fontWeight: "900", fontFamily: "sans-serif" },
