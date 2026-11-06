@@ -23,6 +23,7 @@ interface Order {
   id: string;
   status: string;
   deliveryAddress: string;
+  deliveryCity?: string;
   totalAmount: number;
   createdAt: string;
   user?: { name: string; phone: string };
@@ -33,6 +34,14 @@ interface Stats {
   todayCompleted: number;
   todayEarnings: number;
   totalDeliveries: number;
+}
+
+function formatDeliveryAddress(address?: string, city?: string) {
+  const cityName = String(city || "").trim();
+  const district = String(address || "").split(",").map((part) => part.trim())
+    .find((part) => part && !part.includes("+") && part.toLowerCase() !== cityName.toLowerCase()) || "";
+  return [cityName, district ? (district.toLowerCase().endsWith("district") ? district : district + " District") : "", "Uganda"]
+    .filter(Boolean).join(", ") || "Customer address unavailable";
 }
 
 export default function HomeScreen() {
@@ -232,7 +241,7 @@ export default function HomeScreen() {
               </View>
               <View style={styles.infoRow}>
                 <Icon name="map-marker-outline" size={17} color="#F36A21" />
-                <Text style={styles.orderAddress}> {order.deliveryAddress}</Text>
+                <Text style={styles.orderAddress}> {formatDeliveryAddress(order.deliveryAddress, order.deliveryCity)}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Icon name="crosshairs-gps" size={17} color={currentLocation ? '#22C55E' : '#F36A21'} />
