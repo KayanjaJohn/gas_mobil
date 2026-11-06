@@ -70,7 +70,8 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     try {
       const res = await apiRequest('get', '/notifications?page=1&limit=50');
       if (res.success) {
-        const unread = (res.data as Notification[]).filter((n) => !n.isRead).length;
+        const unread = Number((res as any).meta?.unreadCount ??
+          (res.data as Notification[]).filter((n) => !n.isRead).length);
         set({
           notifications: res.data as Notification[],
           unreadCount: unread,
