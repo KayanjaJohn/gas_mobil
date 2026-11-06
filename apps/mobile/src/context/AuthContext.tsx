@@ -10,6 +10,19 @@ import { initializeSocket, disconnectSocket } from '../services/socketService';
 // Load expo-notifications only in a native build; its module throws in Expo Go on Android SDK 53+.
 const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
+// Show remote pushes while the app is open; Android channel settings still
+// control whether the user hears a sound or sees a heads-up alert.
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
+
 interface LoginCredentials {
   emailOrPhone: string;
   password: string;
