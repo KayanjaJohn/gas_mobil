@@ -137,7 +137,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Notifications' as never)}
             activeOpacity={0.7}
           >
-            <Icon name="bell-ring" size={25} color="#0B3D2E" />
+            <Icon name="bell-ring" size={25} color="#0A3D2E" />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -291,7 +291,7 @@ function getStatusColor(status: string): string {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B3D2E' },
+  container: { flex: 1, backgroundColor: '#0A3D2E' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
@@ -304,9 +304,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   badge: {
-    position: 'absolute', top: -2, right: -2,
-    minWidth: 18, height: 18, borderRadius: 9,
-    backgroundColor: '#D94343', borderWidth: 2, borderColor: '#0B3D2E',
+    position: 'absolute', top: -4, right: -4, shadowColor: '#E11D48', shadowOpacity: 0.55, shadowRadius: 5, shadowOffset: { width: 0, height: 1 }, elevation: 8,
+    minWidth: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#E11D48', borderWidth: 2, borderColor: '#0A3D2E',
     alignItems: 'center', justifyContent: 'center',
   },
   badgeText: { color: '#FFF8EE', fontSize: 10, fontWeight: '700' },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   availabilityCopy: { flex: 1, minWidth: 170 },
   availabilityTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   availabilityDot: { width: 9, height: 9, borderRadius: 5 },
-  availabilityTitle: { color: '#0B3D2E', fontSize: 14, fontWeight: '800' },
+  availabilityTitle: { color: '#0A3D2E', fontSize: 14, fontWeight: '800' },
   availabilitySub: { color: '#68786F', fontSize: 11, marginTop: 5, lineHeight: 15 },
   availabilityButton: { minWidth: 100, minHeight: 42, paddingHorizontal: 13, borderRadius: 11, backgroundColor: '#138A43', alignItems: 'center', justifyContent: 'center' },
   availabilityButtonDisabled: { backgroundColor: '#75847C', opacity: .75 },
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   },
   actionIcon: { marginBottom: 6 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  actionText: { color: '#0B3D2E', fontSize: 13, fontWeight: '500' },
+  actionText: { color: '#0A3D2E', fontSize: 13, fontWeight: '500' },
   sectionTitle: { fontSize: 17, fontWeight: '800', color: '#FFF8EE', paddingHorizontal: 20, marginTop: 4, marginBottom: 12 },
   emptyBox: { paddingHorizontal: 20, paddingVertical: 30, alignItems: 'center' },
   emptyText: { color: '#68786F', fontSize: 14 },
@@ -350,9 +350,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#D8CDBB',
   },
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  orderId: { color: '#0B3D2E', fontSize: 14, fontWeight: '600' },
+  orderId: { color: '#0A3D2E', fontSize: 14, fontWeight: '600' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  statusText: { color: '#0B3D2E', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  statusText: { color: '#0A3D2E', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
   orderAddress: { color: '#68786F', fontSize: 13, marginBottom: 4 },
   orderCustomer: { color: '#68786F', fontSize: 13, marginBottom: 4 },
   orderAmount: { color: '#F36A21', fontSize: 14, fontWeight: '700' },
