@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  // Register the signed-in driver's EAS push token so assignments and arrival
  // alerts still reach the phone while the app is backgrounded or closed.
  useEffect(() => {
-   if (!user?.id || !token) return;
+   if (!user?.id || !token || Constants.executionEnvironment === 'storeClient') return;
    let active = true;
    const registerDevice = async () => {
      try {
