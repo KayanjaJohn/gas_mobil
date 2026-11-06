@@ -7,7 +7,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
 import { useThemedAlert } from "../src/hooks/useThemedAlert";
-import * as Notifications from "expo-notifications";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -40,15 +39,6 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await register({ name, email, phone, password, address, city });
-      void Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Welcome to GasMobil",
-          body: "Your customer account has been created successfully. You can now place and track orders.",
-          sound: "default",
-          data: { event: "customer_account_created" },
-        },
-        trigger: null,
-      }).catch((notificationError) => console.warn("[Register] Welcome alert failed:", notificationError));
       showAlert("Welcome to GasMobil", "Your customer account has been created successfully.", "success");
       router.replace("/(tabs)");
     } catch (error: any) {
