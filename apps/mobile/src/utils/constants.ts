@@ -1,7 +1,7 @@
 import { Product } from '../types';
 
 export const COLORS = {
-  bg: "#0B3D2E",
+  bg: "#0A3D2E",
   card: "#FFF8EE",
   card2: "#F0E5D3",
   border: "#D8CDBB",
@@ -14,7 +14,7 @@ export const COLORS = {
   danger: "#D94343",
   success: "#21865D",
   warn: "#D97706",
-  green: "#0B3D2E",
+  green: "#0A3D2E",
 } as const;
 
 export const SIZES = {
