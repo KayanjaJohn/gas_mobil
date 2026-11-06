@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { View, StyleSheet, Text, ActivityIndicator } from "react-native";
-import { Map, Camera, Marker, GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
+import React, { useMemo } from "react";
+import { View, StyleSheet, Text, ActivityIndicator, Linking } from "react-native";
+
 
 interface Props {
   orderId: string;
@@ -27,7 +27,18 @@ export const LiveTrackingMap: React.FC<Props> = ({
   orderStatus,
   isConnected,
 }) => {
-  const cameraRef = useRef<any>(null);
+  let NativeMap: any = null;
+  let Camera: any = null;
+  let Marker: any = null;
+  let GeoJSONSource: any = null;
+  let Layer: any = null;
+  let nativeMapAvailable = false;
+  try {
+    const maplibre = require("@maplibre/maplibre-react-native");
+    NativeMap = maplibre.Map; Camera = maplibre.Camera; Marker = maplibre.Marker;
+    GeoJSONSource = maplibre.GeoJSONSource; Layer = maplibre.Layer;
+    nativeMapAvailable = !!(NativeMap && Camera && Marker && GeoJSONSource && Layer);
+  } catch { nativeMapAvailable = false; }
 
   const validDestination =
     Number.isFinite(deliveryLatitude) &&
@@ -65,84 +76,26 @@ export const LiveTrackingMap: React.FC<Props> = ({
       : [],
   }), [driverPoint?.latitude, driverPoint?.longitude, deliveryLatitude, deliveryLongitude, validDestination]);
 
-  useEffect(() => {
-    if (!cameraRef.current || !validDestination) return;
-    if (driverPoint) {
-      const west = Math.min(driverPoint.longitude, deliveryLongitude);
-      const east = Math.max(driverPoint.longitude, deliveryLongitude);
-      const south = Math.min(driverPoint.latitude, deliveryLatitude);
-      const north = Math.max(driverPoint.latitude, deliveryLatitude);
-      cameraRef.current.fitBounds(
-        [west, south, east, north],
-        { top: 64, right: 54, bottom: 154, left: 54 },
-        500
-      );
-    } else {
-      cameraRef.current.easeTo({
-        center: [deliveryLongitude, deliveryLatitude],
-        zoom: 13,
-        duration: 500,
-      });
-    }
-  }, [driverPoint?.latitude, driverPoint?.longitude, deliveryLatitude, deliveryLongitude, validDestination]);
+
 
   return (
     <View style={styles.container}>
-      <Map
-        style={styles.map}
-        mapStyle={MAP_STYLE}
-        attribution
-        compass
-      >
-        <Camera
-          ref={cameraRef}
-          initialViewState={{
-            center: validDestination
-              ? [deliveryLongitude, deliveryLatitude]
-              : [32.5825, 0.3476],
-            zoom: 12,
-          }}
-        />
-
-        {validDestination && (
-          <Marker
-            id="customer-destination"
-            lngLat={[deliveryLongitude, deliveryLatitude]}
-            anchor="bottom"
-          >
-            <View style={styles.destinationPin}>
-              <Text style={styles.pinLabel}>D</Text>
-            </View>
-          </Marker>
-        )}
-
-        {driverPoint && (
-          <Marker
-            id="live-driver-position"
-            lngLat={[driverPoint.longitude, driverPoint.latitude]}
-            anchor="bottom"
-          >
-            <View style={styles.driverPin}>
-              <Text style={styles.pinLabel}>G</Text>
-            </View>
-          </Marker>
-        )}
-
-        {route.features.length > 0 && (
-          <GeoJSONSource id="delivery-route-source" data={route as any}>
-            <Layer
-              id="delivery-route-line"
-              source="delivery-route-source"
-              type="line"
-              paint={{
-                "line-color": "#F36A21",
-                "line-width": 4,
-                "line-opacity": 0.9,
-              }}
-            />
-          </GeoJSONSource>
-        )}
-      </Map>
+      {nativeMapAvailable ? (
+        <NativeMap style={styles.map} mapStyle={MAP_STYLE} attribution compass>
+          <Camera initialViewState={{ center: validDestination ? [deliveryLongitude, deliveryLatitude] : [32.5825, 0.3476], zoom: 12 }} />
+          {validDestination && <Marker id="customer-destination" lngLat={[deliveryLongitude, deliveryLatitude]} anchor="bottom"><View style={styles.destinationPin}><Text style={styles.pinLabel}>D</Text></View></Marker>}
+          {driverPoint && <Marker id="live-driver-position" lngLat={[driverPoint.longitude, driverPoint.latitude]} anchor="bottom"><View style={styles.driverPin}><Text style={styles.pinLabel}>G</Text></View></Marker>}
+          {route.features.length > 0 && <GeoJSONSource id="delivery-route-source" data={route as any}><Layer id="delivery-route-line" source="delivery-route-source" type="line" paint={{ "line-color": "#F36A21", "line-width": 4, "line-opacity": 0.9 }} /></GeoJSONSource>}
+        </NativeMap>
+      ) : (
+        <View style={styles.expoFallback}>
+          <Text style={styles.fallbackTitle}>Live delivery location</Text>
+          <Text style={styles.fallbackText}>The tracking connection remains active. Expo Go does not include the MapLibre native module; use a GasMobil development or production build for the embedded live map.</Text>
+          {driverPoint && <Text style={styles.fallbackCoords}>Driver: {driverPoint.latitude.toFixed(5)}, {driverPoint.longitude.toFixed(5)}</Text>}
+          {validDestination && <Text style={styles.fallbackCoords}>Delivery: {deliveryLatitude.toFixed(5)}, {deliveryLongitude.toFixed(5)}</Text>}
+          <Text onPress={() => Linking.openURL(driverPoint ? `https://www.google.com/maps/dir/${driverPoint.latitude},${driverPoint.longitude}/${deliveryLatitude},${deliveryLongitude}` : `https://www.google.com/maps/search/?api=1&query=${deliveryLatitude},${deliveryLongitude}`)} style={styles.openMapText}>Open route in Google Maps</Text>
+        </View>
+      )}
 
       <View style={styles.statusBar}>
         <View style={styles.statusRow}>
@@ -181,6 +134,11 @@ export const LiveTrackingMap: React.FC<Props> = ({
 const styles = StyleSheet.create({
   container: { flex: 1, overflow: "hidden", backgroundColor: "#D9E6E0" },
   map: { flex: 1 },
+  expoFallback: { flex: 1, padding: 22, alignItems: "center", justifyContent: "center", backgroundColor: "#EAF2ED" },
+  fallbackTitle: { color: "#0B3D2E", fontSize: 18, fontWeight: "900", marginBottom: 8 },
+  fallbackText: { color: "#40594D", fontSize: 12, lineHeight: 18, textAlign: "center" },
+  fallbackCoords: { color: "#0B3D2E", fontSize: 12, fontWeight: "700", marginTop: 8 },
+  openMapText: { color: "#F36A21", fontWeight: "800", fontSize: 12, marginTop: 14 },
   destinationPin: {
     width: 30, height: 30, borderRadius: 15,
     backgroundColor: "#F36A21", borderWidth: 2, borderColor: "#FFF8EE",
