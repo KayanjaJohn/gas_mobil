@@ -2,11 +2,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
+
 import { Platform } from 'react-native';
 import { apiRequest } from '../services/api';
 import { User } from '../types';
 import { initializeSocket, disconnectSocket } from '../services/socketService';
+// Load expo-notifications only in a native build; its module throws in Expo Go on Android SDK 53+.
+const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
 interface LoginCredentials {
   emailOrPhone: string;
@@ -121,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Expo Go (StoreClient) removed remote push notification support in SDK 53+.
     // Keep Expo Go usable for functional testing; register push tokens in EAS builds.
-    if (!user?.id || Platform.OS === 'web' || Constants.executionEnvironment === 'storeClient') return;
+    if (!user?.id || Platform.OS === 'web' || !Notifications) return;
     let active = true;
     const registerDevice = async () => {
       try {
