@@ -35,7 +35,7 @@ function RootLayoutInner() {
         await Notifications.requestPermissionsAsync();
       }
       if (Platform.OS === "android") {
-        await Notifications.setNotificationChannelAsync("default", {
+        await Notifications.setNotificationChannelAsync("gasmobil-alerts-v2", {
           name: "GasMobil alerts",
           importance: Notifications.AndroidImportance.MAX,
           sound: "default",
