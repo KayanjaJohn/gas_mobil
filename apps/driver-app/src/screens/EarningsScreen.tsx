@@ -110,7 +110,7 @@ export default function EarningsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B3D2E' },
+  container: { flex: 1, backgroundColor: '#0A3D2E' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
@@ -123,22 +123,22 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginBottom: 20, borderWidth: 1, borderColor: '#D8CDBB',
     alignItems: 'center',
   },
-  totalLabel: { color: '#68786F', fontSize: 14, marginBottom: 8 },
+  totalLabel: { color: '#52685B', fontSize: 14, marginBottom: 8 },
   totalAmount: { color: '#F36A21', fontSize: 32, fontWeight: '700' },
-  totalSub: { color: '#68786F', fontSize: 12, marginTop: 4 },
+  totalSub: { color: '#52685B', fontSize: 12, marginTop: 4 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#FFF8EE', paddingHorizontal: 20, marginBottom: 12 },
   emptyBox: { paddingHorizontal: 20, paddingVertical: 40, alignItems: 'center' },
-  emptyText: { color: '#68786F', fontSize: 16, fontWeight: '600' },
-  emptySub: { color: '#68786F', fontSize: 13, marginTop: 4 },
+  emptyText: { color: '#52685B', fontSize: 16, fontWeight: '600' },
+  emptySub: { color: '#52685B', fontSize: 13, marginTop: 4 },
   earningCard: {
     backgroundColor: '#FFF8EE', borderRadius: 14, padding: 16,
     marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: '#D8CDBB',
   },
   earningHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  earningId: { color: '#0B3D2E', fontSize: 14, fontWeight: '600' },
+  earningId: { color: '#0A3D2E', fontSize: 14, fontWeight: '600' },
   earningStatus: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
-  earningAddress: { color: '#68786F', fontSize: 12, marginBottom: 6 },
+  earningAddress: { color: '#52685B', fontSize: 12, marginBottom: 6 },
   earningAmount: { color: '#F36A21', fontSize: 16, fontWeight: '700', marginTop: 6 },
-  earningProduct: { color: '#0B3D2E', fontSize: 12, marginBottom: 3, fontWeight: '600' },
-  earningDate: { color: '#68786F', fontSize: 11, marginTop: 4 },
+  earningProduct: { color: '#0A3D2E', fontSize: 12, marginBottom: 3, fontWeight: '600' },
+  earningDate: { color: '#52685B', fontSize: 11, marginTop: 4 },
 });
