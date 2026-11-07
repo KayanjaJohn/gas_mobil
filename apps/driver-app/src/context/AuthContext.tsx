@@ -85,7 +85,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          console.warn('[Push] Driver EAS project ID is missing.');
          return;
        }
-       if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('gasmobil-alerts-v2', { name: 'GasMobil alerts', importance: Notifications.AndroidImportance.MAX, sound: 'default', vibrationPattern: [0, 500, 180, 500, 180, 650], enableVibrate: true });
+       if (Platform.OS === 'android') {
+         const channel = await Notifications.setNotificationChannelAsync('gasmobil-alerts-v3', {
+           name: 'GasMobil Order & Delivery Alerts',
+           importance: Notifications.AndroidImportance.MAX,
+           sound: 'default',
+           vibrationPattern: [0, 500, 180, 500, 180, 650],
+           enableVibrate: true,
+           enableLights: true,
+           lightColor: '#0A3D2E',
+           lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+           showBadge: true,
+         });
+         console.info('[Push] Driver Android channel ready:', {
+           id: channel.id, importance: channel.importance, sound: channel.sound,
+         });
+       }
        const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
        if (active && pushToken) {
          await api.post('/notifications/push-token', { expoPushToken: pushToken });
