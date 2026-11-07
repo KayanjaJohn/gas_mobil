@@ -7,7 +7,7 @@ export default ({ config }) => ({
   android: {
     ...config.android,
   },
-  plugins: [...(config.plugins || []), ["expo-notifications", { defaultChannel: "gasmobil-alerts-v2", color: "#0A3D2E" }], "@maplibre/maplibre-react-native"],
+  plugins: [...(config.plugins || []), ["expo-notifications", { defaultChannel: "gasmobil-alerts-v3", color: "#0A3D2E" }], "@maplibre/maplibre-react-native"],
   extra: {
     ...config.extra,
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
