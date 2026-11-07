@@ -129,13 +129,26 @@ export async function createSystemNotification(payload: NotifyPayload) {
     if (recipientIds.length > 0) {
       const recipients = await userRepo.find({
         where: recipientIds.map((id) => ({ id })),
-        select: ["id", "expoPushToken"] as any,
+        select: ["id", "role", "expoPushToken"] as any,
       });
+      const recipientsById = new Map(recipients.map((recipient) => [recipient.id, recipient] as const));
       const tokensByUserId = new Map(
         recipients
           .filter((recipient) => !!recipient.expoPushToken)
           .map((recipient) => [recipient.id, recipient.expoPushToken as string] as const)
       );
+      console.info("[Notifications] Recipient token audit:", savedNotifications.map((notif) => {
+        const recipient = recipientsById.get(notif.userId);
+        const token = recipient?.expoPushToken;
+        return {
+          notificationId: notif.id,
+          recipientUserId: notif.userId,
+          recipientRole: recipient?.role ?? "unknown",
+          hasToken: !!token,
+          tokenFormatValid: !!token && /^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(token),
+          channelId: "gasmobil-alerts-v3",
+        };
+      }));
       const pushMessages = savedNotifications.flatMap((notif) => {
         const to = tokensByUserId.get(notif.userId);
         if (!to || !/^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(to)) return [];
