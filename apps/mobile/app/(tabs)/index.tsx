@@ -432,7 +432,7 @@ export default function HomeScreen() {
               <Icon name="fire" size={22} color={COLORS.accent} />
             </View>
             <View>
-              <Text style={styles.contactTitle}>Gasmobil Uganda</Text>
+              <Text style={styles.contactTitle}>GasMobil Uganda</Text>
               <Text style={styles.contactSub}>
                 A member of <Text style={{ color: COLORS.accent }}>Lambula Creative Agency</Text>
               </Text>
@@ -441,9 +441,9 @@ export default function HomeScreen() {
           <View style={styles.divider} />
           {[
             { icon: "phone-outline", text: "+256 785 796 333 · 0776 800 386" },
-            { icon: "email-outline", text: "info@gasmobil.ug" },
+            { icon: "email-outline", text: "info@gas-mobil.com" },
             { icon: "map-marker-outline", text: "Plot 12, Kampala Road, Kampala, Uganda" },
-            { icon: "web", text: "www.gasmobil.ug" },
+            { icon: "web", text: "www.gas-mobil.com" },
           ].map((item, i) => (
             <View key={i} style={styles.contactRow}>
               <Icon name={item.icon as any} size={18} color={COLORS.accent} />
@@ -452,7 +452,7 @@ export default function HomeScreen() {
           ))}
           <View style={styles.divider} />
           <Text style={styles.copyright}>
-            © {new Date().getFullYear()} Gasmobil Uganda. All rights reserved.{"\n"}
+            © {new Date().getFullYear()} GasMobil Uganda. All rights reserved.{"\n"}
             Powered by <Text style={{ color: COLORS.accent }}>Lambula Creative Agency</Text>
           </Text>
         </Card>
