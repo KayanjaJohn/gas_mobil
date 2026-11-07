@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import Constants from "expo-constants";
 import { Linking, TouchableOpacity } from "react-native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 
 import type { LocationPoint } from "../types";
 
@@ -119,13 +120,13 @@ export default function DriverLiveMap({ destination, driverLocation, status }: P
 
         {destinationPoint && (
           <Marker id="customer-destination" lngLat={[destinationPoint.longitude, destinationPoint.latitude]} anchor="bottom">
-            <View style={styles.destinationPin}><Text style={styles.pinLabel}>D</Text></View>
+            <View style={styles.destinationPin}><Icon name="home-map-marker" size={22} color="#FFFFFF" /></View>
           </Marker>
         )}
 
         {driverPoint && (
           <Marker id="live-driver-position" lngLat={[driverPoint.longitude, driverPoint.latitude]} anchor="bottom">
-            <View style={styles.driverPin}><Text style={styles.pinLabel}>Y</Text></View>
+            <View style={styles.driverPin}><Icon name="truck-delivery" size={21} color="#FFFFFF" /></View>
           </Marker>
         )}
 
@@ -197,7 +198,6 @@ const styles = StyleSheet.create({
     width: 30, height: 30, borderRadius: 15, backgroundColor: "#0A3D2E",
     borderWidth: 2, borderColor: "#FFF8EE", alignItems: "center", justifyContent: "center",
   },
-  pinLabel: { color: "#FFF8EE", fontSize: 11, fontWeight: "900" },
   statusPanel: {
     position: "absolute", left: 12, right: 12, bottom: 12,
     flexDirection: "row", alignItems: "center", gap: 10,
