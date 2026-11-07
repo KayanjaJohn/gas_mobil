@@ -145,7 +145,7 @@ export async function createSystemNotification(payload: NotifyPayload) {
           body: notif.message,
           sound: "default",
           priority: "high",
-          channelId: "gasmobil-alerts-v2",
+          channelId: "gasmobil-alerts-v3",
           ttl: 86400,
           data: {
             notificationId: notif.id,
