@@ -10,6 +10,7 @@ import { COLORS } from "../src/utils/constants";
 import { apiRequest } from "../src/services/api";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 import { useOrderTracking } from "../src/hooks/useOrderTracking";
 import { LiveTrackingMap } from "../src/components/LiveTrackingMap";
 import * as Location from "expo-location";
@@ -210,24 +211,67 @@ export default function TrackingScreen() {
     </body></html>`;
   };
 
+  const getReceiptFileName = () => {
+    const orderNumber = order?.id?.slice(0, 12).toUpperCase() || "ORDER";
+    return `GasMobil_Receipt_${orderNumber}.pdf`;
+  };
+
+  const generateReceiptPdf = async () => {
+    if (!order) throw new Error("Order details are not available.");
+    const html = createReceiptHtml(order);
+    return Print.printToFileAsync({ html, base64: true });
+  };
+
+  // Save a real PDF copy into a folder selected by the customer (normally Downloads).
   const downloadReceipt = async () => {
     if (!order) return;
     setReceiptLoading(true);
     try {
-      const html = createReceiptHtml(order);
-      const file = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(file.uri, {
-          mimeType: "application/pdf",
-          dialogTitle: `GasMobil receipt #${order.id.slice(0, 8).toUpperCase()}`,
-          UTI: ".pdf",
-        });
-      } else {
-        await Print.printAsync({ html });
+      const file = await generateReceiptPdf();
+      const base64 = file.base64 || await FileSystem.readAsStringAsync(file.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Download cancelled", "Choose a folder to save your GasMobil receipt.");
+        return;
       }
+      const destination = await FileSystem.StorageAccessFramework.createFileAsync(
+        permission.directoryUri,
+        getReceiptFileName(),
+        "application/pdf"
+      );
+      await FileSystem.writeAsStringAsync(destination, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      Alert.alert("Receipt downloaded", `${getReceiptFileName()} was saved successfully.`);
     } catch (receiptError: any) {
-      console.error("[Receipt] PDF generation failed:", receiptError);
-      Alert.alert("Receipt unavailable", "We couldn't prepare this receipt. Please try again.");
+      console.error("[Receipt] PDF download failed:", receiptError);
+      Alert.alert("Receipt unavailable", receiptError?.message || "We couldn't save this receipt. Please try again.");
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
+  const shareReceipt = async () => {
+    if (!order) return;
+    setReceiptLoading(true);
+    try {
+      const file = await generateReceiptPdf();
+      const namedUri = `${FileSystem.cacheDirectory || file.uri.substring(0, file.uri.lastIndexOf("/") + 1)}${getReceiptFileName()}`;
+      await FileSystem.copyAsync({ from: file.uri, to: namedUri });
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert("Sharing unavailable", "Sharing is not available on this device.");
+        return;
+      }
+      await Sharing.shareAsync(namedUri, {
+        mimeType: "application/pdf",
+        dialogTitle: `Share ${getReceiptFileName()}`,
+        UTI: "com.adobe.pdf",
+      });
+    } catch (receiptError: any) {
+      console.error("[Receipt] PDF sharing failed:", receiptError);
+      Alert.alert("Receipt unavailable", receiptError?.message || "We couldn't prepare this receipt to share.");
     } finally {
       setReceiptLoading(false);
     }
@@ -321,15 +365,26 @@ export default function TrackingScreen() {
               <Text style={[styles.statusBadge, { color: order.status === "cancelled" ? COLORS.danger : COLORS.accent }]}>
                 Status: {(order.status || "pending").replace("_", " ").toUpperCase()}
               </Text>
-              <TouchableOpacity
-                accessibilityRole="button"
-                onPress={() => void downloadReceipt()}
-                disabled={receiptLoading}
-                style={styles.receiptButton}
-              >
-                {receiptLoading ? <ActivityIndicator color="#FFFFFF" /> : <Icon name="file-pdf-box" size={19} color="#FFFFFF" />}
-                <Text style={styles.receiptButtonText}>{receiptLoading ? "Preparing receipt..." : "Download order receipt (PDF)"}</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={() => void downloadReceipt()}
+                  disabled={receiptLoading}
+                  style={[styles.receiptButton, { flex: 1, marginTop: 0 }]}
+                >
+                  {receiptLoading ? <ActivityIndicator color="#FFFFFF" /> : <Icon name="download" size={19} color="#FFFFFF" />}
+                  <Text style={styles.receiptButtonText}>Download PDF</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={() => void shareReceipt()}
+                  disabled={receiptLoading}
+                  style={[styles.receiptButton, { flex: 1, marginTop: 0, backgroundColor: "#155E75" }]}
+                >
+                  <Icon name="share-variant" size={19} color="#FFFFFF" />
+                  <Text style={styles.receiptButtonText}>Share PDF</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.card}>
