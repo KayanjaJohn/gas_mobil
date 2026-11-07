@@ -85,7 +85,7 @@ export const LiveTrackingMap: React.FC<Props> = ({
       {nativeMapAvailable ? (
         <NativeMap style={styles.map} mapStyle={MAP_STYLE} attribution compass>
           <Camera initialViewState={{ center: validDestination ? [deliveryLongitude, deliveryLatitude] : [32.5825, 0.3476], zoom: 12 }} />
-          {validDestination && <Marker id="customer-destination" lngLat={[deliveryLongitude, deliveryLatitude]} anchor="bottom"><View style={styles.destinationPin}><Icon name="map-marker-home" size={23} color="#FFFFFF" /></View></Marker>}
+          {validDestination && <Marker id="customer-destination" lngLat={[deliveryLongitude, deliveryLatitude]} anchor="bottom"><View style={styles.destinationPin}><Icon name="home-map-marker" size={23} color="#FFFFFF" /></View></Marker>}
           {driverPoint && <Marker id="live-driver-position" lngLat={[driverPoint.longitude, driverPoint.latitude]} anchor="bottom"><View style={styles.driverPin}><Icon name="truck-delivery" size={21} color="#FFFFFF" /></View></Marker>}
           {route.features.length > 0 && <GeoJSONSource id="delivery-route-source" data={route as any}><Layer id="delivery-route-line" source="delivery-route-source" type="line" paint={{ "line-color": "#F36A21", "line-width": 4, "line-opacity": 0.9 }} /></GeoJSONSource>}
         </NativeMap>
