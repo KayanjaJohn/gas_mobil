@@ -155,18 +155,78 @@ export async function createSystemNotification(payload: NotifyPayload) {
         }];
       });
 
+      const missingTokens = savedNotifications.length - pushMessages.length;
+      console.info("[Notifications] Push dispatch:", {
+        saved: savedNotifications.length,
+        registeredDeviceTokens: pushMessages.length,
+        missingOrInvalidTokens: missingTokens,
+      });
+
       if (pushMessages.length > 0) {
-        await axios.post(
+        const ticketResponse = await axios.post(
           "https://exp.host/--/api/v2/push/send",
           pushMessages,
           {
-            timeout: 5000,
+            timeout: 10000,
             headers: {
               Accept: "application/json",
               "Content-Type": "application/json",
             },
           }
         );
+        const tickets = Array.isArray(ticketResponse.data?.data)
+          ? ticketResponse.data.data
+          : [];
+        const ticketErrors = tickets
+          .map((ticket: any, index: number) => ({ ticket, index }))
+          .filter(({ ticket }: any) => ticket?.status !== "ok");
+        console.info("[Notifications] Expo push tickets:", {
+          received: tickets.length,
+          accepted: tickets.filter((ticket: any) => ticket?.status === "ok").length,
+          rejected: ticketErrors.map(({ ticket, index }: any) => ({
+            index,
+            status: ticket?.status,
+            message: ticket?.message,
+            details: ticket?.details,
+          })),
+        });
+
+        // Expo receipts become available shortly after ticket acceptance.
+        // Fetch them asynchronously so notification/order API requests are not blocked.
+        const receiptIds = tickets
+          .filter((ticket: any) => ticket?.status === "ok" && ticket?.id)
+          .map((ticket: any) => ticket.id);
+        if (receiptIds.length > 0) {
+          setTimeout(async () => {
+            try {
+              const receiptResponse = await axios.post(
+                "https://exp.host/--/api/v2/push/getReceipts",
+                { ids: receiptIds },
+                {
+                  timeout: 10000,
+                  headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+              const receipts = receiptResponse.data?.data || {};
+              const receiptEntries = Object.entries(receipts).map(([id, receipt]: [string, any]) => ({
+                id,
+                status: receipt?.status,
+                message: receipt?.message,
+                details: receipt?.details,
+              }));
+              console.info("[Notifications] Expo delivery receipts:", {
+                received: receiptEntries.length,
+                delivered: receiptEntries.filter((receipt) => receipt.status === "ok").length,
+                errors: receiptEntries.filter((receipt) => receipt.status !== "ok"),
+              });
+            } catch (receiptError: any) {
+              console.error("[Notifications] Expo receipt lookup failed:", receiptError?.response?.data || receiptError?.message || receiptError);
+            }
+          }, 15000);
+        }
       }
     }
   } catch (pushError: any) {
