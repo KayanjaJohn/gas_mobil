@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import Constants from "expo-constants";
 import { View, StyleSheet, Text, ActivityIndicator, Linking } from "react-native";
+import Icon from "@expo/vector-icons/MaterialCommunityIcons";
 
 
 interface Props {
@@ -84,8 +85,8 @@ export const LiveTrackingMap: React.FC<Props> = ({
       {nativeMapAvailable ? (
         <NativeMap style={styles.map} mapStyle={MAP_STYLE} attribution compass>
           <Camera initialViewState={{ center: validDestination ? [deliveryLongitude, deliveryLatitude] : [32.5825, 0.3476], zoom: 12 }} />
-          {validDestination && <Marker id="customer-destination" lngLat={[deliveryLongitude, deliveryLatitude]} anchor="bottom"><View style={styles.destinationPin}><Text style={styles.pinLabel}>D</Text></View></Marker>}
-          {driverPoint && <Marker id="live-driver-position" lngLat={[driverPoint.longitude, driverPoint.latitude]} anchor="bottom"><View style={styles.driverPin}><Text style={styles.pinLabel}>G</Text></View></Marker>}
+          {validDestination && <Marker id="customer-destination" lngLat={[deliveryLongitude, deliveryLatitude]} anchor="bottom"><View style={styles.destinationPin}><Icon name="map-marker-home" size={23} color="#FFFFFF" /></View></Marker>}
+          {driverPoint && <Marker id="live-driver-position" lngLat={[driverPoint.longitude, driverPoint.latitude]} anchor="bottom"><View style={styles.driverPin}><Icon name="truck-delivery" size={21} color="#FFFFFF" /></View></Marker>}
           {route.features.length > 0 && <GeoJSONSource id="delivery-route-source" data={route as any}><Layer id="delivery-route-line" source="delivery-route-source" type="line" paint={{ "line-color": "#F36A21", "line-width": 4, "line-opacity": 0.9 }} /></GeoJSONSource>}
         </NativeMap>
       ) : (
@@ -141,16 +142,15 @@ const styles = StyleSheet.create({
   fallbackCoords: { color: "#0B3D2E", fontSize: 12, fontWeight: "700", marginTop: 8 },
   openMapText: { color: "#F36A21", fontWeight: "800", fontSize: 12, marginTop: 14 },
   destinationPin: {
-    width: 30, height: 30, borderRadius: 15,
+    width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#F36A21", borderWidth: 2, borderColor: "#FFF8EE",
     alignItems: "center", justifyContent: "center",
   },
   driverPin: {
-    width: 30, height: 30, borderRadius: 15,
+    width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#0B3D2E", borderWidth: 2, borderColor: "#FFF8EE",
     alignItems: "center", justifyContent: "center",
   },
-  pinLabel: { color: "#FFF8EE", fontSize: 11, fontWeight: "900" },
   statusBar: {
     position: "absolute", bottom: 16, left: 16, right: 16,
     backgroundColor: "#FFF8EE", padding: 14, borderRadius: 14,
