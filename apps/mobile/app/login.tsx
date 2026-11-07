@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   background: { flex: 1, backgroundColor: "#0A3D2E" },
   shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(1,17,12,.38)" },
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 18, alignItems: "center" },
+  scroll: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 18 },
   card: { width: "100%", maxWidth: 460, alignSelf: "center", padding: 26, borderRadius: 24,
     backgroundColor: "rgba(3,25,18,.74)", borderWidth: 1, borderColor: "rgba(255,248,238,.25)" },
   logo: { width: 78, height: 78, alignSelf: "center", marginBottom: 5 },
