@@ -171,6 +171,9 @@ export async function createSystemNotification(payload: NotifyPayload) {
             headers: {
               Accept: "application/json",
               "Content-Type": "application/json",
+              ...(process.env.EXPO_ACCESS_TOKEN
+                ? { Authorization: `Bearer ${process.env.EXPO_ACCESS_TOKEN}` }
+                : {}),
             },
           }
         );
@@ -231,7 +234,12 @@ export async function createSystemNotification(payload: NotifyPayload) {
     }
   } catch (pushError: any) {
     // Push outages must not make order placement or delivery updates fail.
-    console.warn("[Notifications] Expo push delivery failed:", pushError?.message || pushError);
+    console.error("[Notifications] Expo push request failed:", {
+      status: pushError?.response?.status,
+      response: pushError?.response?.data,
+      message: pushError?.message || String(pushError),
+      hasExpoAccessToken: Boolean(process.env.EXPO_ACCESS_TOKEN),
+    });
   }
 
   return { sentCount: savedNotifications.length, recipients: Array.from(targetUserIds) };
