@@ -234,12 +234,12 @@ export async function createSystemNotification(payload: NotifyPayload) {
     }
   } catch (pushError: any) {
     // Push outages must not make order placement or delivery updates fail.
-    console.error("[Notifications] Expo push request failed:", {
-      status: pushError?.response?.status,
-      response: pushError?.response?.data,
+    console.error("[Notifications] Expo push request failed:", JSON.stringify({
+      status: pushError?.response?.status ?? null,
+      response: pushError?.response?.data ?? null,
       message: pushError?.message || String(pushError),
       hasExpoAccessToken: Boolean(process.env.EXPO_ACCESS_TOKEN),
-    });
+    }, null, 2));
   }
 
   return { sentCount: savedNotifications.length, recipients: Array.from(targetUserIds) };
