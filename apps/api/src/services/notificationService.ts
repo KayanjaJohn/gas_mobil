@@ -145,7 +145,7 @@ export async function createSystemNotification(payload: NotifyPayload) {
           recipientUserId: notif.userId,
           recipientRole: recipient?.role ?? "unknown",
           hasToken: !!token,
-          tokenFormatValid: !!token && /^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(token),
+          tokenFormatValid: !!token && /^(Expo|Exponent)PushToken\[[^\\]]+\]]+$/.test(token),
           channelId: "gasmobil-alerts-v3",
         };
       }));
