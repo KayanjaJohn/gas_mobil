@@ -76,8 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    const registerDevice = async () => {
      try {
        let permission = await Notifications.getPermissionsAsync();
+       console.info("[Push] Driver permission before request:", { status: permission.status, granted: permission.granted, canAskAgain: permission.canAskAgain });
        if (!permission.granted) permission = await Notifications.requestPermissionsAsync();
-       if (!permission.granted) return;
+       console.info("[Push] Driver permission after request:", { status: permission.status, granted: permission.granted });
+       if (!permission.granted) {
+         console.warn("[Push] Driver registration stopped: notification permission denied.");
+         return;
+       }
        const projectId =
          Constants.expoConfig?.extra?.eas?.projectId ||
          (Constants.easConfig as any)?.projectId;
@@ -102,11 +107,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          });
        }
        const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-       if (active && pushToken) {
-         await api.post('/notifications/push-token', { expoPushToken: pushToken });
-       }
+       console.info("[Push] Driver Expo token acquired:", {
+         exists: !!pushToken,
+         validFormat: pushToken.startsWith("ExpoPushToken[") || pushToken.startsWith("ExponentPushToken["),
+         projectId,
+       });
+       if (!active || !pushToken) return;
+       const registration = await api.post("/notifications/push-token", { expoPushToken: pushToken });
+       console.info("[Push] Driver token registration response:", { status: registration.status, success: registration.data?.success, message: registration.data?.message });
      } catch (error: any) {
-       console.warn('[Push] Driver device registration failed:', error?.message || error);
+       console.error("[Push] Driver device registration failed:", {
+         message: error?.message || String(error),
+         status: error?.response?.status ?? null,
+         response: error?.response?.data ?? null,
+       });
      }
    };
    void registerDevice();
