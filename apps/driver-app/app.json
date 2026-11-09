@@ -24,7 +24,7 @@
         "backgroundColor": "#0A3D2E"
       },
       "package": "com.gasmobil.driver",
-      "versionCode": 9
+      "versionCode": 10
     },
     "web": {
       "favicon": "./assets/favicon.png"
