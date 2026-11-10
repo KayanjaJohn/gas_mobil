@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Grid, Paper,
+  Alert, Box, Button, Chip, CircularProgress, Grid, Paper, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Typography
 } from '@mui/material';
@@ -131,7 +131,7 @@ export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [historicalProductMismatches, setHistoricalProductMismatches] = useState(0);
+  const [historicalProductMismatches, setHistoricalProductMismatches] = useState(0);\n  const [cleanupOpen, setCleanupOpen] = useState(false);\n  const [cleanupPhrase, setCleanupPhrase] = useState('');\n  const [cleanupCounts, setCleanupCounts] = useState<any>(null);\n  const [cleanupBusy, setCleanupBusy] = useState(false);\n  const [cleanupMessage, setCleanupMessage] = useState('');
 
   useEffect(() => {
     if (!token || !user?.station?.id) {
@@ -183,6 +183,44 @@ export default function Reports() {
 
   const getDriverName = (order: Order) => {
     return order.driver?.name || order.deliveries?.[0]?.driverName || 'Not assigned';
+  };
+
+  const openCleanup = async () => {
+    if (!user?.station?.id) return;
+    setCleanupBusy(true);
+    setError('');
+    try {
+      const response = await axios.get(`${API_URL}/agent/station/data-cleanup-preview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCleanupCounts(response.data?.data?.counts || {});
+      setCleanupPhrase('');
+      setCleanupOpen(true);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not preview station cleanup.');
+    } finally {
+      setCleanupBusy(false);
+    }
+  };
+
+  const confirmCleanup = async () => {
+    if (!user?.station?.name || cleanupPhrase !== `CLEAR ${user.station.name}`) return;
+    setCleanupBusy(true);
+    setError('');
+    try {
+      const response = await axios.post(`${API_URL}/agent/station/clear-data`, {
+        confirmStationName: user.station.name,
+        confirmation: cleanupPhrase,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setOrders([]);
+      setHistoricalProductMismatches(0);
+      setCleanupOpen(false);
+      setCleanupMessage(response.data?.message || 'Station test data cleared.');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not clear station data.');
+    } finally {
+      setCleanupBusy(false);
+    }
   };
 
   const handleDownload = () => {
@@ -281,6 +319,10 @@ export default function Reports() {
             Generate daily, weekly, monthly, and yearly reports for {user?.station?.name || 'your station'}.
           </Typography>
         </Box>
+        <Button variant="outlined" color="error" onClick={() => void openCleanup()}
+          disabled={!user?.station?.id || loading || cleanupBusy}>
+          {cleanupBusy ? 'Loading…' : 'Clear station test data'}
+        </Button>
         <Button variant="outlined" startIcon={<Download />} onClick={handleDownload} disabled={!user?.station?.id || loading}
           sx={{ color: "#FFF8EE", borderColor: "rgba(255,248,238,.75)", "&:hover": { borderColor: "#F36A21", background: "rgba(243,106,33,.14)" }, "&.Mui-disabled": { color: "rgba(255,248,238,.45)", borderColor: "rgba(255,248,238,.25)" } }}>
           Download Report
@@ -288,6 +330,30 @@ export default function Reports() {
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {cleanupMessage && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setCleanupMessage('')}>{cleanupMessage}</Alert>}
+      <Dialog open={cleanupOpen} onClose={() => !cleanupBusy && setCleanupOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Clear {user?.station?.name || 'station'} test data?</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            This permanently deletes this station's orders, order items, delivery records, order notifications and station activity. It preserves the station, products/current stock, customers, staff, wallet balances and financial transaction ledger.
+          </Alert>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Orders: {cleanupCounts?.orders ?? '—'} · Items: {cleanupCounts?.orderItems ?? '—'} · Deliveries: {cleanupCounts?.deliveries ?? '—'} · Activities: {cleanupCounts?.stationActivities ?? '—'}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Financial transactions are retained for accounting; links to deleted orders are cleared.
+          </Typography>
+          <TextField fullWidth label={`Type CLEAR ${user?.station?.name || 'station'} to confirm`}
+            value={cleanupPhrase} onChange={(event) => setCleanupPhrase(event.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCleanupOpen(false)} disabled={cleanupBusy}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={() => void confirmCleanup()}
+            disabled={cleanupBusy || cleanupPhrase !== `CLEAR ${user?.station?.name || ''}`}>
+            {cleanupBusy ? 'Clearing…' : 'Permanently clear station data'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {!user?.station?.id && (
         <Alert severity="error" sx={{ mb: 2 }}>
           This agent account does not have an assigned station. Contact an administrator; no report can be generated until a station is assigned.
