@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { AppState, Platform } from 'react-native';
+import Constants from 'expo-constants';
+const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSocket, initializeSocket } from '../services/socketService';
 
@@ -109,6 +112,25 @@ export function useDriverNotifications() {
 
       const isNewForThisHook = !receivedNotificationIdsRef.current.has(id);
       receivedNotificationIdsRef.current.add(id);
+
+      // Socket.IO only works while the app process is alive. Convert each new
+      // foreground event into a native local notification so Android displays
+      // the same heads-up banner, sound and vibration as a remote push.
+      if (isNewForThisHook && AppState.currentState === 'active' &&
+          Platform.OS !== 'web' && Notifications) {
+        void Notifications.scheduleNotificationAsync({
+          content: {
+            title: newNotif.title,
+            body: newNotif.message,
+            sound: 'default',
+            vibrate: [0, 500, 180, 500, 180, 650],
+            data: { ...(newNotif.data || {}), notificationId: id, source: 'socket' },
+          },
+          trigger: null,
+        }).catch((error: any) => {
+          console.warn('[Push] Could not show foreground driver alert:', error?.message || error);
+        });
+      }
       setNotifications((prev) => {
         if (prev.some((item) => item.id === id)) return prev;
         return [newNotif, ...prev].slice(0, MAX_NOTIFICATIONS);
