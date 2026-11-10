@@ -35,7 +35,7 @@ jobs:
       - name: Build Android APK with EAS
         working-directory: ${{ matrix.app == 'customer' && 'apps/mobile' || 'apps/driver-app' }}
         env:
-          EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
             echo "::error::Add EAS_TOKEN in GitHub repository Settings > Secrets and variables > Actions."
