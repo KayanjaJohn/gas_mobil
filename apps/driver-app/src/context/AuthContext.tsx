@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
        const response = await api.post('/notifications/push-token', { expoPushToken: pushToken });
        console.info('[Push] Driver token registration:', {
          tokenAcquired: true,
-         tokenFormatValid: /^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(pushToken),
+         tokenFormatValid: /^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(pushToken),
          httpStatus: response.status,
          registrationSucceeded: response.data?.success === true,
        });
