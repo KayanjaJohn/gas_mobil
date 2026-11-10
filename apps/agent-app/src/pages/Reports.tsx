@@ -131,7 +131,12 @@ export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [historicalProductMismatches, setHistoricalProductMismatches] = useState(0);\n  const [cleanupOpen, setCleanupOpen] = useState(false);\n  const [cleanupPhrase, setCleanupPhrase] = useState('');\n  const [cleanupCounts, setCleanupCounts] = useState<any>(null);\n  const [cleanupBusy, setCleanupBusy] = useState(false);\n  const [cleanupMessage, setCleanupMessage] = useState('');
+  const [historicalProductMismatches, setHistoricalProductMismatches] = useState(0);
+  const [cleanupOpen, setCleanupOpen] = useState(false);
+  const [cleanupPhrase, setCleanupPhrase] = useState('');
+  const [cleanupCounts, setCleanupCounts] = useState<any>(null);
+  const [cleanupBusy, setCleanupBusy] = useState(false);
+  const [cleanupMessage, setCleanupMessage] = useState('');
 
   useEffect(() => {
     if (!token || !user?.station?.id) {
@@ -299,7 +304,8 @@ export default function Reports() {
 
     const csv = rows
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\n');
+      .join('
+');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
