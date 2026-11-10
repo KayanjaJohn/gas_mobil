@@ -35,6 +35,7 @@ export default function StationHistory() {
   const [to, setTo] = useState("");
   const [loading, setLoading] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [clearingData, setClearingData] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -105,6 +106,43 @@ export default function StationHistory() {
     }
   };
 
+  const clearAllStationData = async () => {
+    if (!stationId || !selectedStation) return;
+    setClearingData(true);
+    setError("");
+    try {
+      const previewResponse = await axios.get(
+        `${API_URL}/admin/stations/${stationId}/data-cleanup-preview`, auth
+      );
+      const counts = previewResponse.data?.data?.counts || {};
+      const summary = [
+        `Orders: ${counts.orders || 0}`,
+        `Order items: ${counts.orderItems || 0}`,
+        `Deliveries: ${counts.deliveries || 0}`,
+        `Order transactions: ${counts.orderTransactions || 0}`,
+        `Order notifications: ${counts.orderNotifications || 0}`,
+        `Station activities: ${counts.stationActivities || 0}`,
+      ].join("\\n");
+      if (!window.confirm(`Review cleanup for ${selectedStation.name}:\\n\\n${summary}\\n\\nThis permanently deletes station order history and related records. It preserves products/current stock, customers, staff, wallets and station setup. Continue?`)) return;
+      const phrase = window.prompt(`To confirm, type exactly: CLEAR ${selectedStation.name}`);
+      if (phrase !== `CLEAR ${selectedStation.name}`) {
+        setNotice("Cleanup cancelled. Confirmation did not match.");
+        return;
+      }
+      const response = await axios.post(
+        `${API_URL}/admin/stations/${stationId}/clear-data`,
+        { confirmStationName: selectedStation.name, confirmation: phrase },
+        auth
+      );
+      setHistory([]);
+      setNotice(response.data?.message || "Station transactional data cleared.");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Could not clear station data.");
+    } finally {
+      setClearingData(false);
+    }
+  };
+
   return (
     <Box>
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={2} sx={{ mb: 3 }}>
@@ -122,6 +160,15 @@ export default function StationHistory() {
           onClick={() => void clearHistory()}
         >
           {clearing ? "Clearing…" : "Clear station history"}
+        </Button>
+        <Button
+          color="error"
+          variant="contained"
+          startIcon={<Delete />}
+          disabled={!stationId || clearingData}
+          onClick={() => void clearAllStationData()}
+        >
+          {clearingData ? "Clearing data…" : "Clear station test data"}
         </Button>
       </Stack>
 
