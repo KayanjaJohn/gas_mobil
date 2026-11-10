@@ -9,6 +9,7 @@ import { Station } from "../entities/Station";
 import { StationActivity } from "../entities/StationActivity";
 import { inferUgandaRegion } from "../services/stationRegionService";
 import bcryptjs from "bcryptjs";
+import { previewStationDataCleanup, clearStationTransactionalData } from "../services/stationDataCleanupService";
 
 const orderRepository = AppDataSource.getRepository(Order);
 const userRepository = AppDataSource.getRepository(User);
@@ -813,4 +814,40 @@ export const assignUserToStation = async (req: Request, res: Response) => {
 	} catch (error: any) {
 		res.status(500).json({ success: false, error: error.message });
 	}
+};
+
+
+// GET /api/admin/stations/:id/data-cleanup-preview
+export const previewStationData = async (req: Request, res: Response) => {
+  try {
+    const preview = await previewStationDataCleanup(req.params.id);
+    if (!preview) return res.status(404).json({ success: false, error: "Station not found." });
+    return res.json({ success: true, data: preview });
+  } catch (error) {
+    console.error("[StationCleanup] Admin preview failed:", error);
+    return res.status(500).json({ success: false, error: "Could not preview station data cleanup." });
+  }
+};
+
+// POST /api/admin/stations/:id/clear-data
+export const clearStationData = async (req: Request, res: Response) => {
+  try {
+    const preview = await previewStationDataCleanup(req.params.id);
+    if (!preview) return res.status(404).json({ success: false, error: "Station not found." });
+    if (req.body?.confirmStationName !== preview.station.name ||
+        req.body?.confirmation !== `CLEAR ${preview.station.name}`) {
+      return res.status(400).json({ success: false, error: "Type the exact station name and confirmation phrase to continue." });
+    }
+    const deleted = await clearStationTransactionalData(req.params.id);
+    return res.json({
+      success: true,
+      station: { id: preview.station.id, name: preview.station.name },
+      deleted,
+      preserved: ["station", "products and current stock", "product catalogue", "customers", "agents and drivers", "wallet balances", "unrelated transactions and notifications"],
+      message: `Transactional test history cleared for ${preview.station.name}. Station setup and inventory were preserved.`,
+    });
+  } catch (error) {
+    console.error("[StationCleanup] Admin clear failed:", error);
+    return res.status(500).json({ success: false, error: "Station data cleanup failed; no partial cleanup was committed." });
+  }
 };
