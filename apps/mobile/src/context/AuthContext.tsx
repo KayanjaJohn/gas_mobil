@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import Constants from 'expo-constants';
 
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { apiRequest } from '../services/api';
 import { User } from '../types';
 import { initializeSocket, disconnectSocket } from '../services/socketService';
@@ -131,23 +131,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { mounted = false; };
   }, []);
 
-  // Register the customer's EAS push token so order and account updates can
-  // be delivered by the OS even when the app is not running in the foreground.
+  // Register the customer's Expo token on login and whenever the app returns
+  // to the foreground. This also repairs transient network/permission failures.
   useEffect(() => {
-    // Expo Go (StoreClient) removed remote push notification support in SDK 53+.
-    // Keep Expo Go usable for functional testing; register push tokens in EAS builds.
     if (!user?.id || Platform.OS === 'web' || !Notifications) return;
     let active = true;
+    let registering = false;
     const registerDevice = async () => {
+      if (!active || registering) return;
+      registering = true;
       try {
         let permission = await Notifications.getPermissionsAsync();
         if (!permission.granted) permission = await Notifications.requestPermissionsAsync();
-        if (!permission.granted) return;
-        const projectId =
-          Constants.expoConfig?.extra?.eas?.projectId ||
-          (Constants.easConfig as any)?.projectId;
-        if (!projectId) {
-          console.warn('[Push] Customer EAS project ID is missing.');
+        if (!permission.granted) {
+          console.warn('[Push] Customer notifications are not permitted on this device.');
           return;
         }
         if (Platform.OS === 'android') {
@@ -162,22 +159,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
             showBadge: true,
           });
-          console.info('[Push] Customer Android channel ready:', {
+          console.info('[Push] Customer channel configured:', {
             id: channel.id, importance: channel.importance, sound: channel.sound,
           });
         }
-        const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-        if (active && pushToken) {
-          await apiRequest('post', '/notifications/push-token', { expoPushToken: pushToken });
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId ||
+          (Constants.easConfig as any)?.projectId;
+        if (!projectId) {
+          console.error('[Push] Customer EAS project ID is missing.');
+          return;
         }
+        const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        if (!active || !pushToken) return;
+        const response = await apiRequest('post', '/notifications/push-token', { expoPushToken: pushToken });
+        console.info('[Push] Customer token registration:', {
+          tokenAcquired: true,
+          tokenFormatValid: /^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(pushToken),
+          registrationSucceeded: !!response?.success,
+        });
+        if (!response?.success) console.warn('[Push] Customer token registration was not confirmed.');
       } catch (error: any) {
-        console.warn('[Push] Customer device registration failed:', error?.message || error);
+        console.error('[Push] Customer device registration failed:', {
+          message: error?.message || String(error),
+          status: error?.response?.status ?? null,
+          response: error?.response?.data ?? null,
+        });
+      } finally {
+        registering = false;
       }
     };
     void registerDevice();
-    return () => { active = false; };
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void registerDevice();
+    });
+    return () => { active = false; subscription.remove(); };
   }, [user?.id]);
-
   // Route protection
   useEffect(() => {
     if (!isReady || isLoading) return;
