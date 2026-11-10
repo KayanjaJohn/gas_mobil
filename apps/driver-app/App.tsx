@@ -55,17 +55,12 @@ function AppNavigator() {
 }
 
 if (Notifications) Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    // Foreground alerts are shown from the socket event as a local alert;
-    // suppress the matching remote push to avoid duplicate banners.
-    const isSocketAlert = notification.request.content.data?.source === "socket";
-    return {
-      shouldShowBanner: isSocketAlert,
-      shouldShowList: isSocketAlert,
-      shouldPlaySound: isSocketAlert,
-      shouldSetBadge: true,
-    };
-  },
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
 });
 
 export default function App() {
