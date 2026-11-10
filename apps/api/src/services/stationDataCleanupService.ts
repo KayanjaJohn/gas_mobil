@@ -55,7 +55,8 @@ export async function clearStationTransactionalData(stationId: string): Promise<
 
     // Child records first to satisfy foreign-key constraints.
     await runner.query("DELETE n FROM notifications n INNER JOIN orders o ON o.id = n.orderId WHERE o.stationId = ?", [stationId]);
-    // Keep financial ledger rows for audit/accounting; detach them from deleted orders.\n    await runner.query("UPDATE transactions t INNER JOIN orders o ON o.id = t.orderId SET t.orderId = NULL WHERE o.stationId = ?", [stationId]);
+    // Keep financial ledger rows for audit/accounting; detach them from deleted orders.
+    await runner.query("UPDATE transactions t INNER JOIN orders o ON o.id = t.orderId SET t.orderId = NULL WHERE o.stationId = ?", [stationId]);
     await runner.query("DELETE d FROM deliveries d INNER JOIN orders o ON o.id = d.orderId WHERE o.stationId = ?", [stationId]);
     await runner.query("DELETE oi FROM order_items oi INNER JOIN orders o ON o.id = oi.orderId WHERE o.stationId = ?", [stationId]);
     await runner.query("DELETE FROM station_activities WHERE stationId = ?", [stationId]);
