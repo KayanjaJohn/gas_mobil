@@ -24,12 +24,20 @@
         "backgroundColor": "#0A3D2E"
       },
       "package": "com.gasmobil.driver",
-      "versionCode": 16
+      "versionCode": 17
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [],
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "gasmobil-alerts-v3",
+          "color": "#0A3D2E"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "f08f487f-63c6-4116-872a-3ce9f5917c8b"
