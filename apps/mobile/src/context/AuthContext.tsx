@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await apiRequest('post', '/notifications/push-token', { expoPushToken: pushToken });
         console.info('[Push] Customer token registration:', {
           tokenAcquired: true,
-          tokenFormatValid: /^(Expo|Exponent)PushToken\\[[^\\]]+\\]$/.test(pushToken),
+          tokenFormatValid: /^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(pushToken),
           registrationSucceeded: !!response?.success,
         });
         if (!response?.success) console.warn('[Push] Customer token registration was not confirmed.');
