@@ -7,7 +7,7 @@ export default ({ config }) => ({
   android: {
     ...config.android,
   },
-  plugins: [...(config.plugins || []).filter((plugin) => !(Array.isArray(plugin) ? plugin[0] : plugin) || (Array.isArray(plugin) ? plugin[0] : plugin) !== "expo-notifications"), "@maplibre/maplibre-react-native"],
+  plugins: [...(config.plugins || []), "@maplibre/maplibre-react-native"],
   extra: {
     ...config.extra,
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
