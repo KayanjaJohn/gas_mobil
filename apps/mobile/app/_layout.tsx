@@ -15,17 +15,12 @@ const Notifications: typeof import('expo-notifications') | null = Constants.exec
 // Notification handling and permission prompts are configured only in native builds.
 if (Notifications) {
   Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      // In the foreground, show the socket-backed local alert only. The
-      // matching remote push is suppressed to prevent duplicate popups.
-      const isSocketAlert = notification.request.content.data?.source === "socket";
-      return {
-        shouldShowBanner: isSocketAlert,
-        shouldShowList: isSocketAlert,
-        shouldPlaySound: isSocketAlert,
-        shouldSetBadge: true,
-      };
-    },
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
   });
 }
 
