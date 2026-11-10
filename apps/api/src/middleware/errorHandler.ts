@@ -4,40 +4,39 @@ export const errorHandler = (
   err: any,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
-  console.error('[Error]', err);
+  // Never print raw Error objects: database drivers and HTTP clients can attach
+  // SQL parameters, connection URLs, request headers or credentials to them.
+  const errorName = typeof err?.name === 'string' ? err.name : 'Error';
+  const status = Number(err?.statusCode || err?.status || 500);
+  console.error('[API Error]', {
+    name: errorName,
+    status: Number.isInteger(status) && status >= 400 && status <= 599 ? status : 500,
+    method: req.method,
+    path: req.path,
+  });
 
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
+  if (errorName === 'JsonWebTokenError') {
     return res.status(401).json({ success: false, error: 'Invalid token' });
   }
-  if (err.name === 'TokenExpiredError') {
+  if (errorName === 'TokenExpiredError') {
     return res.status(401).json({ success: false, error: 'Token expired' });
   }
-
-  // TypeORM errors
-  if (err.name === 'QueryFailedError') {
+  if (errorName === 'QueryFailedError') {
     return res.status(400).json({ success: false, error: 'Database query failed' });
   }
-  if (err.name === 'EntityNotFoundError') {
+  if (errorName === 'EntityNotFoundError') {
     return res.status(404).json({ success: false, error: 'Resource not found' });
   }
-
-  // Validation errors
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({ success: false, error: err.message });
+  if (errorName === 'ValidationError') {
+    return res.status(400).json({ success: false, error: 'Validation failed' });
   }
 
-  // Default
-  const statusCode = err.statusCode || err.status || 500;
+  const statusCode = Number.isInteger(status) && status >= 400 && status <= 599 ? status : 500;
   const message = process.env.NODE_ENV === 'production'
     ? 'Internal server error'
-    : err.message || 'Something went wrong';
+    : 'Something went wrong';
 
-  res.status(statusCode).json({
-    success: false,
-    error: message,
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
-  });
+  return res.status(statusCode).json({ success: false, error: message });
 };
