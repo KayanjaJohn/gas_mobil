@@ -9,6 +9,7 @@ import { Product } from "../entities/Product";
 import { Station } from "../entities/Station";
 import { isStationEligibleForLocation } from "../services/stationRegionService";
 import { createSystemNotification } from "../services/notificationService";
+import { previewStationDataCleanup, clearStationTransactionalData } from "../services/stationDataCleanupService";
 
 const userRepo = () => AppDataSource.getRepository(User);
 const orderRepo = () => AppDataSource.getRepository(Order);
@@ -527,5 +528,45 @@ export const updateAgentDriverStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("updateAgentDriverStatus error:", error);
     res.status(500).json({ success: false, error: "Failed to update driver availability" });
+  }
+};
+
+
+// Station agents can only preview and clear transactional history for their
+// own assigned station. Inventory, staff, customers and wallet balances remain.
+export const previewAgentStationData = async (req: Request, res: Response) => {
+  try {
+    const stationId = await getAgentStationId(req);
+    if (!stationId) return res.status(400).json({ success: false, error: "Agent has no assigned station." });
+    const preview = await previewStationDataCleanup(stationId);
+    if (!preview) return res.status(404).json({ success: false, error: "Station not found." });
+    return res.json({ success: true, data: preview });
+  } catch (error) {
+    console.error("[StationCleanup] Agent preview failed:", error);
+    return res.status(500).json({ success: false, error: "Could not preview station data cleanup." });
+  }
+};
+
+export const clearAgentStationData = async (req: Request, res: Response) => {
+  try {
+    const stationId = await getAgentStationId(req);
+    if (!stationId) return res.status(400).json({ success: false, error: "Agent has no assigned station." });
+    const preview = await previewStationDataCleanup(stationId);
+    if (!preview) return res.status(404).json({ success: false, error: "Station not found." });
+    if (req.body?.confirmStationName !== preview.station.name ||
+        req.body?.confirmation !== `CLEAR ${preview.station.name}`) {
+      return res.status(400).json({ success: false, error: "Type the exact station name and confirmation phrase to continue." });
+    }
+    const deleted = await clearStationTransactionalData(stationId);
+    return res.json({
+      success: true,
+      station: { id: preview.station.id, name: preview.station.name },
+      deleted,
+      preserved: ["station", "products and current stock", "product catalogue", "customers", "agents and drivers", "wallet balances", "unrelated transactions and notifications"],
+      message: `Transactional history cleared for your station, ${preview.station.name}.`,
+    });
+  } catch (error) {
+    console.error("[StationCleanup] Agent clear failed:", error);
+    return res.status(500).json({ success: false, error: "Station data cleanup failed; no partial cleanup was committed." });
   }
 };
