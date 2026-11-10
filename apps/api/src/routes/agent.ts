@@ -12,6 +12,8 @@ import {
   getAgentCustomers,
   updateAgentDriverStatus,
   updateAgentDriver,
+  previewAgentStationData,
+  clearAgentStationData,
 } from '../controllers/agentController';
 
 const router = Router();
@@ -29,5 +31,7 @@ router.put('/drivers/:id/status', updateAgentDriverStatus);
 router.post('/orders/:id/assign', assignDriverToOrder);
 router.post('/orders/:id/cancel', cancelOrder);
 router.get('/customers', getAgentCustomers);
+router.get('/station/data-cleanup-preview', previewAgentStationData);
+router.post('/station/clear-data', clearAgentStationData);
 
 export default router;
