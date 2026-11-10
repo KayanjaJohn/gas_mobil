@@ -7,7 +7,6 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import Constants from "expo-constants";
 import { COLORS } from "../src/utils/constants";
-import { initializeSocket } from "../src/services/socketService";
 // Avoid importing expo-notifications in Expo Go (remote notifications were removed on Android SDK 53+).
 const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
@@ -27,40 +26,6 @@ if (Notifications) {
 function RootLayoutInner() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Keep one app-wide foreground notification listener alive on every tab.
-  // Socket alerts are converted into local OS notifications so the user gets
-  // a banner, sound and vibration while actively using the app.
-  useEffect(() => {
-    if (!Notifications || Platform.OS === "web" || !isAuthenticated) return;
-    let mounted = true;
-    let socket: any = null;
-    const onNotification = async (payload: any) => {
-      if (!mounted || !payload?.id) return;
-      try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: payload.title || "GasMobil",
-            body: payload.message || "You have a new update.",
-            sound: "default",
-            vibrate: [0, 500, 180, 500, 180, 650],
-            data: { ...(payload.data || {}), notificationId: payload.id, source: "socket" },
-          },
-          trigger: null,
-        });
-      } catch (error: any) {
-        console.warn("[Push] Could not show foreground customer alert:", error?.message || error);
-      }
-    };
-    void initializeSocket().then((connectedSocket) => {
-      if (!mounted || !connectedSocket) return;
-      socket = connectedSocket;
-      socket.on("notification", onNotification);
-    });
-    return () => {
-      mounted = false;
-      socket?.off("notification", onNotification);
-    };
-  }, [isAuthenticated]);
 
   useEffect(() => {
     // Remote notifications are not supported in Expo Go on Android SDK 53+.
