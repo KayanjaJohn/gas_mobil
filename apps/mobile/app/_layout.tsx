@@ -14,12 +14,17 @@ const Notifications: typeof import('expo-notifications') | null = Constants.exec
 // Notification handling and permission prompts are configured only in native builds.
 if (Notifications) {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
+    handleNotification: async (notification) => {
+      // In the foreground, show the socket-backed local alert only. The
+      // matching remote push is suppressed to prevent duplicate popups.
+      const isSocketAlert = notification.request.content.data?.source === "socket";
+      return {
+        shouldShowBanner: isSocketAlert,
+        shouldShowList: isSocketAlert,
+        shouldPlaySound: isSocketAlert,
+        shouldSetBadge: true,
+      };
+    },
   });
 }
 
@@ -35,12 +40,15 @@ function RootLayoutInner() {
         await Notifications.requestPermissionsAsync();
       }
       if (Platform.OS === "android") {
-        await Notifications.setNotificationChannelAsync("gasmobil-alerts-v2", {
-          name: "GasMobil alerts",
+        await Notifications.setNotificationChannelAsync("gasmobil-alerts-v3", {
+          name: "GasMobil Order & Delivery Alerts",
           importance: Notifications.AndroidImportance.MAX,
           sound: "default",
           vibrationPattern: [0, 500, 180, 500, 180, 650],
           enableVibrate: true,
+          enableLights: true,
+          lightColor: "#0A3D2E",
+          showBadge: true,
         });
       }
     };
