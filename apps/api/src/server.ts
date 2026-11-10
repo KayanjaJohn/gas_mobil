@@ -174,8 +174,14 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📚 Health check: http://localhost:${PORT}/health`);
     });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
+  } catch (error: any) {
+    // Avoid logging raw database/driver errors, which may contain connection
+    // strings, hostnames, usernames or other deployment configuration.
+    console.error('❌ Failed to start server:', {
+      name: typeof error?.name === 'string' ? error.name : 'StartupError',
+      code: typeof error?.code === 'string' ? error.code : undefined,
+      message: 'Startup failed. Check the deployment provider’s private diagnostics.',
+    });
     process.exit(1);
   }
 };
