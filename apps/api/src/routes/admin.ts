@@ -17,6 +17,8 @@ router.post('/orders/:id/cancel', requireAdmin, adminController.cancelOrder);
 router.get('/stations/:id/report-orders', requireAdmin, adminController.getStationReportOrders);
 router.get('/stations/:id/history', requireAdmin, adminController.getStationHistory);
 router.delete('/stations/:id/history', requireAdmin, adminController.clearStationHistory);
+router.get('/stations/:id/data-cleanup-preview', requireAdmin, adminController.previewStationData);
+router.post('/stations/:id/clear-data', requireAdmin, adminController.clearStationData);
 router.get('/stations', requireAdmin, adminController.getAllStations);
 router.post('/stations', requireAdmin, adminController.createStation);
 router.put('/stations/:id', requireAdmin, adminController.updateStation);
