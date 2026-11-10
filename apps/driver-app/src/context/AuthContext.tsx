@@ -4,8 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { disconnectSocket } from '../services/socketService';
 import type { User } from '../types';
-import Constants from 'expo-constants';
-const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
+import * as Notifications from 'expo-notifications';
 
 // Show remote pushes while the app is open; Android channel settings still
 // control whether the user hears a sound or sees a heads-up alert.
@@ -72,17 +71,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  // Android brings the app back to the foreground. A transient API failure
  // must not leave the device permanently unregistered.
  useEffect(() => {
-   if (!user?.id || !token || Platform.OS === 'web' || !Notifications) return;
+   console.info('[Push][Driver] Registration effect evaluated:', { hasUserId: !!user?.id, hasAuthToken: !!token, platform: Platform.OS });
+   if (!user?.id || !token || Platform.OS === 'web') return;
    let active = true;
    let registering = false;
    const registerDevice = async () => {
      if (!active || registering) return;
      registering = true;
      try {
+       console.info('[Push][Driver] Starting device registration.');
        let permission = await Notifications.getPermissionsAsync();
        if (!permission.granted) permission = await Notifications.requestPermissionsAsync();
+       console.info('[Push][Driver] Permission status:', { granted: permission.granted, status: permission.status });
        if (!permission.granted) {
-         console.warn('[Push] Driver notifications are not permitted on this device.');
+         console.warn('[Push][Driver] Notifications permission was not granted.');
          return;
        }
        if (Platform.OS === 'android') {
@@ -101,16 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
            id: channel.id, importance: channel.importance, sound: channel.sound,
          });
        }
-       const projectId = Constants.expoConfig?.extra?.eas?.projectId ||
-         (Constants.easConfig as any)?.projectId;
+       const projectId = (Notifications as any) && (require('expo-constants').default.expoConfig?.extra?.eas?.projectId ||
+         require('expo-constants').default.easConfig?.projectId);
+       console.info('[Push][Driver] EAS project ID available:', !!projectId);
        if (!projectId) {
-         console.error('[Push] Driver EAS project ID is missing.');
+         console.error('[Push][Driver] EAS project ID is missing.');
          return;
        }
        const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+       console.info('[Push][Driver] Expo token acquired:', { acquired: !!pushToken, validFormat: !!pushToken && /^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(pushToken) });
        if (!active || !pushToken) return;
        const response = await api.post('/notifications/push-token', { expoPushToken: pushToken });
-       console.info('[Push] Driver token registration:', {
+       console.info('[Push][Driver] API token registration response:', {
          tokenAcquired: true,
          tokenFormatValid: /^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(pushToken),
          httpStatus: response.status,
@@ -118,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
        });
        if (response.data?.success !== true) console.warn('[Push] Driver token registration was not confirmed.');
      } catch (error: any) {
-       console.error('[Push] Driver device registration failed:', {
+       console.error('[Push][Driver] Device registration failed:', {
          message: error?.message || String(error),
          status: error?.response?.status ?? null,
          response: error?.response?.data ?? null,
