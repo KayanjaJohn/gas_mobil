@@ -55,12 +55,17 @@ function AppNavigator() {
 }
 
 if (Notifications) Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    // Foreground alerts are shown from the socket event as a local alert;
+    // suppress the matching remote push to avoid duplicate banners.
+    const isSocketAlert = notification.request.content.data?.source === "socket";
+    return {
+      shouldShowBanner: isSocketAlert,
+      shouldShowList: isSocketAlert,
+      shouldPlaySound: isSocketAlert,
+      shouldSetBadge: true,
+    };
+  },
 });
 
 export default function App() {
@@ -72,12 +77,15 @@ export default function App() {
         await Notifications.requestPermissionsAsync();
       }
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('gasmobil-alerts-v2', {
-          name: 'GasMobil alerts',
+        await Notifications.setNotificationChannelAsync('gasmobil-alerts-v3', {
+          name: 'GasMobil Order & Delivery Alerts',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'default',
           vibrationPattern: [0, 500, 180, 500, 180, 650],
           enableVibrate: true,
+          enableLights: true,
+          lightColor: "#0A3D2E",
+          showBadge: true,
         });
       }
     };
