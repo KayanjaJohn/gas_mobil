@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 import {
   Menu as MenuIcon, Dashboard, ShoppingCart, LocalShipping,
-  People, Store, Assessment, Notifications, History as HistoryIcon, ChevronLeft, ChevronRight,
+  People, Store, Assessment, Notifications, SupportAgent, History as HistoryIcon, ChevronLeft, ChevronRight,
   Brightness4, Brightness7, Logout,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +27,7 @@ const navItems = [
   { text: "Station History", path: "/station-history", icon: <HistoryIcon /> },
   { text: "Reports", path: "/reports", icon: <Assessment /> },
   { text: "Notifications", path: "/notifications", icon: <Notifications /> },
+  { text: "Customer Support", path: "/support", icon: <SupportAgent /> },
 ];
 
 export default function Layout() {
