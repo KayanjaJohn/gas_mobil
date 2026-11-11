@@ -297,6 +297,9 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
     }
 
     const stationId = await getAgentStationId(req);
+    if (order.isArchived || !["pending", "confirmed"].includes(order.status) || (order.deliveries || []).length > 0) {
+      return res.status(409).json({ success: false, error: "Only unassigned pending or confirmed orders can receive a driver." });
+    }
     const driver = await userRepo().findOne({
       where: { id: driverId, role: "driver", stationId },
     } as any);
