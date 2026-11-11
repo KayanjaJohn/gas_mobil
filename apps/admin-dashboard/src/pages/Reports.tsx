@@ -314,7 +314,7 @@ export default function Reports() {
     // Section 2: one row per order, with the products and quantities visible.
     const orderHeaders = [
       'Order ID', 'Order Date', 'Station', 'Order Status', 'Customer',
-      'Driver', 'Ordered Products and Quantities', 'Total Quantity',
+      'Driver', 'Driver Phone', 'Driver Vehicle', 'Ordered Products and Quantities', 'Total Quantity',
       'Order Value (UGX)', 'Payment Method', 'Payment Status',
       'Amount Paid (UGX)', 'COD Outstanding (UGX)', 'Delivery Address',
       'Delivery City', 'Delivered At',
@@ -335,6 +335,8 @@ export default function Reports() {
         order.status,
         order.user?.name || 'N/A',
         (order.deliveries?.[0]?.driverName || 'Not assigned'),
+        order.deliveries?.[0]?.driverPhone ? `'${order.deliveries[0].driverPhone}` : '',
+        order.deliveries?.[0]?.vehicleNumber ? `'${order.deliveries[0].vehicleNumber}` : '',
         products || 'Item details unavailable',
         getTotalQuantity(order),
         Math.round(Number(order.totalAmount || 0)),
