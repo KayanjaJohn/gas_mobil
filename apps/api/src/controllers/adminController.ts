@@ -134,6 +134,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
 		}
 
 		const orders = await orderRepository.find({
+			where: { isArchived: false },
 			relations: ["items", "items.product", "user", "station", "deliveries"],
 			order: { createdAt: "DESC" },
 		});
@@ -142,6 +143,73 @@ export const getAllOrders = async (req: Request, res: Response) => {
 	} catch (error: any) {
 		res.status(500).json({ success: false, error: error.message });
 	}
+};
+
+// POST /api/admin/stations/:id/orders/archive
+// Archive only closed orders; keep financial and delivery records intact.
+export const archiveStationOrders = async (req: Request, res: Response) => {
+  const runner = AppDataSource.createQueryRunner();
+  await runner.connect();
+  await runner.startTransaction();
+  try {
+    const { user } = req as any;
+    if (user.role !== "admin") {
+      await runner.rollbackTransaction();
+      return res.status(403).json({ success: false, error: "Admin access only." });
+    }
+    const { id: stationId } = req.params;
+    const orderIds = Array.isArray(req.body?.orderIds)
+      ? [...new Set(req.body.orderIds.filter((id: unknown) => typeof id === "string" && id.length > 0))]
+      : [];
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim().slice(0, 1000) : "";
+    if (!orderIds.length || orderIds.length > 200) {
+      await runner.rollbackTransaction();
+      return res.status(400).json({ success: false, error: "Select between 1 and 200 orders to archive." });
+    }
+    const station = await runner.manager.findOne(Station, { where: { id: stationId } });
+    if (!station) {
+      await runner.rollbackTransaction();
+      return res.status(404).json({ success: false, error: "Station not found." });
+    }
+    const orders = await runner.manager.find(Order, {
+      where: { id: In(orderIds), stationId, isArchived: false },
+      lock: { mode: "pessimistic_write" },
+    } as any);
+    if (orders.length !== orderIds.length) {
+      await runner.rollbackTransaction();
+      return res.status(409).json({ success: false, error: "Some selected orders are missing, already archived, or belong to another station. Refresh and try again." });
+    }
+    const activeStatuses = ["pending", "confirmed", "driver_assigned", "picked_up", "in_transit", "nearby"];
+    const active = orders.filter(order => activeStatuses.includes(order.status));
+    if (active.length) {
+      await runner.rollbackTransaction();
+      return res.status(409).json({
+        success: false,
+        error: "Active orders cannot be archived. Complete or cancel them first.",
+        blockedOrderIds: active.map(order => order.id),
+      });
+    }
+    const archivedAt = new Date();
+    for (const order of orders) {
+      order.isArchived = true;
+      order.archivedAt = archivedAt;
+      order.archivedBy = user.id;
+      order.archiveReason = reason || "Archived by administrator";
+    }
+    await runner.manager.save(Order, orders);
+    await runner.commitTransaction();
+    return res.json({
+      success: true,
+      data: { stationId, archivedCount: orders.length, orderIds },
+      message: `${orders.length} order(s) archived. Their financial and delivery history remains in the database.`,
+    });
+  } catch (error: any) {
+    if (runner.isTransactionActive) await runner.rollbackTransaction();
+    console.error("[archiveStationOrders]", error);
+    return res.status(500).json({ success: false, error: "Could not archive selected orders." });
+  } finally {
+    await runner.release();
+  }
 };
 
 // GET /api/admin/stations/:id/report-orders
@@ -161,7 +229,7 @@ export const getStationReportOrders = async (req: Request, res: Response) => {
     }
 
     const orders = await orderRepository.find({
-      where: { stationId },
+      where: { stationId, isArchived: false },
       relations: ["items", "items.product", "user", "station", "deliveries"],
       order: { createdAt: "DESC" },
     } as any);
@@ -389,49 +457,54 @@ export const updateDriver = async (req: Request, res: Response) => {
 
 // POST /api/admin/orders/:id/cancel - Admin cancels order
 export const cancelOrder = async (req: Request, res: Response) => {
+  const runner = AppDataSource.createQueryRunner();
+  await runner.connect();
+  await runner.startTransaction();
   try {
     const { user } = req as any;
     if (user.role !== "admin") {
+      await runner.rollbackTransaction();
       return res.status(403).json({ success: false, error: "Admin access only" });
     }
-
     const { id } = req.params;
-    const { reason } = req.body;
-
-    const order = await orderRepository.findOne({
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim().slice(0, 1000) : "";
+    const order = await runner.manager.findOne(Order, {
       where: { id },
-      relations: ["items", "items.product"],
-    });
-
+      relations: ["items", "items.product", "deliveries"],
+      lock: { mode: "pessimistic_write" },
+    } as any);
     if (!order) {
+      await runner.rollbackTransaction();
       return res.status(404).json({ success: false, error: "Order not found" });
     }
-
-    if (!["pending", "confirmed", "driver_assigned"].includes(order.status)) {
-      return res.status(400).json({
-        success: false,
-        error: "Order cannot be cancelled at this stage",
-      });
+    if (order.isArchived || !["pending", "confirmed"].includes(order.status) || (order.deliveries || []).length > 0) {
+      await runner.rollbackTransaction();
+      return res.status(409).json({ success: false, error: "This order can only be cancelled before any driver assignment or delivery record exists." });
     }
-
+    const movedStock = (order.items || []).some(item => item.product && item.product.stationId !== order.stationId);
+    if (movedStock) {
+      await runner.rollbackTransaction();
+      return res.status(409).json({ success: false, error: "Inventory ownership has changed. Reconcile stock before cancelling this order." });
+    }
     order.status = "cancelled";
     order.cancellationReason = reason || "Cancelled by admin";
-    await orderRepository.save(order);
-
-    // Restore stock
-    for (const item of order.items) {
-      const product = await productRepository.findOne({ where: { id: item.productId } });
+    await runner.manager.save(order);
+    for (const item of order.items || []) {
+      const product = await runner.manager.findOne(Product, { where: { id: item.productId }, lock: { mode: "pessimistic_write" } as any });
       if (product) {
         product.stock += item.quantity;
-        await productRepository.save(product);
+        await runner.manager.save(product);
       }
     }
-
-    res.json({ success: true, data: order, message: "Order cancelled" });
+    await runner.commitTransaction();
+    return res.json({ success: true, data: order, message: "Order cancelled and stock restored." });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    if (runner.isTransactionActive) await runner.rollbackTransaction();
+    return res.status(500).json({ success: false, error: error.message });
+  } finally {
+    await runner.release();
   }
-}; 
+};
 
 // POST /api/admin/orders/:id/assign
 export const assignDriverToOrder = async (req: Request, res: Response) => {
