@@ -55,8 +55,8 @@ export default function Announcements() {
         <TextField label="Message" value={message} onChange={e=>setMessage(e.target.value)} multiline minRows={7} inputProps={{maxLength:10000}} required fullWidth placeholder="Write the official update for GasMobil users..."/>
         <Box>
           <Typography fontWeight={700} sx={{mb:0.5}}>Delivery channels</Typography>
-          <FormControlLabel control={<Checkbox checked={sendPush} onChange={e=>setSendPush(e.target.checked}/>} label="In-app notification and mobile push notification"/>
-          <FormControlLabel control={<Checkbox checked={sendEmail} onChange={e=>setSendEmail(e.target.checked}/>} label="Email from info@gas-mobil.com"/>
+          <FormControlLabel control={<Checkbox checked={sendPush} onChange={e=>setSendPush(e.target.checked)}/>} label="In-app notification and mobile push notification"/>
+          <FormControlLabel control={<Checkbox checked={sendEmail} onChange={e=>setSendEmail(e.target.checked)}/>} label="Email from info@gas-mobil.com"/>
         </Box>
         <Stack direction="row" justifyContent="flex-end">
           <Button variant="contained" color="success" size="large" disabled={busy} onClick={()=>void submit()} startIcon={busy?<CircularProgress size={18} color="inherit"/>:<Campaign/>}>
