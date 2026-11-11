@@ -146,7 +146,7 @@ export async function createSystemNotification(payload: NotifyPayload) {
           recipientRole: recipient?.role ?? "unknown",
           hasToken: !!token,
           tokenFormatValid: !!token && /^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(token),
-          channelId: "gasmobil-alerts-v3",
+          channelId: "gasmobil-alerts-v4",
         };
       }));
       const pushMessages = savedNotifications.flatMap((notif) => {
@@ -158,7 +158,7 @@ export async function createSystemNotification(payload: NotifyPayload) {
           body: notif.message,
           sound: "default",
           priority: "high",
-          channelId: "gasmobil-alerts-v3",
+          channelId: "gasmobil-alerts-v4",
           ttl: 86400,
           data: {
             notificationId: notif.id,
