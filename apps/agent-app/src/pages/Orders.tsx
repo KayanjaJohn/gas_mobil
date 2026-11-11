@@ -133,7 +133,7 @@ export default function Orders() {
   };
 
   const handleCancel = async (orderId: string) => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) return;
+    if (!window.confirm("Cancel this order? Cancellation is only allowed before driver assignment.")) return;
     setSaving(true);
     try {
       await api.post(API_URL + "/agent/orders/" + orderId + "/cancel", {});
