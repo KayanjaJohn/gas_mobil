@@ -347,12 +347,12 @@ export default function Reports() {
     ];
     const csv = rows
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\\n');
-    const blob = new Blob(['\\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${stationName}-${period}-report.csv`.replace(/\\s+/g, '-').toLowerCase();
+    link.download = `${stationName}-${period}-report.csv`.replace(/\s+/g, '-').toLowerCase();
     document.body.appendChild(link);
     link.click();
     link.remove();
