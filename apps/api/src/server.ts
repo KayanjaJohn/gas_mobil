@@ -21,6 +21,7 @@ import walletRoutes from './routes/wallet';
 import catalogRoutes from "./routes/catalog";
 import uploadRoutes from "./routes/upload";
 import notificationRoutes from "./routes/notifications";
+import supportRoutes from "./routes/support";
 import { errorHandler } from './middleware/errorHandler';
 import { authMiddleware } from './middleware/auth';
 
@@ -147,6 +148,7 @@ app.use('/api/catalog', authMiddleware, catalogRoutes);
 // Upload route: authMiddleware handles JWT, upload route handles multer
 app.use('/api/upload', authMiddleware, uploadRoutes);
 app.use('/api/notifications', authMiddleware, notificationRoutes);
+app.use('/api/support', supportRoutes);
 
 // ── Error Handling ─────────────
 app.use(errorHandler);
