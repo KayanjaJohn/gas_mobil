@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Button, Chip, CircularProgress, Divider, Grid, Paper,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Checkbox,
   Typography
 } from '@mui/material';
 import { Assessment, CalendarMonth, Download, Event, Today, ViewWeek } from '@mui/icons-material';
@@ -157,6 +157,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [excludedIntegrityOrders, setExcludedIntegrityOrders] = useState(0);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     fetchReportData();
@@ -197,6 +199,7 @@ export default function Reports() {
     }).then((response) => {
       if (!active) return;
       setOrders(Array.isArray(response.data?.data) ? response.data.data : []);
+      setSelectedOrderIds([]);
       setExcludedIntegrityOrders(Number(response.data?.meta?.excludedIntegrityOrders || 0));
     }).catch((err: any) => {
       if (active) {
@@ -238,6 +241,41 @@ export default function Reports() {
     summary[order.status] = (summary[order.status] || 0) + 1;
     return summary;
   }, {});
+
+  const archiveSelectedOrders = async () => {
+    if (!selectedStationId || selectedOrderIds.length === 0) return;
+    const selected = reportOrders.filter(order => selectedOrderIds.includes(order.id));
+    const blocked = selected.filter(order => ["pending", "confirmed", "driver_assigned", "picked_up", "in_transit", "nearby"].includes(order.status));
+    if (blocked.length) {
+      setError("Active orders cannot be archived. Complete or cancel selected orders first.");
+      return;
+    }
+    if (!window.confirm(`Archive ${selectedOrderIds.length} selected order(s) from ${selectedStation?.name}? The records remain available in the database for audit and financial history.`)) return;
+    setArchiving(true);
+    setError("");
+    try {
+      const response = await axios.post(
+        `${API_URL}/admin/stations/${encodeURIComponent(selectedStationId)}/orders/archive`,
+        { orderIds: selectedOrderIds, reason: "Archived by administrator from station reports" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSelectedOrderIds([]);
+      const refresh = await axios.get(`${API_URL}/admin/stations/${encodeURIComponent(selectedStationId)}/report-orders`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrders(Array.isArray(refresh.data?.data) ? refresh.data.data : []);
+      setError("");
+      window.alert(response.data?.message || "Selected orders archived.");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Could not archive selected orders.");
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const selectableReportOrders = reportOrders.filter(order =>
+    !["pending", "confirmed", "driver_assigned", "picked_up", "in_transit", "nearby"].includes(order.status)
+  );
 
   const handleDownload = () => {
     if (!selectedStation) return;
@@ -339,6 +377,7 @@ export default function Reports() {
             Select a station and generate daily, weekly, monthly, or yearly reports.
           </Typography>
         </Box>
+        <Button variant="outlined" color="warning" onClick={archiveSelectedOrders} disabled={!selectedOrderIds.length || archiving || loading}> {archiving ? "Archiving…" : `Archive selected (${selectedOrderIds.length})`} </Button>
         <Button variant="outlined" startIcon={<Download />} onClick={handleDownload} disabled={!selectedStation || loading}
           sx={{ color: "#FFF8EE", borderColor: "rgba(255,248,238,.75)", "&:hover": { borderColor: "#F36A21", background: "rgba(243,106,33,.14)" }, "&.Mui-disabled": { color: "rgba(255,248,238,.45)", borderColor: "rgba(255,248,238,.25)" } }}>
           Download Report
@@ -466,6 +505,7 @@ export default function Reports() {
               <Table size="small" sx={{ minWidth: 1250, "& th": { whiteSpace: "nowrap", fontWeight: 800, bgcolor: "action.hover", color: "text.primary" }, "& td": { verticalAlign: "top", color: "text.primary", borderColor: "divider" } }}>
                 <TableHead>
                   <TableRow>
+                    <TableCell padding="checkbox"><Checkbox size="small" checked={selectableReportOrders.length > 0 && selectableReportOrders.every(order => selectedOrderIds.includes(order.id))} indeterminate={selectableReportOrders.some(order => selectedOrderIds.includes(order.id)) && !selectableReportOrders.every(order => selectedOrderIds.includes(order.id))} onChange={(event) => setSelectedOrderIds(event.target.checked ? selectableReportOrders.map(order => order.id) : [])} /></TableCell>
                     <TableCell>Order ID</TableCell>
                     <TableCell>Customer</TableCell>
                     <TableCell>Ordered products &amp; quantities</TableCell>
@@ -480,6 +520,7 @@ export default function Reports() {
                 <TableBody>
                   {reportOrders.map((order) => (
                     <TableRow key={order.id} hover>
+                      <TableCell padding="checkbox"><Checkbox size="small" disabled={["pending", "confirmed", "driver_assigned", "picked_up", "in_transit", "nearby"].includes(order.status)} checked={selectedOrderIds.includes(order.id)} onChange={(event) => setSelectedOrderIds(current => event.target.checked ? [...current, order.id] : current.filter(id => id !== order.id))} /></TableCell>
                       <TableCell>#{order.id.slice(0, 8)}</TableCell>
                       <TableCell>
                         {order.user?.name || 'N/A'}
@@ -516,7 +557,7 @@ export default function Reports() {
                   ))}
                   {reportOrders.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                         <Typography color="textSecondary">
                           {selectedStation ? 'No report orders found for this period' : 'Select a station to generate a report'}
                         </Typography>
