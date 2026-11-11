@@ -62,6 +62,18 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   declare cancellationReason: string | null;
 
+  @Column({ type: 'boolean', default: false })
+  declare isArchived: boolean;
+
+  @Column({ type: 'datetime', nullable: true })
+  declare archivedAt: Date | null;
+
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  declare archivedBy: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  declare archiveReason: string | null;
+
   @OneToMany(() => OrderItem, item => item.order, { cascade: true })
   declare items: OrderItem[];
 
