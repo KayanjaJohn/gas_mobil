@@ -72,7 +72,7 @@ export default function App() {
         await Notifications.requestPermissionsAsync();
       }
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('gasmobil-alerts-v4', {
+        await Notifications.setNotificationChannelAsync('gasmobil-alerts-v5', {
           name: 'GasMobil Order & Delivery Alerts',
           importance: Notifications.AndroidImportance.MAX,
           sound: 'default',
