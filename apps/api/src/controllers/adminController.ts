@@ -94,6 +94,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         stationRepository.count(),
         orderRepository.find({ where: { isArchived: false }, select: ["id", "totalAmount", "paymentStatus", "status", "createdAt"] }),
         orderRepository.find({
+          where: { isArchived: false },
           relations: ["user", "station"],
           order: { createdAt: "DESC" },
           take: 6,
