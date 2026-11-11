@@ -12,6 +12,7 @@ import { Notification } from '../entities/Notification';
 import { ProductCatalog } from '../entities/ProductCatalog';
 import { StationActivity } from '../entities/StationActivity';
 import { SupportTicket } from '../entities/SupportTicket';
+import { SupportTicket } from '../entities/SupportTicket';
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
 
