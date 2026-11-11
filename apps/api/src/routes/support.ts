@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { authMiddleware } from "../middleware/auth";
+import { createTicket, listTickets, replyTicket, updateTicket } from "../controllers/supportController";
+const router = Router();
+router.use(authMiddleware);
+router.get("/", listTickets);
+router.post("/", createTicket);
+router.post("/:id/replies", replyTicket);
+router.patch("/:id", updateTicket);
+export default router;
