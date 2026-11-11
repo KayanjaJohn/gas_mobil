@@ -10,6 +10,7 @@ import Stations from "./pages/Stations";
 import StationHistory from "./pages/StationHistory";
 import Reports from "./pages/Reports";
 import NotificationPage from "./pages/NotificationPage";
+import SupportPage from "./pages/SupportPage";
 import Layout from "./components/Layout";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -30,6 +31,7 @@ function App() {
           <Route path="/station-history" element={<StationHistory />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/notifications" element={<NotificationPage />} />
+          <Route path="/support" element={<SupportPage />} />
         </Route>
       </Routes>
     </AuthProvider>
