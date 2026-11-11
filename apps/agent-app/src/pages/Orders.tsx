@@ -233,7 +233,7 @@ export default function Orders() {
                       {["pending", "confirmed"].includes(order.status) && (
                         <Button size="small" onClick={() => { setSelectedOrder(order); setAssignOpen(true); }}>Assign</Button>
                       )}
-                      {["pending", "confirmed"].includes(order.status) && (
+                      {["pending", "confirmed"].includes(order.status) && !order.deliveries?.length && (
                         <Button size="small" color="error" disabled={saving} onClick={() => void handleCancel(order.id)}>Cancel</Button>
                       )}
                     </Stack>
