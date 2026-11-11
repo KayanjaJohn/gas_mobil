@@ -83,7 +83,7 @@ export const getAgentCustomers = async (req: Request, res: Response) => {
     const station = await stationRepo().findOne({ where: { id: stationId } });
     if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
     const stationOrders = await orderRepo().find({
-      where: { stationId },
+      where: { stationId, isArchived: false },
       relations: ["user", "items", "items.product"],
     } as any);
     const orders = stationOrders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
@@ -114,7 +114,7 @@ export const getAgentOrders = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Agent has no station" });
     const station = await stationRepo().findOne({ where: { id: stationId } });
     if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
-    const orders = await fetchOrdersWithDeliveries({ stationId });
+    const orders = await fetchOrdersWithDeliveries({ stationId, isArchived: false });
     const safeOrders = orders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
     const mismatchedOrders = safeOrders.filter((order: any) =>
       (order.items || []).some((item: any) =>
@@ -181,7 +181,7 @@ export const getAgentDashboard = async (req: Request, res: Response) => {
     const [station, stationOrders, drivers, products] = await Promise.all([
       stationRepo().findOne({ where: { id: stationId } }),
       orderRepo().find({
-        where: { stationId } as any,
+        where: { stationId, isArchived: false } as any,
         order: { createdAt: "DESC" },
         relations: ["user", "station", "deliveries", "items", "items.product"],
       } as any),
@@ -381,7 +381,7 @@ export const cancelOrder = async (req: Request, res: Response) => {
   await runner.connect();
   await runner.startTransaction();
   try {
-    const { orderId } = req.params;
+    const orderId = req.params.id || req.params.orderId;
     const { order, error } = await verifyStationOrder(req, orderId);
     if (error || !order) {
       await runner.rollbackTransaction();
