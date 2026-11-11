@@ -218,7 +218,7 @@ export default function Orders() {
                           Assign
                         </Button>
                       )}
-                      {order.status !== "cancelled" && order.status !== "delivered" && (
+                      {["pending", "confirmed"].includes(order.status) && !order.deliveries?.length && (
                         <Button size="small" color="error" onClick={() => handleCancel(order.id)} sx={{ ml: 1 }}>
                           Cancel
                         </Button>
