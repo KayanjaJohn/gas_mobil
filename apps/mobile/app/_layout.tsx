@@ -1,17 +1,16 @@
-import React, { useEffect, useCallback }from "react";
+import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { View, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-
 import Constants from "expo-constants";
+import * as Location from "expo-location";
 import { COLORS } from "../src/utils/constants";
-// Avoid importing expo-notifications in Expo Go (remote notifications were removed on Android SDK 53+).
-const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
-// Expo Go no longer supports remote push notifications on Android (SDK 53+).
-// Notification handling and permission prompts are configured only in native builds.
+const Notifications: typeof import("expo-notifications") | null =
+  Constants.executionEnvironment === "storeClient" ? null : require("expo-notifications");
+
 if (Notifications) {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -25,53 +24,55 @@ if (Notifications) {
 
 function RootLayoutInner() {
   const { isAuthenticated, isLoading } = useAuth();
-
-
-  useEffect(() => {
-    // Remote notifications are not supported in Expo Go on Android SDK 53+.
-    if (!Notifications || Platform.OS === "web") return;
-    const configureNotifications = async () => {
-      const permission = await Notifications.getPermissionsAsync();
-      if (!permission.granted) {
-        await Notifications.requestPermissionsAsync();
-      }
-      if (Platform.OS === "android") {
-        await Notifications.setNotificationChannelAsync("gasmobil-alerts-v4", {
-          name: "GasMobil Order & Delivery Alerts",
-          importance: Notifications.AndroidImportance.MAX,
-          sound: "default",
-          vibrationPattern: [0, 500, 180, 500, 180, 650],
-          enableVibrate: true,
-          enableLights: true,
-          lightColor: "#0A3D2E",
-          showBadge: true,
-        });
-      }
-    };
-    void configureNotifications();
-  }, []);
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (Platform.OS === "web") return;
+    let active = true;
+    const configureDevicePermissions = async () => {
+      try {
+        // Ask for permission at first launch; Android/iOS still require the user
+        // to approve the system prompt.
+        const locationPermission = await Location.getForegroundPermissionsAsync();
+        if (active && !locationPermission.granted) {
+          await Location.requestForegroundPermissionsAsync();
+        }
+        if (!Notifications) return;
+        let notificationPermission = await Notifications.getPermissionsAsync();
+        if (!notificationPermission.granted) {
+          notificationPermission = await Notifications.requestPermissionsAsync();
+        }
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("gasmobil-alerts-v5", {
+            name: "GasMobil Order & Delivery Alerts",
+            importance: Notifications.AndroidImportance.MAX,
+            sound: "default",
+            vibrationPattern: [0, 500, 180, 500, 180, 650],
+            enableVibrate: true,
+            enableLights: true,
+            lightColor: "#0A3D2E",
+            showBadge: true,
+          });
+        }
+      } catch (error) {
+        console.warn("[DevicePermissions] Setup did not complete:", error);
+      }
+    };
+    void configureDevicePermissions();
+    return () => { active = false; };
+  }, []);
 
+  useEffect(() => {
+    if (isLoading) return;
     const inAuthGroup = segments[0] === "(tabs)";
     const inLoginGroup = ["login", "register", "forgot-password"].includes(String(segments[0] || ""));
-
-    // Defer navigation to avoid setState-during-render errors
     const timer = setTimeout(() => {
-      if (!isAuthenticated && inAuthGroup) {
-        router.replace("/login");
-      } else if (isAuthenticated && !inAuthGroup && !inLoginGroup) {
-        router.replace("/(tabs)");
-      }
+      if (!isAuthenticated && inAuthGroup) router.replace("/login");
+      else if (isAuthenticated && !inAuthGroup && !inLoginGroup) router.replace("/(tabs)");
     }, 0);
-
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoading]);
-  // NOTE: segments intentionally removed from deps to prevent redirect loops
 
   if (isLoading) {
     return (
@@ -83,10 +84,7 @@ function RootLayoutInner() {
 
   return (
     <>
-      <SafeAreaView
-        edges={["top", "bottom"]}
-        style={{ flex: 1, backgroundColor: COLORS.bg }}
-      >
+      <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="register" options={{ headerShown: false }} />
