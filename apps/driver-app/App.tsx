@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Platform, View, Text, ActivityIndicator } from 'react-native';
+import * as Location from 'expo-location';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { NavigationContainer } from '@react-navigation/native';
@@ -15,13 +16,12 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationScreen';
 import SupportScreen from './src/screens/SupportScreen';
 
-const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
-
+const Notifications: typeof import('expo-notifications') | null =
+  Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
   const { user, isLoading } = useAuth();
-
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A3D2E' }}>
@@ -30,7 +30,6 @@ function AppNavigator() {
       </View>
     );
   }
-
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -46,7 +45,6 @@ function AppNavigator() {
             <Stack.Screen name="Delivery" component={DeliveryScreen} />
             <Stack.Screen name="Earnings" component={EarningsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
-            {/* ── NEW: Notifications screen ── */}
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Support" component={SupportScreen} />
           </>
@@ -56,37 +54,47 @@ function AppNavigator() {
   );
 }
 
-if (Notifications) Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 export default function App() {
   useEffect(() => {
-    if (!Notifications || Platform.OS === 'web') return;
+    if (Platform.OS === 'web') return;
+    let active = true;
     const configure = async () => {
-      const permission = await Notifications.getPermissionsAsync();
-      if (!permission.granted) {
-        await Notifications.requestPermissionsAsync();
-      }
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('gasmobil-alerts-v5', {
-          name: 'GasMobil Order & Delivery Alerts',
-          importance: Notifications.AndroidImportance.MAX,
-          sound: 'default',
-          vibrationPattern: [0, 500, 180, 500, 180, 650],
-          enableVibrate: true,
-          enableLights: true,
-          lightColor: "#0A3D2E",
-          showBadge: true,
-        });
+      try {
+        const location = await Location.getForegroundPermissionsAsync();
+        if (active && !location.granted) await Location.requestForegroundPermissionsAsync();
+        if (!Notifications) return;
+        let permission = await Notifications.getPermissionsAsync();
+        if (!permission.granted) permission = await Notifications.requestPermissionsAsync();
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('gasmobil-alerts-v5', {
+            name: 'GasMobil Order & Delivery Alerts',
+            importance: Notifications.AndroidImportance.MAX,
+            sound: 'default',
+            vibrationPattern: [0, 500, 180, 500, 180, 650],
+            enableVibrate: true,
+            enableLights: true,
+            lightColor: '#0A3D2E',
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            showBadge: true,
+          });
+        }
+      } catch (error) {
+        console.warn('[DevicePermissions][Driver] Setup did not complete:', error);
       }
     };
     void configure();
+    return () => { active = false; };
   }, []);
 
   return (
