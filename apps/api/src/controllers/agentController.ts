@@ -35,7 +35,7 @@ const verifyStationOrder = async (
   if (!stationId) return { order: null, error: "Agent has no station" };
   const order = await orderRepo().findOne({
     where: { id: orderId },
-    relations: ["station", "items", "items.product"],
+    relations: ["station", "items", "items.product", "deliveries"],
   } as any);
   if (!order) return { order: null, error: "Order not found" };
   if ((order as any).stationId !== stationId)
