@@ -6,7 +6,7 @@ import {
   useTheme, CssBaseline,
 } from "@mui/material";
 import {
-  Menu as MenuIcon, Dashboard, ShoppingCart, LocalShipping,
+  Menu as MenuIcon, Dashboard, ShoppingCart, LocalShipping, Campaign,
   People, Store, Assessment, Notifications, SupportAgent, History as HistoryIcon, ChevronLeft, ChevronRight,
   Brightness4, Brightness7, Logout,
 } from "@mui/icons-material";
@@ -27,6 +27,7 @@ const navItems = [
   { text: "Station History", path: "/station-history", icon: <HistoryIcon /> },
   { text: "Reports", path: "/reports", icon: <Assessment /> },
   { text: "Notifications", path: "/notifications", icon: <Notifications /> },
+  { text: "Global Announcements", path: "/announcements", icon: <Campaign /> },
   { text: "Support Center", path: "/support", icon: <SupportAgent /> },
 ];
 
