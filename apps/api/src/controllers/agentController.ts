@@ -377,42 +377,80 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
 };
 
 export const cancelOrder = async (req: Request, res: Response) => {
+  const runner = AppDataSource.createQueryRunner();
+  await runner.connect();
+  await runner.startTransaction();
   try {
     const { orderId } = req.params;
     const { order, error } = await verifyStationOrder(req, orderId);
     if (error || !order) {
-      return res
-        .status(error === "Not your station order" ? 403 : 404)
+      await runner.rollbackTransaction();
+      return res.status(error === "Not your station order" ? 403 : 404)
         .json({ success: false, error: error || "Order not found" });
     }
-    if (!["pending", "confirmed"].includes((order as any).status)) {
-      return res.status(400).json({ success: false, error: "Order cannot be cancelled at this stage" });
+    const lockedOrder = await runner.manager.findOne(Order, {
+      where: { id: orderId },
+      relations: ["items", "items.product", "deliveries"],
+      lock: { mode: "pessimistic_write" },
+    } as any);
+    if (!lockedOrder || lockedOrder.stationId !== order.stationId) {
+      await runner.rollbackTransaction();
+      return res.status(404).json({ success: false, error: "Order not found at this station." });
     }
-    const hasMovedProductStock = ((order as any).items || []).some((item: any) =>
-      item.product?.stationId && item.product.stationId !== order.stationId
-    );
-    if (hasMovedProductStock) {
+    if (lockedOrder.isArchived || !["pending", "confirmed"].includes(lockedOrder.status) ||
+        (lockedOrder.deliveries || []).length > 0) {
+      await runner.rollbackTransaction();
       return res.status(409).json({
         success: false,
-        error: "This historical order contains stock now assigned to another station. An administrator must reconcile the stock before cancellation so inventory is not returned to the wrong station.",
+        error: "Orders can only be cancelled before a driver is assigned. This order already has an assignment or has moved forward.",
       });
     }
-    await orderRepo().update(orderId, {
-      status: "cancelled",
-      cancellationReason: req.body.reason || "Cancelled by agent",
-    } as any);
-    const items = (order as any).items || [];
-    for (const item of items) {
-      const prod = await productRepo().findOne({ where: { id: item.productId } } as any);
-      if (prod) {
-        (prod as any).stock += item.quantity;
-        await productRepo().save(prod);
+    const movedStock = (lockedOrder.items || []).some(item =>
+      item.product && item.product.stationId !== lockedOrder.stationId
+    );
+    if (movedStock) {
+      await runner.rollbackTransaction();
+      return res.status(409).json({
+        success: false,
+        error: "This historical order contains stock now assigned to another station. An administrator must reconcile stock before cancellation.",
+      });
+    }
+    const actor = (req as any).user || {};
+    lockedOrder.status = "cancelled";
+    lockedOrder.cancellationReason = typeof req.body?.reason === "string" && req.body.reason.trim()
+      ? req.body.reason.trim().slice(0, 1000)
+      : "Cancelled by station agent";
+    await runner.manager.save(lockedOrder);
+    for (const item of lockedOrder.items || []) {
+      const product = await runner.manager.findOne(Product, {
+        where: { id: item.productId },
+        lock: { mode: "pessimistic_write" },
+      } as any);
+      if (product) {
+        product.stock += item.quantity;
+        await runner.manager.save(product);
       }
     }
-    res.json({ success: true, message: "Order cancelled" });
+    await runner.commitTransaction();
+    await createSystemNotification({
+      type: "cancelled",
+      orderId: lockedOrder.id,
+      stationId: lockedOrder.stationId,
+      title: "Order Cancelled",
+      message: `Order #${lockedOrder.id.slice(0, 8).toUpperCase()} was cancelled by the station agent.`,
+      data: { orderId: lockedOrder.id, reason: lockedOrder.cancellationReason, cancelledBy: actor.role || "agent" },
+      notifyAdmin: true,
+      notifyAgent: true,
+      notifyCustomer: true,
+      userId: lockedOrder.userId,
+    });
+    return res.json({ success: true, data: lockedOrder, message: "Order cancelled and stock restored." });
   } catch (error) {
+    if (runner.isTransactionActive) await runner.rollbackTransaction();
     console.error("cancelOrder error:", error);
-    res.status(500).json({ success: false, error: "Server error" });
+    return res.status(500).json({ success: false, error: "Could not cancel this order." });
+  } finally {
+    await runner.release();
   }
 };
 
