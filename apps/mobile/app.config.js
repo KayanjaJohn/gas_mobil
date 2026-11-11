@@ -27,7 +27,8 @@ export default {
         backgroundColor: "#0A3D2E",
       },
       package: "com.gasmobil.app",
-      versionCode: 1,
+      versionCode: 2,
+      googleServicesFile: "./google-services.json",
     },
     web: {
       favicon: "./assets/icon.png",
@@ -38,6 +39,6 @@ export default {
         projectId: "e63f5e6a-5e16-4297-9623-c7475c34d842",
       },
     },
-    plugins: ["expo-router", ["expo-notifications", { defaultChannel: "gasmobil-alerts-v3", color: "#0A3D2E" }], "@maplibre/maplibre-react-native"],
+    plugins: ["expo-router", ["expo-notifications", { defaultChannel: "gasmobil-alerts-v3", color: "#0A3D2E", icon: "./assets/notification-icon.png" }], ["expo-location", { locationWhenInUsePermission: "GasMobil uses your location to find nearby gas stations and deliver orders to your address." }], "@maplibre/maplibre-react-native"],
   },
 };
