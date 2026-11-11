@@ -9,6 +9,7 @@ import Drivers from "./pages/Drivers";
 import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
 import NotificationPage from "./pages/NotificationPage";
+import SupportPage from "./pages/SupportPage";
 import Layout from "./components/Layout";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -36,6 +37,7 @@ function App() {
               />
             }
           />
+          <Route path="/support" element={<SupportPage />} />
         </Route>
       </Routes>
     </AuthProvider>
