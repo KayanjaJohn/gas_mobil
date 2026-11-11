@@ -283,9 +283,6 @@ export default function Reports() {
     const stationName = selectedStation?.name || 'Station';
     const generatedAt = new Date().toLocaleString();
     const completedStatuses = ['delivered', 'completed'];
-    const validOrders = reportOrders.filter(order =>
-      !['cancelled', 'failed', 'refunded'].includes(order.status)
-    );
     const totalQuantity = reportOrders.reduce((sum, order) => sum + getTotalQuantity(order), 0);
     const completedQuantity = completedOrders.reduce((sum, order) => sum + getTotalQuantity(order), 0);
 
