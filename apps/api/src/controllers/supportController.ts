@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import AppDataSource from "../config/database";
 import { SupportTicket } from "../entities/SupportTicket";
 import { User } from "../entities/User";
+import { Order } from "../entities/Order";
 
 const repo = () => AppDataSource.getRepository(SupportTicket);
 const currentUser = (req: Request) => (req as any).user as User;
