@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { requireAdmin, requireAgent } from '../middleware/requireRole';
 import * as adminController from '../controllers/adminController';
+import { createGlobalAnnouncement } from '../controllers/announcementController';
 
 const router = Router();
 
 router.get('/dashboard', requireAdmin, adminController.getDashboardStats);
+router.post('/announcements', requireAdmin, createGlobalAnnouncement);
 router.get('/orders', requireAdmin, adminController.getAllOrders);
 router.get('/customers', requireAdmin, adminController.getAllCustomers);
 router.get('/drivers', requireAdmin, adminController.getAllDrivers);
