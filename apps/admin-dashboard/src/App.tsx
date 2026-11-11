@@ -11,6 +11,7 @@ import StationHistory from "./pages/StationHistory";
 import Reports from "./pages/Reports";
 import NotificationPage from "./pages/NotificationPage";
 import SupportPage from "./pages/SupportPage";
+import Announcements from "./pages/Announcements";
 import Layout from "./components/Layout";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -32,6 +33,7 @@ function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/notifications" element={<NotificationPage />} />
           <Route path="/support" element={<SupportPage />} />
+          <Route path="/announcements" element={<Announcements />} />
         </Route>
       </Routes>
     </AuthProvider>
