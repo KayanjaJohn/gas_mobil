@@ -4,6 +4,7 @@ import AppDataSource from "../config/database";
 import { SupportTicket } from "../entities/SupportTicket";
 import { User } from "../entities/User";
 import { Order } from "../entities/Order";
+import { createSystemNotification } from "../services/notificationService";
 
 const repo = () => AppDataSource.getRepository(SupportTicket);
 const currentUser = (req: Request) => (req as any).user as User;
@@ -24,9 +25,14 @@ export const createTicket = async (req: Request, res: Response) => {
   const subject = String(req.body?.subject || "").trim().slice(0, 255);
   const description = String(req.body?.message || "").trim().slice(0, 5000);
   if (subject.length < 4 || description.length < 10) return res.status(400).json({ success: false, error: "Enter a subject and a message of at least 10 characters." });
+  let stationId: string | null = user.stationId || null;
+  if (user.role === "customer") {
+    const latestOrder = await AppDataSource.getRepository(Order).findOne({ where: { userId: user.id }, order: { createdAt: "DESC" } });
+    stationId = latestOrder?.stationId || null;
+  }
   const ticket = repo().create({
     customerId: user.id,
-    stationId: user.role === "customer" ? null : user.stationId || null,
+    stationId,
     assignedToId: null,
     subject,
     description,
@@ -35,6 +41,7 @@ export const createTicket = async (req: Request, res: Response) => {
     messages: [{ id: randomUUID(), senderId: user.id, senderRole: user.role, message: description, createdAt: new Date().toISOString() }],
   });
   await repo().save(ticket);
+  void createSystemNotification({ userId: user.id, stationId: stationId || undefined, type: "system_announcement", title: "New support request", message: `A ${user.role} has opened support ticket: ${subject}`, data: { ticketId: ticket.id }, notifyAdmin: true, notifyAgent: !!stationId });
   return res.status(201).json({ success: true, data: ticket });
 };
 
@@ -56,6 +63,12 @@ export const replyTicket = async (req: Request, res: Response) => {
   ticket.messages = messages;
   if (["admin", "agent"].includes(user.role) && ticket.status === "open") ticket.status = "in_progress";
   await repo().save(ticket);
+  if (user.role === "admin" || user.role === "agent") {
+    const owner = await AppDataSource.getRepository(User).findOne({ where: { id: ticket.customerId } });
+    if (owner) void createSystemNotification({ userId: owner.id, type: "system_announcement", title: "Support replied", message: `A GasMobil support agent replied to: ${ticket.subject}`, data: { ticketId: ticket.id }, notifyCustomer: owner.role === "customer", notifyDriver: owner.role === "driver" });
+  } else {
+    void createSystemNotification({ userId: user.id, stationId: ticket.stationId || undefined, type: "system_announcement", title: "Customer replied to support", message: `A reply was added to: ${ticket.subject}`, data: { ticketId: ticket.id }, notifyAdmin: true, notifyAgent: !!ticket.stationId });
+  }
   return res.json({ success: true, data: ticket });
 };
 
