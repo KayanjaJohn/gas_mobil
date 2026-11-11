@@ -15,6 +15,7 @@ router.post('/orders/:id/cancel', requireAdmin, adminController.cancelOrder);
 
 // Station routes
 router.get('/stations/:id/report-orders', requireAdmin, adminController.getStationReportOrders);
+router.post('/stations/:id/orders/archive', requireAdmin, adminController.archiveStationOrders);
 router.get('/stations/:id/history', requireAdmin, adminController.getStationHistory);
 router.delete('/stations/:id/history', requireAdmin, adminController.clearStationHistory);
 router.get('/stations/:id/data-cleanup-preview', requireAdmin, adminController.previewStationData);
