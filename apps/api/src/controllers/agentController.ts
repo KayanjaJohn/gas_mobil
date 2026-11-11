@@ -116,6 +116,28 @@ export const getAgentOrders = async (req: Request, res: Response) => {
     if (!station) return res.status(400).json({ success: false, error: "Agent station is unavailable." });
     const orders = await fetchOrdersWithDeliveries({ stationId, isArchived: false });
     const safeOrders = orders.filter((order: any) => isSafeAgentOrder(order, stationId, station));
+
+    // Backfill legacy delivery snapshots from the assigned driver's profile.
+    const driverIds = [...new Set(safeOrders.flatMap((order: any) =>
+      (order.deliveries || []).map((delivery: any) => delivery.driverId).filter(Boolean)
+    ))];
+    const drivers = driverIds.length
+      ? await userRepo().find({
+          where: { id: In(driverIds), role: "driver" },
+          select: ["id", "name", "phone", "vehicleNumber"],
+        } as any)
+      : [];
+    const driverById = new Map(drivers.map((driver: any) => [driver.id, driver]));
+    safeOrders.forEach((order: any) => {
+      (order.deliveries || []).forEach((delivery: any) => {
+        const driver: any = driverById.get(delivery.driverId);
+        if (!driver) return;
+        delivery.driverName = delivery.driverName || driver.name;
+        delivery.driverPhone = delivery.driverPhone || driver.phone;
+        delivery.vehicleNumber = delivery.vehicleNumber || driver.vehicleNumber;
+      });
+    });
+
     const mismatchedOrders = safeOrders.filter((order: any) =>
       (order.items || []).some((item: any) =>
         item.product?.stationId && item.product.stationId !== stationId
