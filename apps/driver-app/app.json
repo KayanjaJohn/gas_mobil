@@ -24,7 +24,7 @@
         "backgroundColor": "#0A3D2E"
       },
       "package": "com.gasmobil.driver",
-      "versionCode": 17,
+      "versionCode": 18,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -34,8 +34,14 @@
       [
         "expo-notifications",
         {
-          "defaultChannel": "gasmobil-alerts-v3",
+          "defaultChannel": "gasmobil-alerts-v4",
           "color": "#0A3D2E"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "GasMobil uses your location to navigate deliveries and share your delivery progress."
         }
       ]
     ],
