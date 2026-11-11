@@ -1,44 +1,13 @@
-import Icon from "@expo/vector-icons/MaterialCommunityIcons";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from "react-native";
+import React,{useCallback,useEffect,useState} from "react";
+import {ActivityIndicator,Alert,ScrollView,StyleSheet,Text,TextInput,TouchableOpacity,View} from "react-native";
 import TopBar from "../src/components/TopBar";
-
-export default function HelpScreen() {
-  return (
-    <View style={styles.container}>
-      <TopBar title="Help & Support" showBack />
-      <ScrollView style={{ padding: 16 }}>
-        <View style={styles.card}>
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}><Icon name="phone-outline" size={20} color="#FFFFFF" /> Contact Us</Text>
-          <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("tel:+256785796333")}>
-            <Text style={styles.rowText}>+256 785 796 333</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("tel:+256776800386")}>
-            <Text style={styles.rowText}>0776 800 386</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("mailto:info@gasmobil.ug")}>
-            <Text style={styles.rowText}>info@gasmobil.ug</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.card}>
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}><Icon name="help-circle-outline" size={20} color="#FFFFFF" /> Frequently Asked Questions</Text>
-          <Text style={styles.faqQ}>How fast is delivery?</Text>
-          <Text style={styles.faqA}>We guarantee 2-hour delivery in Kampala. If we're late, you get 10% off your next refill.</Text>
-          <Text style={styles.faqQ}>What sizes do you offer?</Text>
-          <Text style={styles.faqA}>6kg, 12kg, and 45kg cylinders — both swap refills and full kit purchases.</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", marginBottom: 12 }}><Icon name="map-marker-outline" size={20} color="#FFFFFF" /> Visit Us</Text>
-          <Text style={styles.faqA}>Plot 12, Kampala Road, Kampala, Uganda</Text>
-        </View>
-      </ScrollView>
-    </View>
-  );
+import {apiRequest} from "../src/services/api";
+type Ticket={id:string;subject:string;description:string;status:string;messages?:Array<{id:string;senderRole:string;message:string;createdAt:string}>;updatedAt:string};
+export default function HelpScreen(){
+ const [tickets,setTickets]=useState<Ticket[]>([]),[subject,setSubject]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+ const load=useCallback(async()=>{try{const r=await apiRequest<Ticket[]>("get","/support");if(r.success)setTickets(r.data||[]);}catch(e:any){Alert.alert("Support",e?.response?.data?.error||e.message||"Could not load support requests.");}finally{setLoading(false);}},[]);
+ useEffect(()=>{void load();},[load]);
+ const submit=async()=>{if(subject.trim().length<4||message.trim().length<10){Alert.alert("More information needed","Enter a subject and at least 10 characters describing the issue.");return;}setBusy(true);try{const r=await apiRequest<Ticket>("post","/support",{subject:subject.trim(),message:message.trim()});if(!r.success)throw new Error(r.error||"Could not submit request.");setSubject("");setMessage("");Alert.alert("Request sent","GasMobil Support has received your request.");await load();}catch(e:any){Alert.alert("Could not send request",e?.response?.data?.error||e.message||"Try again.");}finally{setBusy(false);}};
+ return <View style={styles.root}><TopBar title="Help & Support" showBack/><ScrollView contentContainerStyle={styles.content}><View style={styles.card}><Text style={styles.heading}>Contact GasMobil Support</Text><Text style={styles.sub}>Tell us what happened. Our support team will follow up here.</Text><TextInput style={styles.input} value={subject} onChangeText={setSubject} placeholder="Subject" placeholderTextColor="#8EA49A"/><TextInput style={[styles.input,styles.multiline]} value={message} onChangeText={setMessage} placeholder="Describe your issue…" placeholderTextColor="#8EA49A" multiline/><TouchableOpacity style={styles.button} onPress={()=>void submit()} disabled={busy}>{busy?<ActivityIndicator color="#fff"/>:<Text style={styles.buttonText}>Send support request</Text>}</TouchableOpacity></View><Text style={styles.heading}>My support requests</Text>{loading?<ActivityIndicator color="#F36A21"/>:tickets.length===0?<Text style={styles.sub}>You have no support requests yet.</Text>:tickets.map(t=><View key={t.id} style={styles.ticket}><View style={styles.ticketRow}><Text style={styles.ticketTitle}>{t.subject}</Text><Text style={styles.status}>{t.status.replace("_"," ").toUpperCase()}</Text></View><Text style={styles.sub}>{t.description}</Text>{(t.messages||[]).slice(-3).map(m=><Text key={m.id} style={styles.message}><Text style={{fontWeight:"800"}}>{m.senderRole}: </Text>{m.message}</Text>)}</View>)}</ScrollView></View>;
 }
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#070b14" },
-  card: { backgroundColor: "#101723", borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#1F2A3D" },
-  row: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#131d33" },
-  rowText: { color: "#1484FF", fontSize: 14, fontWeight: "600" },
-  faqQ: { color: "#fff", fontSize: 14, fontWeight: "600", marginTop: 10 },
-  faqA: { color: "#8A93A6", fontSize: 13, marginTop: 4, lineHeight: 20 },
-});
+const styles=StyleSheet.create({root:{flex:1,backgroundColor:"#07130E"},content:{padding:16,paddingBottom:40},card:{backgroundColor:"#10271C",padding:16,borderRadius:16,marginBottom:22,borderWidth:1,borderColor:"#28513C"},heading:{fontSize:18,fontWeight:"800",color:"#FFF8EE",marginBottom:8},sub:{fontSize:13,color:"#B5C8BC",lineHeight:19,marginBottom:10},input:{backgroundColor:"#F8F5EC",color:"#0A3D2E",padding:13,borderRadius:10,marginTop:10},multiline:{minHeight:110,textAlignVertical:"top"},button:{backgroundColor:"#F36A21",padding:14,borderRadius:10,alignItems:"center",marginTop:12},buttonText:{color:"#fff",fontWeight:"800"},ticket:{backgroundColor:"#10271C",padding:14,borderRadius:12,marginBottom:10},ticketRow:{flexDirection:"row",justifyContent:"space-between",gap:10},ticketTitle:{color:"#FFF8EE",fontWeight:"800",flex:1},status:{color:"#F7B66B",fontSize:10,fontWeight:"800"},message:{color:"#E5EEE8",fontSize:12,marginTop:7}});
