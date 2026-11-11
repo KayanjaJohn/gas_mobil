@@ -280,93 +280,133 @@ export default function Reports() {
   );
 
   const handleDownload = () => {
-    if (!selectedStation) return;
+    const stationName = selectedStation?.name || 'Station';
+    const generatedAt = new Date().toLocaleString();
+    const completedStatuses = ['delivered', 'completed'];
+    const validOrders = reportOrders.filter(order =>
+      !['cancelled', 'failed', 'refunded'].includes(order.status)
+    );
+    const totalQuantity = reportOrders.reduce((sum, order) => sum + getTotalQuantity(order), 0);
+    const completedQuantity = completedOrders.reduce((sum, order) => sum + getTotalQuantity(order), 0);
 
-    // Keep every value directly below its header when opened in Excel.
-    // The previous vertical key/value layout made the report difficult to scan.
+    // Section 1: one header row followed immediately by its values.
     const summaryHeaders = [
-      'Report', 'Station', 'Period', 'Generated At', 'Orders', 'Completed Orders',
-      'Total Order Value', 'Paid Orders', 'Paid Revenue', 'COD Outstanding', 'Average Paid Order',
+      'Report', 'Station', 'Period', 'Generated At',
+      'Total Orders Received', 'Completed Orders', 'Completion Rate (%)',
+      'Total Order Value (UGX)', 'Paid Orders', 'Paid Revenue (UGX)',
+      'COD Outstanding (UGX)', 'Average Paid Order (UGX)',
+      'Total Product Quantity Ordered', 'Product Quantity Delivered',
     ];
     const summaryValues = [
       `${periodOptions.find((option) => option.value === period)?.label} Station Report`,
-      selectedStation.name,
+      stationName,
       formatPeriodLabel(period, periodStart),
-      new Date().toLocaleString(),
-      String(reportOrders.length),
-      String(completedOrders.length),
-      String(totalOrderValue),
-      String(paidOrders.length),
-      String(totalRevenue),
-      String(outstandingCash),
-      String(Math.round(averageOrderValue)),
+      generatedAt,
+      reportOrders.length,
+      completedOrders.length,
+      reportOrders.length ? Number(((completedOrders.length / reportOrders.length) * 100).toFixed(1)) : 0,
+      Math.round(totalOrderValue),
+      paidOrders.length,
+      Math.round(totalRevenue),
+      Math.round(outstandingCash),
+      Math.round(averageOrderValue),
+      totalQuantity,
+      completedQuantity,
     ];
+
+    // Section 2: one row per order, with the products and quantities visible.
     const orderHeaders = [
-      'Order ID', 'Order Date', 'Last Updated', 'Order Status',
-      'Customer ID', 'Customer Name', 'Customer Phone', 'Customer Email', 'Customer Profile Address', 'Customer Profile City',
-      'Delivery Address', 'Delivery City', 'Delivery Latitude', 'Delivery Longitude', 'GPS Accuracy (m)',
-      'Station ID', 'Station Name', 'Driver Name', 'Driver Phone', 'Driver Vehicle', 'Delivery Status',
-      'Picked Up At', 'Delivery Started At', 'Delivered At', 'Delivery Notes',
-      'Payment Method', 'Payment Status',
-      'Product IDs and Details (name, description, type, size, weight, quantity, unit price, line total)',
-      'Total Quantity', 'Order Total (UGX)', 'COD Outstanding (UGX)',
-      'Order Notes', 'Cancellation Reason',
+      'Order ID', 'Order Date', 'Station', 'Order Status', 'Customer',
+      'Driver', 'Ordered Products and Quantities', 'Total Quantity',
+      'Order Value (UGX)', 'Payment Method', 'Payment Status',
+      'Amount Paid (UGX)', 'COD Outstanding (UGX)', 'Delivery Address',
+      'Delivery City', 'Delivered At',
     ];
-    const rows = [
+    const orderRows = reportOrders.map((order) => {
+      const products = (order.items || []).map((item) => {
+        const product = item.product;
+        const variant = [product?.type, product?.size, product?.weight ? `${product.weight} kg` : null]
+          .filter(Boolean).join(' / ');
+        return `${product?.name || 'Product'}${variant ? ` (${variant})` : ''} x ${Number(item.quantity || 0)}`;
+      }).join('; ');
+      const isPaid = order.paymentStatus === 'paid';
+      const deliveredAt = order.deliveries?.[0]?.deliveredAt;
+      return [
+        order.id,
+        new Date(order.createdAt).toLocaleString(),
+        order.station?.name || stationName,
+        order.status,
+        order.user?.name || 'N/A',
+        (order.deliveries?.[0]?.driverName || 'Not assigned'),
+        products || 'Item details unavailable',
+        getTotalQuantity(order),
+        Math.round(Number(order.totalAmount || 0)),
+        order.paymentMethod || 'cash',
+        order.paymentStatus || 'pending',
+        isPaid ? Math.round(Number(order.totalAmount || 0)) : 0,
+        Math.round(getCODOutstanding(order)),
+        order.deliveryAddress || '',
+        order.deliveryCity || '',
+        deliveredAt ? new Date(deliveredAt).toLocaleString() : '',
+      ];
+    });
+
+    // Section 3: aggregate the cylinder/product quantities across this station.
+    const productTotals = new Map<string, {
+      name: string; type: string; size: string; weight: string;
+      orders: Set<string>; quantityOrdered: number; quantityDelivered: number; value: number;
+    }>();
+    reportOrders.forEach((order) => {
+      (order.items || []).forEach((item) => {
+        const product = item.product;
+        const name = product?.name || 'Product';
+        const type = product?.type || '';
+        const size = product?.size || '';
+        const weight = product?.weight == null ? '' : String(product.weight);
+        const key = [item.productId || '', name, type, size, weight].join('|');
+        const current = productTotals.get(key) || {
+          name, type, size, weight, orders: new Set<string>(),
+          quantityOrdered: 0, quantityDelivered: 0, value: 0,
+        };
+        current.orders.add(order.id);
+        current.quantityOrdered += Number(item.quantity || 0);
+        if (completedStatuses.includes(order.status)) current.quantityDelivered += Number(item.quantity || 0);
+        current.value += Number(item.subtotal || 0);
+        productTotals.set(key, current);
+      });
+    });
+    const productHeaders = [
+      'Product', 'Type', 'Size', 'Weight (kg)', 'Number of Orders',
+      'Total Quantity Ordered', 'Quantity in Completed Orders', 'Product Order Value (UGX)',
+    ];
+    const productRows = Array.from(productTotals.values()).map((item) => [
+      item.name, item.type, item.size, item.weight, item.orders.size,
+      item.quantityOrdered, item.quantityDelivered, Math.round(item.value),
+    ]);
+
+    const rows: Array<Array<string | number>> = [
       summaryHeaders,
       summaryValues,
       [],
+      ['ORDER DETAILS'],
       orderHeaders,
-      ...(reportOrders.length > 0
-        ? reportOrders.map((order) => [
-            order.id,
-            new Date(order.createdAt).toLocaleString(),
-            order.updatedAt ? new Date(order.updatedAt).toLocaleString() : '',
-            order.status,
-            order.userId || order.user?.id || '',
-            order.user?.name || 'N/A',
-            order.user?.phone || '',
-            order.user?.email || '',
-            order.user?.address || '',
-            order.user?.city || '',
-            order.deliveryAddress || '',
-            order.deliveryCity || '',
-            order.deliveryLatitude ?? '',
-            order.deliveryLongitude ?? '',
-            order.locationAccuracy ?? '',
-            order.stationId,
-            order.station?.name || selectedStation.name,
-            order.deliveries?.[0]?.driverName || 'Not assigned',
-            order.deliveries?.[0]?.driverPhone || '',
-            order.deliveries?.[0]?.vehicleNumber || '',
-            order.deliveries?.[0]?.status || '',
-            order.deliveries?.[0]?.pickedUpAt ? new Date(order.deliveries[0].pickedUpAt).toLocaleString() : '',
-            order.deliveries?.[0]?.startedAt ? new Date(order.deliveries[0].startedAt).toLocaleString() : '',
-            order.deliveries?.[0]?.deliveredAt ? new Date(order.deliveries[0].deliveredAt).toLocaleString() : '',
-            order.deliveries?.[0]?.notes || '',
-            order.paymentMethod || 'cash',
-            order.paymentStatus || 'pending',
-            getProductDetails(order),
-            String(getTotalQuantity(order)),
-            String(Number(order.totalAmount || 0)),
-            String(getCODOutstanding(order)),
-            order.notes || '',
-            order.cancellationReason || '',
-          ])
-        : [['No orders found for this period', ...Array(orderHeaders.length - 1).fill('')]]),
+      ...(orderRows.length ? orderRows : [['No orders found for this period']]),
+      [],
+      ['PRODUCT SUMMARY'],
+      productHeaders,
+      ...(productRows.length ? productRows : [['No product orders found for this period']]),
     ];
-
     const csv = rows
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    // UTF-8 BOM ensures Excel opens names and report text correctly.
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      .join('\\n');
+    const blob = new Blob(['\\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-
     link.href = url;
-    link.download = `${selectedStation.name}-${period}-report.csv`.replace(/\s+/g, '-').toLowerCase();
+    link.download = `${stationName}-${period}-report.csv`.replace(/\\s+/g, '-').toLowerCase();
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
   };
 
