@@ -17,6 +17,7 @@ type DriverStackParamList = {
   Earnings: undefined;
   Profile: undefined;
   Notifications: undefined;
+  Support: undefined;
 };
 
 interface Order {
@@ -212,6 +213,10 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Earnings' as never)}>
             <Icon name="cash-multiple" size={25} color="#F59E0B" style={styles.actionIcon} />
             <Text style={styles.actionText}>Earnings</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Support' as never)}>
+            <Icon name="headset" size={25} color="#F59E0B" style={styles.actionIcon} />
+            <Text style={styles.actionText}>Support</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Profile' as never)}>
             <Icon name="cog-outline" size={25} color="#F59E0B" style={styles.actionIcon} />
