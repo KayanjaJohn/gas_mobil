@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          return;
        }
        if (Platform.OS === 'android') {
-         const channel = await Notifications.setNotificationChannelAsync('gasmobil-alerts-v3', {
+         const channel = await Notifications.setNotificationChannelAsync('gasmobil-alerts-v4', {
            name: 'GasMobil Order & Delivery Alerts',
            importance: Notifications.AndroidImportance.MAX,
            sound: 'default',
