@@ -27,7 +27,7 @@ const navItems = [
   { text: "Station History", path: "/station-history", icon: <HistoryIcon /> },
   { text: "Reports", path: "/reports", icon: <Assessment /> },
   { text: "Notifications", path: "/notifications", icon: <Notifications /> },
-  { text: "Customer Support", path: "/support", icon: <SupportAgent /> },
+  { text: "Support Center", path: "/support", icon: <SupportAgent /> },
 ];
 
 export default function Layout() {
