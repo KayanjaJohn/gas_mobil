@@ -87,12 +87,12 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
     const [totalOrders, pendingOrders, totalDrivers, totalProducts, totalStations, orders, recentOrders] =
       await Promise.all([
-        orderRepository.count(),
-        orderRepository.count({ where: { status: In(["pending", "confirmed", "driver_assigned"]) } }),
+        orderRepository.count({ where: { isArchived: false } }),
+        orderRepository.count({ where: { isArchived: false, status: In(["pending", "confirmed", "driver_assigned"]) } }),
         userRepository.count({ where: { role: "driver", isActive: true } }),
         productRepository.count(),
         stationRepository.count(),
-        orderRepository.find({ select: ["id", "totalAmount", "paymentStatus", "status", "createdAt"] }),
+        orderRepository.find({ where: { isArchived: false }, select: ["id", "totalAmount", "paymentStatus", "status", "createdAt"] }),
         orderRepository.find({
           relations: ["user", "station"],
           order: { createdAt: "DESC" },
@@ -517,7 +517,10 @@ export const assignDriverToOrder = async (req: Request, res: Response) => {
 			return res.status(403).json({ success: false, error: "Access denied" });
 		}
 
-		const order = await orderRepository.findOne({ where: { id }, relations: ["station"] });
+		const order = await orderRepository.findOne({ where: { id }, relations: ["station", "deliveries"] });
+		if (order && (order.isArchived || !["pending", "confirmed"].includes(order.status) || (order.deliveries || []).length > 0)) {
+			return res.status(409).json({ success: false, error: "Only unassigned pending or confirmed orders can receive a driver." });
+		}
 		if (!order) {
 			return res.status(404).json({ success: false, error: "Order not found" });
 		}
