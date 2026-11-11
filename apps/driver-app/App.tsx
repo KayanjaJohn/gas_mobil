@@ -13,6 +13,7 @@ import DeliveryScreen from './src/screens/DeliveryScreen';
 import EarningsScreen from './src/screens/EarningsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationScreen';
+import SupportScreen from './src/screens/SupportScreen';
 
 const Notifications: typeof import('expo-notifications') | null = Constants.executionEnvironment === 'storeClient' ? null : require('expo-notifications');
 
@@ -47,6 +48,7 @@ function AppNavigator() {
             <Stack.Screen name="Profile" component={ProfileScreen} />
             {/* ── NEW: Notifications screen ── */}
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Support" component={SupportScreen} />
           </>
         )}
       </Stack.Navigator>
