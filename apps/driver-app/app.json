@@ -24,7 +24,7 @@
         "backgroundColor": "#0A3D2E"
       },
       "package": "com.gasmobil.driver",
-      "versionCode": 18,
+      "versionCode": 19,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -34,7 +34,8 @@
       [
         "expo-notifications",
         {
-          "defaultChannel": "gasmobil-alerts-v4",
+          "icon": "./assets/adaptive-icon.png",
+          "defaultChannel": "gasmobil-alerts-v5",
           "color": "#0A3D2E"
         }
       ],
