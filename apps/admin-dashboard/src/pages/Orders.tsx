@@ -105,7 +105,7 @@ export default function Orders() {
   const handleCancel = async (orderId: string) => {
     if (!confirm("Are you sure you want to cancel this order?")) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
+      const res = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/cancel`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
