@@ -245,18 +245,20 @@ export default function Reports() {
   const archiveSelectedOrders = async () => {
     if (!selectedStationId || selectedOrderIds.length === 0) return;
     const selected = reportOrders.filter(order => selectedOrderIds.includes(order.id));
+    const selectedIds = selected.map(order => order.id);
+    if (!selectedIds.length) { setSelectedOrderIds([]); return; }
     const blocked = selected.filter(order => ["pending", "confirmed", "driver_assigned", "picked_up", "in_transit", "nearby"].includes(order.status));
     if (blocked.length) {
       setError("Active orders cannot be archived. Complete or cancel selected orders first.");
       return;
     }
-    if (!window.confirm(`Archive ${selectedOrderIds.length} selected order(s) from ${selectedStation?.name}? The records remain available in the database for audit and financial history.`)) return;
+    if (!window.confirm(`Archive ${selectedIds.length} selected order(s) from ${selectedStation?.name}? The records remain available in the database for audit and financial history.`)) return;
     setArchiving(true);
     setError("");
     try {
       const response = await axios.post(
         `${API_URL}/admin/stations/${encodeURIComponent(selectedStationId)}/orders/archive`,
-        { orderIds: selectedOrderIds, reason: "Archived by administrator from station reports" },
+        { orderIds: selectedIds, reason: "Archived by administrator from station reports" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSelectedOrderIds([]);
