@@ -251,6 +251,28 @@ export const getStationReportOrders = async (req: Request, res: Response) => {
       )
     );
 
+    // Older delivery snapshots may not contain driver contact/vehicle details.
+    // Fill missing values from the assigned driver's current profile.
+    const driverIds = [...new Set(safeOrders.flatMap((order: any) =>
+      (order.deliveries || []).map((delivery: any) => delivery.driverId).filter(Boolean)
+    ))];
+    const drivers = driverIds.length
+      ? await userRepository.find({
+          where: { id: In(driverIds), role: "driver" },
+          select: ["id", "name", "phone", "vehicleNumber"],
+        } as any)
+      : [];
+    const driverById = new Map(drivers.map((driver: any) => [driver.id, driver]));
+    safeOrders.forEach((order: any) => {
+      (order.deliveries || []).forEach((delivery: any) => {
+        const driver: any = driverById.get(delivery.driverId);
+        if (!driver) return;
+        delivery.driverName = delivery.driverName || driver.name;
+        delivery.driverPhone = delivery.driverPhone || driver.phone;
+        delivery.vehicleNumber = delivery.vehicleNumber || driver.vehicleNumber;
+      });
+    });
+
     return res.json({
       success: true,
       data: safeOrders,
