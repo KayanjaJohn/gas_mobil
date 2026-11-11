@@ -26,7 +26,7 @@ const navItems = [
   { text: "Customers", path: "/customers", icon: <People /> },
   { text: "Reports", path: "/reports", icon: <Assessment /> },
   { text: "Notifications", path: "/notifications", icon: <Notifications /> },
-  { text: "Customer Support", path: "/support", icon: <SupportAgent /> },
+  { text: "Support Center", path: "/support", icon: <SupportAgent /> },
 ];
 
 export default function Layout() {
