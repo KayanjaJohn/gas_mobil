@@ -24,7 +24,7 @@
         "backgroundColor": "#0A3D2E"
       },
       "package": "com.gasmobil.driver",
-      "versionCode": 19,
+      "versionCode": 20,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
