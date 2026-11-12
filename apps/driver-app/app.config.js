@@ -2,7 +2,7 @@ import "dotenv/config";
 
 export default ({ config }) => ({
   ...config,
-  name: "GasMobil Driver",
+  name: "Deliver@GasMobil",
   slug: "gas-mobil-driver",
   owner: "gasmobil-uganda",
   version: config.version || "1.0.0",
